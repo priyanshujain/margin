@@ -143,7 +143,7 @@ function imageExtension(dataUrl: string): string {
   return kind === "jpeg" ? "jpg" : kind;
 }
 
-export function extractImages(book: Book): { images: ImageInput[]; paths: Map<string, string> } {
+function collectImages(contents: JSONContent[]): { images: ImageInput[]; paths: Map<string, string> } {
   const paths = new Map<string, string>();
   const images: ImageInput[] = [];
 
@@ -159,8 +159,12 @@ export function extractImages(book: Book): { images: ImageInput[]; paths: Map<st
     (node.content ?? []).forEach(visit);
   };
 
-  book.chapters.forEach((chapter) => visit(chapter.content));
+  contents.forEach(visit);
   return { images, paths };
+}
+
+export function extractImages(book: Book): { images: ImageInput[]; paths: Map<string, string> } {
+  return collectImages(book.chapters.map((chapter) => chapter.content));
 }
 
 export function bookToTypst(book: Book, paths: Map<string, string> = new Map()): string {
@@ -185,4 +189,24 @@ export function bookToTypst(book: Book, paths: Map<string, string> = new Map()):
 export function bookToPdfInputs(book: Book): { source: string; images: ImageInput[] } {
   const { images, paths } = extractImages(book);
   return { source: bookToTypst(book, paths), images };
+}
+
+function chapterToTypst(book: Book, index: number, paths: Map<string, string>): string {
+  const chapter = book.chapters[index];
+  const opener = `#chapteropener(${str(String(index + 1))}, [${esc(chapter.title || "Untitled")}])`;
+  return `${preamble(book)}
+
+#set page(numbering: "1")
+#counter(page).update(1)
+
+${opener}
+
+${chapterBody(chapter.content, paths)}
+`;
+}
+
+export function chapterToPdfInputs(book: Book, index: number): { source: string; images: ImageInput[] } {
+  const chapter = book.chapters[index];
+  const { images, paths } = collectImages([chapter.content]);
+  return { source: chapterToTypst(book, index, paths), images };
 }
