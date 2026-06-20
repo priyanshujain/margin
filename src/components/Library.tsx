@@ -20,6 +20,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   return (
     <div className="library">
       <header className="library-head">
+        <span className="logo" aria-hidden="true" />
         <span className="mark">margin</span>
         <span className="dot" />
       </header>
