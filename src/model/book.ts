@@ -24,6 +24,7 @@ export interface Chapter {
 
 export interface Book {
   schema: "margin/1";
+  id: string;
   metadata: BookMetadata;
   theme: string;
   settings: BookSettings;
@@ -45,6 +46,7 @@ export function createChapter(title = "Untitled chapter"): Chapter {
 export function createBook(): Book {
   return {
     schema: "margin/1",
+    id: crypto.randomUUID(),
     metadata: { title: "Untitled", subtitle: "", author: "", isbn: "", language: "en" },
     theme: "quiet-press",
     settings: { trim: "6x9", bleed: true },
@@ -54,6 +56,7 @@ export function createBook(): Book {
 
 export function starterBook(): Book {
   const book = createBook();
+  book.metadata.title = "The Lighthouse";
   book.chapters = [
     {
       id: crypto.randomUUID(),
