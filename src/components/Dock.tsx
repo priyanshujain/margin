@@ -3,7 +3,7 @@ import { generateHTML } from "@tiptap/core";
 import { useBook } from "../store/useBook";
 import type { TrimSize } from "../model/book";
 import { editorExtensions } from "../editor/extensions";
-import { bookToPdfInputs } from "../export/typst";
+import { chapterToPdfInputs } from "../export/typst";
 import { compilePdf, isDesktop } from "../ipc";
 import { PdfPreview } from "./PdfPreview";
 
@@ -39,6 +39,7 @@ export function Dock() {
 
 function PdfDock() {
   const book = useBook((s) => s.book);
+  const activeChapterId = useBook((s) => s.activeChapterId);
   const [pdf, setPdf] = useState<Uint8Array | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,10 +47,11 @@ function PdfDock() {
 
   useEffect(() => {
     if (!book) return;
+    const idx = Math.max(0, book.chapters.findIndex((c) => c.id === activeChapterId));
     clearTimeout(timer.current);
     setBusy(true);
     timer.current = setTimeout(() => {
-      const { source, images } = bookToPdfInputs(book);
+      const { source, images } = chapterToPdfInputs(book, idx);
       compilePdf(source, images)
         .then((bytes) => {
           setPdf(bytes);
@@ -59,7 +61,7 @@ function PdfDock() {
         .finally(() => setBusy(false));
     }, 350);
     return () => clearTimeout(timer.current);
-  }, [book]);
+  }, [book, activeChapterId]);
 
   return (
     <section className="dock">
