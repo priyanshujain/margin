@@ -82,6 +82,16 @@ button {
   color: var(--accent);
 }
 
+.dirty-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
 .body {
   flex: 1;
   display: flex;
