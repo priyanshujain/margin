@@ -1,4 +1,5 @@
 mod epub;
+mod library;
 mod pdf;
 mod project;
 
@@ -12,7 +13,11 @@ pub fn run() {
             pdf::compile_pdf,
             project::read_file,
             project::write_file,
-            project::write_bytes
+            project::write_bytes,
+            library::list_books,
+            library::load_book,
+            library::save_book,
+            library::delete_book
         ])
         .run(tauri::generate_context!())
         .expect("error while running margin");
