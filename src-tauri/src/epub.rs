@@ -138,4 +138,27 @@ mod tests {
         // Fonts are embedded by build() and must come back as base64 binary.
         assert_eq!(find("OEBPS/fonts/Literata-VF.ttf").encoding, "base64");
     }
+
+    #[test]
+    fn unzip_epub_reads_a_file_from_disk() {
+        let zipped = build(&[
+            text("mimetype", "application/epub+zip"),
+            text("OEBPS/chapter-1.xhtml", "<p>hi</p>"),
+        ])
+        .expect("build");
+
+        let mut path = std::env::temp_dir();
+        path.push("margin-unzip-test.epub");
+        std::fs::write(&path, &zipped).expect("write");
+
+        let out = unzip_epub(path.to_string_lossy().to_string()).expect("unzip_epub");
+        let _ = std::fs::remove_file(&path);
+
+        let chapter = out
+            .iter()
+            .find(|f| f.path == "OEBPS/chapter-1.xhtml")
+            .expect("chapter present");
+        assert_eq!(chapter.data, "<p>hi</p>");
+        assert_eq!(chapter.encoding, "utf8");
+    }
 }
