@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
+
 interface IconProps {
-  d: string;
+  d?: string;
   size?: number;
+  children?: ReactNode;
 }
 
-export function Icon({ d, size = 16 }: IconProps) {
+export function Icon({ d, size = 16, children }: IconProps) {
   return (
     <svg
       width={size}
@@ -15,7 +18,7 @@ export function Icon({ d, size = 16 }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d={d} />
+      {children ?? <path d={d} />}
     </svg>
   );
 }

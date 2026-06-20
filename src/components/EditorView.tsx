@@ -7,6 +7,7 @@ import { Settings } from "./Settings";
 import { Editor } from "../editor/Editor";
 import { FloatingToolbar } from "../editor/FloatingToolbar";
 import { useBook } from "../store/useBook";
+import { useTheme } from "../store/useTheme";
 import type { Book } from "../model/book";
 import { saveBook } from "../library";
 import { isDesktop } from "../ipc";
@@ -22,6 +23,8 @@ export function EditorView() {
   const setChapterContent = useBook((s) => s.setChapterContent);
   const setChapterTitle = useBook((s) => s.setChapterTitle);
   const markSaved = useBook((s) => s.markSaved);
+  const theme = useTheme((s) => s.theme);
+  const toggleTheme = useTheme((s) => s.toggle);
 
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [dock, setDock] = useState(true);
@@ -99,6 +102,16 @@ export function EditorView() {
               </>
             )}
           </div>
+          <button className="icon-btn" onClick={toggleTheme} title={theme === "dark" ? "Light mode" : "Dark mode"}>
+            {theme === "dark" ? (
+              <Icon>
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+              </Icon>
+            ) : (
+              <Icon d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+            )}
+          </button>
           <button className="icon-btn" data-on={dock} onClick={() => setDock(!dock)} title="Toggle preview">
             <Icon d="M3 4.5h18v15H3zM14 4.5v15" />
           </button>
