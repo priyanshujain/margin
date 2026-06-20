@@ -1,12 +1,15 @@
 import { useState } from "react";
+import type { Editor as TiptapEditor } from "@tiptap/react";
 import { Sidebar } from "./components/Sidebar";
 import { Dock } from "./components/Dock";
 import { Icon } from "./components/Icon";
 import { Editor } from "./editor/Editor";
+import { FloatingToolbar } from "./editor/FloatingToolbar";
 import { useBook } from "./store/useBook";
 
 function App() {
   const [dock, setDock] = useState(true);
+  const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const title = useBook((s) => s.book.metadata.title);
   const author = useBook((s) => s.book.metadata.author);
   const chapters = useBook((s) => s.book.chapters);
@@ -49,8 +52,10 @@ function App() {
               chapterId={chapter.id}
               content={chapter.content}
               onChange={(content) => setChapterContent(chapter.id, content)}
+              onReady={setEditor}
             />
           </article>
+          <FloatingToolbar editor={editor} />
         </main>
         {dock && <Dock />}
       </div>
