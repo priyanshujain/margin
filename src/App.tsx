@@ -3,14 +3,19 @@ import type { Editor as TiptapEditor } from "@tiptap/react";
 import { Sidebar } from "./components/Sidebar";
 import { Dock } from "./components/Dock";
 import { Icon } from "./components/Icon";
+import { Settings } from "./components/Settings";
 import { Editor } from "./editor/Editor";
 import { FloatingToolbar } from "./editor/FloatingToolbar";
 import { useBook } from "./store/useBook";
+import type { Book } from "./model/book";
 import { chooseSavePath, openBook, writeBook } from "./project";
+import { exportEpub, exportPdf } from "./export/exporters";
 
 function App() {
   const [dock, setDock] = useState(true);
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const title = useBook((s) => s.book.metadata.title);
   const author = useBook((s) => s.book.metadata.author);
   const chapters = useBook((s) => s.book.chapters);
@@ -53,14 +58,23 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [handleSave, handleOpen]);
 
+  const runExport = async (fn: (book: Book) => Promise<void>) => {
+    setExportOpen(false);
+    try {
+      await fn(useBook.getState().book);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="app">
       <header className="titlebar" data-tauri-drag-region>
-        <span className="doc-title">
+        <button className="doc-title" onClick={() => setSettingsOpen(true)} title="Book setup">
           {title || "Untitled"}
           {author ? ` — ${author}` : ""}
           {dirty && <span className="dirty-dot" />}
-        </span>
+        </button>
         <div className="actions">
           <button className="icon-btn" onClick={handleOpen} title="Open (⌘O)">
             <Icon d="M3 7l1.7-2.5h4.6L11 7h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
@@ -68,6 +82,20 @@ function App() {
           <button className="icon-btn" onClick={handleSave} title="Save (⌘S)">
             <Icon d="M12 4v10m0 0l-3.5-3.5M12 14l3.5-3.5M5 19h14" />
           </button>
+          <div className="menu-wrap">
+            <button className="icon-btn" data-on={exportOpen} onClick={() => setExportOpen((v) => !v)} title="Export">
+              <Icon d="M12 15V4m0 0L8 8m4-4l4 4M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" />
+            </button>
+            {exportOpen && (
+              <>
+                <div className="menu-backdrop" onClick={() => setExportOpen(false)} />
+                <div className="menu">
+                  <button onClick={() => runExport(exportPdf)}>Export PDF…</button>
+                  <button onClick={() => runExport(exportEpub)}>Export EPUB…</button>
+                </div>
+              </>
+            )}
+          </div>
           <button className="icon-btn" data-on={dock} onClick={() => setDock(!dock)} title="Toggle preview">
             <Icon d="M3 4.5h18v15H3zM14 4.5v15" />
           </button>
@@ -99,6 +127,8 @@ function App() {
         </main>
         {dock && <Dock />}
       </div>
+
+      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }
