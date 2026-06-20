@@ -433,14 +433,6 @@ button {
   text-indent: 0;
 }
 
-.ProseMirror > p:first-child::first-letter {
-  float: left;
-  font-size: 3.1em;
-  line-height: 0.82;
-  padding: 0.05em 0.09em 0 0;
-  font-weight: 500;
-}
-
 .ProseMirror hr {
   border: none;
   border-top: 1px solid var(--line-strong);
