@@ -329,6 +329,32 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.dock-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trim-select {
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  color: var(--ink-soft);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.trim-select:hover {
+  border-color: var(--line-strong);
+}
+
+.trim-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .page {
   background: #fffefb;
   border: 1px solid var(--line);

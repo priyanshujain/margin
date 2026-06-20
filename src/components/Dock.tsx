@@ -1,17 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { generateHTML } from "@tiptap/core";
 import { useBook } from "../store/useBook";
+import type { TrimSize } from "../model/book";
 import { editorExtensions } from "../editor/extensions";
 import { bookToPdfInputs } from "../export/typst";
 import { compilePdf, isDesktop } from "../ipc";
 import { PdfPreview } from "./PdfPreview";
 
-const TRIM_LABEL: Record<string, string> = {
-  "6x9": "6 × 9 in",
-  "5.5x8.5": "5.5 × 8.5 in",
-  "5x8": "5 × 8 in",
-  a5: "A5",
-};
+const TRIMS: { value: TrimSize; label: string }[] = [
+  { value: "6x9", label: "6 × 9 in" },
+  { value: "5.5x8.5", label: "5.5 × 8.5 in" },
+  { value: "5x8", label: "5 × 8 in" },
+  { value: "a5", label: "A5" },
+];
+
+function TrimSelect() {
+  const trim = useBook((s) => s.book?.settings.trim ?? "6x9");
+  const setSettings = useBook((s) => s.setSettings);
+  return (
+    <select
+      className="trim-select"
+      value={trim}
+      onChange={(e) => setSettings({ trim: e.target.value as TrimSize })}
+      title="Trim size"
+    >
+      {TRIMS.map((t) => (
+        <option key={t.value} value={t.value}>
+          {t.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export function Dock() {
   return isDesktop ? <PdfDock /> : <HtmlDock />;
@@ -45,7 +65,10 @@ function PdfDock() {
     <section className="dock">
       <div className="dock-head">
         <span className="label">Preview</span>
-        <span className="meta">{busy ? "updating…" : TRIM_LABEL[book?.settings.trim ?? "6x9"]}</span>
+        <div className="dock-tools">
+          {busy && <span className="meta">updating…</span>}
+          <TrimSelect />
+        </div>
       </div>
       {error ? (
         <pre className="dock-error">{error}</pre>
@@ -72,9 +95,12 @@ function HtmlDock() {
     <section className="dock">
       <div className="dock-head">
         <span className="label">Preview</span>
-        <span className="meta">
-          {TRIM_LABEL[book.settings.trim]} · {idx + 1} of {chapters.length}
-        </span>
+        <div className="dock-tools">
+          <span className="meta">
+            {idx + 1} of {chapters.length}
+          </span>
+          <TrimSelect />
+        </div>
       </div>
       <div className="page">
         <div className="p-opener">
