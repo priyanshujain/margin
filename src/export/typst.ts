@@ -51,9 +51,13 @@ function listItem(item: JSONContent): string {
 function figure(node: JSONContent, paths: Map<string, string>): string {
   const path = paths.get(node.attrs?.src);
   if (!path) return "";
+  const placement = node.attrs?.placement ?? "inline";
+  if (placement === "full-page") {
+    return `#page(margin: 0pt, numbering: none)[#image(${str(path)}, width: 100%, height: 100%, fit: "cover")]`;
+  }
   const caption = node.attrs?.caption ? `, caption: [${esc(node.attrs.caption)}]` : "";
-  const placement = node.attrs?.placement === "float-top" ? ", placement: top" : "";
-  return `#figure(image(${str(path)}, width: 100%)${caption}${placement})`;
+  const float = placement === "float-top" ? ", placement: top" : "";
+  return `#figure(image(${str(path)}, width: 100%)${caption}${float})`;
 }
 
 function block(node: JSONContent, paths: Map<string, string>): string {
@@ -87,11 +91,12 @@ function chapterBody(content: JSONContent, paths: Map<string, string>): string {
 function preamble(book: Book): string {
   const trim = TRIM[book.settings.trim];
   const meta = book.metadata;
+  const bleed = book.settings.bleed ? "0.125in" : "0in";
   return `#set document(title: ${str(meta.title || "Untitled")}, author: ${str(meta.author)})
 #set page(
-  width: ${trim.w},
-  height: ${trim.h},
-  margin: (inside: 0.875in, outside: 0.625in, top: 0.8in, bottom: 0.8in),
+  width: ${trim.w} + ${bleed},
+  height: ${trim.h} + ${bleed} * 2,
+  margin: (inside: 0.875in, outside: 0.625in + ${bleed}, top: 0.8in + ${bleed}, bottom: 0.8in + ${bleed}),
   binding: left,
 )
 #set text(font: "Literata", size: 11pt, lang: ${str(meta.language || "en")}, hyphenate: true)
