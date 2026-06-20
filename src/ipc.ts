@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export const isDesktop = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
 export interface ImageInput {
   path: string;
   data: string;

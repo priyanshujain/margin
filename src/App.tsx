@@ -10,6 +10,10 @@ import { useBook } from "./store/useBook";
 import type { Book } from "./model/book";
 import { chooseSavePath, openBook, writeBook } from "./project";
 import { exportEpub, exportPdf } from "./export/exporters";
+import { isDesktop } from "./ipc";
+
+const DESKTOP_ONLY =
+  'This runs in the desktop app only — open the window from "pnpm tauri dev" (you are viewing the browser preview).';
 
 function App() {
   const [dock, setDock] = useState(true);
@@ -31,6 +35,10 @@ function App() {
   const chapter = chapters[idx];
 
   const handleSave = useCallback(async () => {
+    if (!isDesktop) {
+      setNotice(DESKTOP_ONLY);
+      return;
+    }
     try {
       const { book, path } = useBook.getState();
       const target = path ?? (await chooseSavePath(book));
@@ -44,6 +52,10 @@ function App() {
   }, [markSaved]);
 
   const handleOpen = useCallback(async () => {
+    if (!isDesktop) {
+      setNotice(DESKTOP_ONLY);
+      return;
+    }
     try {
       const result = await openBook();
       if (result) replaceBook(result.book, result.path);
@@ -54,6 +66,10 @@ function App() {
 
   const runExport = async (label: string, fn: (book: Book) => Promise<void>) => {
     setExportOpen(false);
+    if (!isDesktop) {
+      setNotice(DESKTOP_ONLY);
+      return;
+    }
     try {
       await fn(useBook.getState().book);
     } catch (e) {

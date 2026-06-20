@@ -3,7 +3,7 @@ import { generateHTML } from "@tiptap/core";
 import { useBook } from "../store/useBook";
 import { editorExtensions } from "../editor/extensions";
 import { bookToPdfInputs } from "../export/typst";
-import { compilePdf } from "../ipc";
+import { compilePdf, isDesktop } from "../ipc";
 import { PdfPreview } from "./PdfPreview";
 
 const TRIM_LABEL: Record<string, string> = {
@@ -13,10 +13,8 @@ const TRIM_LABEL: Record<string, string> = {
   a5: "A5",
 };
 
-const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-
 export function Dock() {
-  return inTauri ? <PdfDock /> : <HtmlDock />;
+  return isDesktop ? <PdfDock /> : <HtmlDock />;
 }
 
 function PdfDock() {
