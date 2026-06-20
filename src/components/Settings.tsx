@@ -28,11 +28,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function Settings({ onClose }: { onClose: () => void }) {
-  const metadata = useBook((s) => s.book.metadata);
-  const settings = useBook((s) => s.book.settings);
+export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+  const book = useBook((s) => s.book);
   const setMetadata = useBook((s) => s.setMetadata);
   const setSettings = useBook((s) => s.setSettings);
+
+  if (!book) return null;
+  const { metadata, settings } = book;
 
   return (
     <div className="overlay" onClick={onClose}>
@@ -80,6 +82,17 @@ export function Settings({ onClose }: { onClose: () => void }) {
             <input type="checkbox" checked={settings.bleed} onChange={(e) => setSettings({ bleed: e.target.checked })} />
             Add bleed for full-page images (print)
           </label>
+        </div>
+        <div className="panel-foot">
+          <button
+            className="btn-primary"
+            onClick={() => {
+              onSave();
+              onClose();
+            }}
+          >
+            Save
+          </button>
         </div>
       </div>
     </div>

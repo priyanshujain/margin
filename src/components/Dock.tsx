@@ -25,6 +25,7 @@ function PdfDock() {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
+    if (!book) return;
     clearTimeout(timer.current);
     setBusy(true);
     timer.current = setTimeout(() => {
@@ -44,7 +45,7 @@ function PdfDock() {
     <section className="dock">
       <div className="dock-head">
         <span className="label">Preview</span>
-        <span className="meta">{busy ? "updating…" : TRIM_LABEL[book.settings.trim]}</span>
+        <span className="meta">{busy ? "updating…" : TRIM_LABEL[book?.settings.trim ?? "6x9"]}</span>
       </div>
       {error ? (
         <pre className="dock-error">{error}</pre>
@@ -58,19 +59,21 @@ function PdfDock() {
 }
 
 function HtmlDock() {
-  const chapters = useBook((s) => s.book.chapters);
-  const trim = useBook((s) => s.book.settings.trim);
+  const book = useBook((s) => s.book);
   const activeChapterId = useBook((s) => s.activeChapterId);
+  const chapters = book?.chapters ?? [];
   const idx = chapters.findIndex((c) => c.id === activeChapterId);
-  const chapter = chapters[idx];
-  const html = useMemo(() => generateHTML(chapter.content, editorExtensions), [chapter.content]);
+  const chapter = chapters[idx] ?? chapters[0];
+  const html = useMemo(() => (chapter ? generateHTML(chapter.content, editorExtensions) : ""), [chapter]);
+
+  if (!book || !chapter) return null;
 
   return (
     <section className="dock">
       <div className="dock-head">
         <span className="label">Preview</span>
         <span className="meta">
-          {TRIM_LABEL[trim]} · {idx + 1} of {chapters.length}
+          {TRIM_LABEL[book.settings.trim]} · {idx + 1} of {chapters.length}
         </span>
       </div>
       <div className="page">

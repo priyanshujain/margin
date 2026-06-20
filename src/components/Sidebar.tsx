@@ -2,17 +2,18 @@ import { useBook } from "../store/useBook";
 import { Icon } from "./Icon";
 
 export function Sidebar() {
-  const chapters = useBook((s) => s.book.chapters);
+  const chapters = useBook((s) => s.book?.chapters ?? []);
   const activeChapterId = useBook((s) => s.activeChapterId);
   const setActiveChapter = useBook((s) => s.setActiveChapter);
   const addChapter = useBook((s) => s.addChapter);
+  const closeBook = useBook((s) => s.closeBook);
 
   return (
     <aside className="sidebar">
-      <div className="brand">
+      <button className="brand" onClick={closeBook} title="Back to library">
+        <Icon d="M14 7l-5 5 5 5" size={15} />
         <span className="mark">margin</span>
-        <span className="dot" />
-      </div>
+      </button>
       <div className="nav-label">Chapters</div>
       <ul className="chapters">
         {chapters.map((chapter, i) => (
