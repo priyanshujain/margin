@@ -1,3 +1,5 @@
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use std::fs;
 
 #[tauri::command]
@@ -8,4 +10,10 @@ pub fn read_file(path: String) -> Result<String, String> {
 #[tauri::command]
 pub fn write_file(path: String, contents: String) -> Result<(), String> {
     fs::write(&path, contents).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn write_bytes(path: String, data: String) -> Result<(), String> {
+    let bytes = STANDARD.decode(data.as_bytes()).map_err(|e| e.to_string())?;
+    fs::write(&path, bytes).map_err(|e| e.to_string())
 }

@@ -9,7 +9,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             pdf::compile_pdf,
             project::read_file,
-            project::write_file
+            project::write_file,
+            project::write_bytes
         ])
         .run(tauri::generate_context!())
         .expect("error while running margin");
