@@ -36,6 +36,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             epub::package_epub,
+            epub::unzip_epub,
             pdf::compile_pdf,
             project::read_file,
             project::write_file,
