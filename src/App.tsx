@@ -16,6 +16,7 @@ function App() {
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const title = useBook((s) => s.book.metadata.title);
   const author = useBook((s) => s.book.metadata.author);
   const chapters = useBook((s) => s.book.chapters);
@@ -30,17 +31,35 @@ function App() {
   const chapter = chapters[idx];
 
   const handleSave = useCallback(async () => {
-    const { book, path } = useBook.getState();
-    const target = path ?? (await chooseSavePath(book));
-    if (!target) return;
-    await writeBook(book, target);
-    markSaved(target);
+    try {
+      const { book, path } = useBook.getState();
+      const target = path ?? (await chooseSavePath(book));
+      if (!target) return;
+      await writeBook(book, target);
+      markSaved(target);
+      setNotice("Saved");
+    } catch (e) {
+      setNotice(`Save failed: ${e}`);
+    }
   }, [markSaved]);
 
   const handleOpen = useCallback(async () => {
-    const result = await openBook();
-    if (result) replaceBook(result.book, result.path);
+    try {
+      const result = await openBook();
+      if (result) replaceBook(result.book, result.path);
+    } catch (e) {
+      setNotice(`Open failed: ${e}`);
+    }
   }, [replaceBook]);
+
+  const runExport = async (label: string, fn: (book: Book) => Promise<void>) => {
+    setExportOpen(false);
+    try {
+      await fn(useBook.getState().book);
+    } catch (e) {
+      setNotice(`${label} export failed: ${e}`);
+    }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -58,14 +77,11 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [handleSave, handleOpen]);
 
-  const runExport = async (fn: (book: Book) => Promise<void>) => {
-    setExportOpen(false);
-    try {
-      await fn(useBook.getState().book);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   return (
     <div className="app">
@@ -90,8 +106,8 @@ function App() {
               <>
                 <div className="menu-backdrop" onClick={() => setExportOpen(false)} />
                 <div className="menu">
-                  <button onClick={() => runExport(exportPdf)}>Export PDF…</button>
-                  <button onClick={() => runExport(exportEpub)}>Export EPUB…</button>
+                  <button onClick={() => runExport("PDF", exportPdf)}>Export PDF…</button>
+                  <button onClick={() => runExport("EPUB", exportEpub)}>Export EPUB…</button>
                 </div>
               </>
             )}
@@ -129,6 +145,11 @@ function App() {
       </div>
 
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
+      {notice && (
+        <div className="toast" onClick={() => setNotice(null)}>
+          {notice}
+        </div>
+      )}
     </div>
   );
 }
