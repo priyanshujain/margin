@@ -383,3 +383,69 @@ button {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+.chapter-title-input {
+  width: 100%;
+  margin: 15px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-family: var(--font-book);
+  font-weight: 500;
+  font-size: 31px;
+  line-height: 1.16;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.chapter-title-input:focus {
+  outline: none;
+}
+
+.chapter-title-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.editor-host,
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror {
+  min-height: 62vh;
+}
+
+.ProseMirror > p:first-child {
+  text-indent: 0;
+}
+
+.ProseMirror > p:first-child::first-letter {
+  float: left;
+  font-size: 3.1em;
+  line-height: 0.82;
+  padding: 0.05em 0.09em 0 0;
+  font-weight: 500;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--line-strong);
+  width: 56px;
+  margin: 2rem auto;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--ink-faint);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.page-body hr {
+  border: none;
+  border-top: 1px solid var(--line-strong);
+  width: 22px;
+  margin: 9px auto;
+}
