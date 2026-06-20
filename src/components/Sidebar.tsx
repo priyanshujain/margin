@@ -10,9 +10,9 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <button className="brand" onClick={closeBook} title="Back to library">
+      <button className="brand" onClick={closeBook} title="All books">
         <Icon d="M14 7l-5 5 5 5" size={15} />
-        <span className="mark">margin</span>
+        <span className="back-label">All books</span>
       </button>
       <div className="nav-label">Chapters</div>
       <ul className="chapters">
