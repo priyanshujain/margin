@@ -110,24 +110,26 @@ button {
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 7px;
-  padding: 12px 22px 18px;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 18px 16px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 120ms var(--ease);
 }
 
 .brand .mark {
   font-family: var(--font-book);
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 500;
   letter-spacing: -0.01em;
+  color: var(--ink);
+  transition: color 120ms var(--ease);
 }
 
-.brand .dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-  align-self: center;
+.brand:hover,
+.brand:hover .mark {
+  color: var(--accent);
 }
 
 .nav-label {
@@ -781,4 +783,152 @@ button {
   font-size: var(--t-3);
   box-shadow: var(--shadow-pop);
   cursor: pointer;
+}
+
+.library {
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--shell);
+}
+
+.library-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 30px 44px 8px;
+}
+
+.library-head .mark {
+  font-family: var(--font-book);
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.library-head .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.shelf {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 26px 44px 80px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 28px;
+}
+
+.card {
+  position: relative;
+  aspect-ratio: 5 / 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 22px 18px;
+  text-align: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 140ms var(--ease), box-shadow 140ms var(--ease);
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+.card-book,
+.card-example {
+  background: #fffefb;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-page);
+}
+
+.card-book:hover,
+.card-example:hover {
+  box-shadow: 0 4px 10px rgba(35, 32, 27, 0.1), 0 20px 38px rgba(35, 32, 27, 0.13);
+}
+
+.card-title {
+  font-family: var(--font-book);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.18;
+  color: var(--ink);
+}
+
+.card-author {
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  color: var(--ink-soft);
+}
+
+.card-badge {
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.card-action {
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  color: var(--ink-faint);
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+}
+
+.card-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.card-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-faint);
+  opacity: 0;
+  transition: opacity 120ms var(--ease), background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.card-book:hover .card-delete {
+  opacity: 1;
+}
+
+.card-delete:hover {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.panel-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+}
+
+.btn-primary {
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  font-weight: 500;
+  padding: 9px 20px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: #fff;
+  transition: background 120ms var(--ease);
+}
+
+.btn-primary:hover {
+  background: var(--accent-ink);
 }
