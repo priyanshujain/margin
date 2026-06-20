@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useBook } from "../store/useBook";
 import { Icon } from "./Icon";
@@ -10,6 +11,15 @@ const LANGUAGES = [
   { value: "it", label: "Italian" },
   { value: "pt", label: "Portuguese" },
 ];
+
+interface Draft {
+  title: string;
+  subtitle: string;
+  author: string;
+  isbn: string;
+  language: string;
+  bleed: boolean;
+}
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -25,8 +35,26 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
   const setMetadata = useBook((s) => s.setMetadata);
   const setSettings = useBook((s) => s.setSettings);
 
+  const [draft, setDraft] = useState<Draft>(() => ({
+    title: book?.metadata.title ?? "",
+    subtitle: book?.metadata.subtitle ?? "",
+    author: book?.metadata.author ?? "",
+    isbn: book?.metadata.isbn ?? "",
+    language: book?.metadata.language ?? "en",
+    bleed: book?.settings.bleed ?? true,
+  }));
+
   if (!book) return null;
-  const { metadata, settings } = book;
+
+  const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+
+  const save = () => {
+    const { bleed, ...metadata } = draft;
+    setMetadata(metadata);
+    setSettings({ bleed });
+    onSave();
+    onClose();
+  };
 
   return (
     <div className="overlay" onClick={onClose}>
@@ -39,19 +67,19 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
         </div>
         <div className="panel-body">
           <Field label="Title">
-            <input value={metadata.title} placeholder="Untitled" onChange={(e) => setMetadata({ title: e.target.value })} />
+            <input value={draft.title} placeholder="Untitled" onChange={(e) => set({ title: e.target.value })} />
           </Field>
           <Field label="Subtitle">
-            <input value={metadata.subtitle} onChange={(e) => setMetadata({ subtitle: e.target.value })} />
+            <input value={draft.subtitle} onChange={(e) => set({ subtitle: e.target.value })} />
           </Field>
           <Field label="Author">
-            <input value={metadata.author} onChange={(e) => setMetadata({ author: e.target.value })} />
+            <input value={draft.author} onChange={(e) => set({ author: e.target.value })} />
           </Field>
           <Field label="ISBN">
-            <input value={metadata.isbn} placeholder="optional" onChange={(e) => setMetadata({ isbn: e.target.value })} />
+            <input value={draft.isbn} placeholder="optional" onChange={(e) => set({ isbn: e.target.value })} />
           </Field>
           <Field label="Language">
-            <select value={metadata.language} onChange={(e) => setMetadata({ language: e.target.value })}>
+            <select value={draft.language} onChange={(e) => set({ language: e.target.value })}>
               {LANGUAGES.map((l) => (
                 <option key={l.value} value={l.value}>
                   {l.label}
@@ -60,18 +88,12 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
             </select>
           </Field>
           <label className="check">
-            <input type="checkbox" checked={settings.bleed} onChange={(e) => setSettings({ bleed: e.target.checked })} />
+            <input type="checkbox" checked={draft.bleed} onChange={(e) => set({ bleed: e.target.checked })} />
             Add bleed for full-page images (print)
           </label>
         </div>
         <div className="panel-foot">
-          <button
-            className="btn-primary"
-            onClick={() => {
-              onSave();
-              onClose();
-            }}
-          >
+          <button className="btn-primary" onClick={save}>
             Save
           </button>
         </div>
