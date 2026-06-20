@@ -118,17 +118,16 @@ button {
   transition: color 120ms var(--ease);
 }
 
-.brand .mark {
-  font-family: var(--font-book);
-  font-size: 19px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--ink);
+.brand .back-label {
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  font-weight: 600;
+  color: var(--ink-soft);
   transition: color 120ms var(--ease);
 }
 
 .brand:hover,
-.brand:hover .mark {
+.brand:hover .back-label {
   color: var(--accent);
 }
 
@@ -162,7 +161,7 @@ button {
 }
 
 .chapter:hover {
-  background: rgba(35, 32, 27, 0.04);
+  background: var(--accent-wash);
   color: var(--ink);
 }
 
@@ -410,14 +409,14 @@ button {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(35, 32, 27, 0.16);
+  background: var(--line-strong);
   border-radius: 6px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(35, 32, 27, 0.28);
+  background: var(--ink-faint);
   background-clip: content-box;
 }
 
@@ -491,7 +490,7 @@ button {
   align-items: center;
   gap: 1px;
   padding: 5px;
-  background: rgba(252, 251, 247, 0.86);
+  background: var(--glass);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border: 1px solid var(--line);
@@ -519,7 +518,7 @@ button {
 
 .tool[data-on="true"] {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 .tool-sep {
@@ -608,7 +607,7 @@ button {
 
 .figure-controls button[data-on="true"] {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 .pdf-pages {
@@ -851,7 +850,7 @@ button {
 
 .card-book,
 .card-example {
-  background: #fffefb;
+  background: var(--paper);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-page);
 }
@@ -934,7 +933,7 @@ button {
   padding: 9px 20px;
   border-radius: var(--r-sm);
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
   transition: background 120ms var(--ease);
 }
 
