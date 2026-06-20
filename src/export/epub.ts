@@ -389,24 +389,8 @@ export function bookToEpub(book: Book): EpubFile[] {
   return files;
 }
 
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
-async function fontFile(url: string, path: string): Promise<EpubFile> {
-  const response = await fetch(url);
-  const buffer = await response.arrayBuffer();
-  return { path, data: toBase64(new Uint8Array(buffer)), encoding: "base64" };
-}
-
 export async function buildEpub(book: Book): Promise<Uint8Array> {
   const files = bookToEpub(book);
-  files.push(
-    await fontFile("/fonts/Literata-VF.ttf", "OEBPS/fonts/Literata-VF.ttf"),
-    await fontFile("/fonts/Literata-Italic-VF.ttf", "OEBPS/fonts/Literata-Italic-VF.ttf"),
-  );
   const buf = await invoke<ArrayBuffer>("package_epub", { files });
   return new Uint8Array(buf);
 }
