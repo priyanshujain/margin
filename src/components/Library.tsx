@@ -7,13 +7,30 @@ import { Icon } from "./Icon";
 
 export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   const [books, setBooks] = useState<BookSummary[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const refresh = () => listBooks().then(setBooks).catch(() => setBooks([]));
+  const refresh = () =>
+    listBooks()
+      .then(setBooks)
+      .catch(() => setBooks([]))
+      .finally(() => setLoaded(true));
   useEffect(() => {
     refresh();
   }, []);
+
+  const handleExample = async () => {
+    const copy = exampleBook();
+    if (isDesktop) {
+      try {
+        await saveBook(copy);
+      } catch (e) {
+        setNotice(`Could not save copy: ${e}`);
+      }
+    }
+    onOpen(copy);
+  };
 
   const removeBook = async (e: MouseEvent, id: string) => {
     e.stopPropagation();
@@ -51,10 +68,12 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
           <Icon d="M12 3v10m0 0l-4-4m4 4l4-4M5 19h14" size={20} />
           <span>{busy ? "Importing…" : "Import EPUB"}</span>
         </button>
-        <button className="card card-example" onClick={() => onOpen(exampleBook())}>
-          <span className="card-title">The Lighthouse</span>
-          <span className="card-badge">Example</span>
-        </button>
+        {loaded && books.length === 0 && (
+          <button className="card card-example" onClick={handleExample}>
+            <span className="card-title">The Lighthouse</span>
+            <span className="card-badge">Example</span>
+          </button>
+        )}
         {books.map((b) => (
           <div key={b.id} className="card card-book" onClick={() => loadBook(b.id).then(onOpen)}>
             <span className="card-title">{b.title || "Untitled"}</span>
