@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { JSONContent } from "@tiptap/core";
-import type { Book, BookMetadata, Chapter } from "../model/book";
+import { type Book, type BookMetadata, type Chapter, createCover } from "../model/book";
 
 export interface RawFile {
   path: string;
@@ -404,6 +404,7 @@ export function filesToBook(files: RawFile[], fallbackName = "Imported book"): B
     metadata,
     theme: "quiet-press",
     settings: { trim: "6x9", bleed: true },
+    cover: createCover(),
     chapters,
   };
 }

@@ -16,6 +16,42 @@ export interface BookSettings {
   bleed: boolean;
 }
 
+export type CoverKind = "default" | "image";
+
+export interface Cover {
+  kind: CoverKind;
+  image: string;
+  bg: string;
+  ink: string;
+}
+
+export interface CoverPalette {
+  id: string;
+  label: string;
+  bg: string;
+  ink: string;
+}
+
+export const COVER_PALETTES: CoverPalette[] = [
+  { id: "paper", label: "Paper", bg: "#f4efe3", ink: "#23201b" },
+  { id: "ink", label: "Ink", bg: "#23201b", ink: "#f3ecdd" },
+  { id: "forest", label: "Forest", bg: "#2c382f", ink: "#eae3d2" },
+  { id: "oxblood", label: "Oxblood", bg: "#4a2327", ink: "#f0e4d8" },
+  { id: "navy", label: "Navy", bg: "#222e3e", ink: "#e9e3d4" },
+];
+
+export const TRIM_DIMS: Record<TrimSize, { w: number; h: number }> = {
+  "6x9": { w: 6, h: 9 },
+  "5.5x8.5": { w: 5.5, h: 8.5 },
+  "5x8": { w: 5, h: 8 },
+  a5: { w: 148, h: 210 },
+};
+
+export function trimRatio(trim: TrimSize): number {
+  const { w, h } = TRIM_DIMS[trim];
+  return w / h;
+}
+
 export interface Chapter {
   id: string;
   title: string;
@@ -28,6 +64,7 @@ export interface Book {
   metadata: BookMetadata;
   theme: string;
   settings: BookSettings;
+  cover: Cover;
   chapters: Chapter[];
 }
 
@@ -43,6 +80,14 @@ export function createChapter(title = "Untitled chapter"): Chapter {
   return { id: crypto.randomUUID(), title, content: emptyDoc() };
 }
 
+export function createCover(): Cover {
+  return { kind: "default", image: "", bg: COVER_PALETTES[0].bg, ink: COVER_PALETTES[0].ink };
+}
+
+export function normalizeBook(book: Book): Book {
+  return { ...book, cover: book.cover ? { ...createCover(), ...book.cover } : createCover() };
+}
+
 export function createBook(): Book {
   return {
     schema: "margin/1",
@@ -50,6 +95,7 @@ export function createBook(): Book {
     metadata: { title: "Untitled", subtitle: "", author: "", isbn: "", language: "en" },
     theme: "quiet-press",
     settings: { trim: "6x9", bleed: true },
+    cover: createCover(),
     chapters: [createChapter("Chapter One")],
   };
 }

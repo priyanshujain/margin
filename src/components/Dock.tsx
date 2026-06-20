@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { generateHTML } from "@tiptap/core";
-import { useBook } from "../store/useBook";
+import { COVER_ID, useBook } from "../store/useBook";
 import type { TrimSize } from "../model/book";
 import { editorExtensions } from "../editor/extensions";
-import { chapterToPdfInputs } from "../export/typst";
+import { chapterToPdfInputs, coverToPdfInputs } from "../export/typst";
 import { compilePdf, isDesktop } from "../ipc";
 import { PdfPreview } from "./PdfPreview";
+import { CoverArt } from "./CoverArt";
 
 const TRIMS: { value: TrimSize; label: string }[] = [
   { value: "6x9", label: "6 × 9 in" },
@@ -47,11 +48,12 @@ function PdfDock() {
 
   useEffect(() => {
     if (!book) return;
+    const coverActive = activeChapterId === COVER_ID;
     const idx = Math.max(0, book.chapters.findIndex((c) => c.id === activeChapterId));
     clearTimeout(timer.current);
     setBusy(true);
     timer.current = setTimeout(() => {
-      const { source, images } = chapterToPdfInputs(book, idx);
+      const { source, images } = coverActive ? coverToPdfInputs(book) : chapterToPdfInputs(book, idx);
       compilePdf(source, images)
         .then((bytes) => {
           setPdf(bytes);
@@ -86,12 +88,32 @@ function PdfDock() {
 function HtmlDock() {
   const book = useBook((s) => s.book);
   const activeChapterId = useBook((s) => s.activeChapterId);
+  const coverActive = activeChapterId === COVER_ID;
   const chapters = book?.chapters ?? [];
   const idx = chapters.findIndex((c) => c.id === activeChapterId);
   const chapter = chapters[idx] ?? chapters[0];
   const html = useMemo(() => (chapter ? generateHTML(chapter.content, editorExtensions) : ""), [chapter]);
 
-  if (!book || !chapter) return null;
+  if (!book) return null;
+
+  if (coverActive) {
+    return (
+      <section className="dock">
+        <div className="dock-head">
+          <span className="label">Preview</span>
+          <div className="dock-tools">
+            <span className="meta">Cover</span>
+            <TrimSelect />
+          </div>
+        </div>
+        <div className="cover-stage">
+          <CoverArt book={book} />
+        </div>
+      </section>
+    );
+  }
+
+  if (!chapter) return null;
 
   return (
     <section className="dock">

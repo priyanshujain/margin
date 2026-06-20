@@ -4,9 +4,10 @@ import { Sidebar } from "./Sidebar";
 import { Dock } from "./Dock";
 import { Icon } from "./Icon";
 import { Settings } from "./Settings";
+import { CoverView } from "./CoverView";
 import { Editor } from "../editor/Editor";
 import { FloatingToolbar } from "../editor/FloatingToolbar";
-import { useBook } from "../store/useBook";
+import { COVER_ID, useBook } from "../store/useBook";
 import { useTheme } from "../store/useTheme";
 import type { Book } from "../model/book";
 import { saveBook } from "../library";
@@ -76,6 +77,7 @@ export function EditorView() {
   };
 
   if (!book) return null;
+  const coverActive = activeChapterId === COVER_ID;
   const idx = book.chapters.findIndex((c) => c.id === activeChapterId);
   const chapter = book.chapters[idx] ?? book.chapters[0];
 
@@ -121,25 +123,31 @@ export function EditorView() {
       <div className="body">
         <Sidebar />
         <main className="editor-pane">
-          <article className="sheet">
-            <header className="chapter-opener">
-              <div className="chapter-num">Chapter {idx + 1}</div>
-              <input
-                className="chapter-title-input"
-                value={chapter.title}
-                placeholder="Chapter title"
-                spellCheck={false}
-                onChange={(e) => setChapterTitle(chapter.id, e.target.value)}
-              />
-            </header>
-            <Editor
-              chapterId={chapter.id}
-              content={chapter.content}
-              onChange={(content) => setChapterContent(chapter.id, content)}
-              onReady={setEditor}
-            />
-          </article>
-          <FloatingToolbar editor={editor} />
+          {coverActive ? (
+            <CoverView />
+          ) : (
+            <>
+              <article className="sheet">
+                <header className="chapter-opener">
+                  <div className="chapter-num">Chapter {idx + 1}</div>
+                  <input
+                    className="chapter-title-input"
+                    value={chapter.title}
+                    placeholder="Chapter title"
+                    spellCheck={false}
+                    onChange={(e) => setChapterTitle(chapter.id, e.target.value)}
+                  />
+                </header>
+                <Editor
+                  chapterId={chapter.id}
+                  content={chapter.content}
+                  onChange={(content) => setChapterContent(chapter.id, content)}
+                  onReady={setEditor}
+                />
+              </article>
+              <FloatingToolbar editor={editor} />
+            </>
+          )}
         </main>
         {dock && <Dock />}
       </div>

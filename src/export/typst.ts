@@ -28,9 +28,11 @@ function str(value: string): string {
 function inline(node: JSONContent): string {
   if (node.type === "text") {
     let text = esc(node.text ?? "");
-    const marks = (node.marks ?? []).map((m) => m.type);
-    if (marks.includes("italic")) text = `#emph[${text}]`;
-    if (marks.includes("bold")) text = `#strong[${text}]`;
+    const marks = node.marks ?? [];
+    if (marks.some((m) => m.type === "italic")) text = `#emph[${text}]`;
+    if (marks.some((m) => m.type === "bold")) text = `#strong[${text}]`;
+    const href = marks.find((m) => m.type === "link")?.attrs?.href;
+    if (href) text = `#link(${str(href)})[${text}]`;
     return text;
   }
   if (node.type === "hardBreak") return "#linebreak()";
@@ -143,6 +145,41 @@ function imageExtension(dataUrl: string): string {
   return kind === "jpeg" ? "jpg" : kind;
 }
 
+function coverBlock(book: Book, coverPath?: string): string {
+  const c = book.cover;
+  const meta = book.metadata;
+
+  if (c.kind === "image" && coverPath) {
+    return `#page(margin: 0pt, numbering: none)[#image(${str(coverPath)}, width: 100%, height: 100%, fit: "cover")]`;
+  }
+
+  const subtitle = meta.subtitle
+    ? `#v(0.55em)\n  #text(font: "Literata", size: 14pt, style: "italic")[${esc(meta.subtitle)}]`
+    : "";
+  const author = meta.author
+    ? `#v(1fr)\n  #text(font: "Hanken Grotesk", size: 11pt, weight: "semibold", tracking: 0.24em)[#upper[${esc(meta.author)}]]\n  #v(0.55in)`
+    : "#v(1fr)";
+
+  return `#page(margin: 0pt, numbering: none, fill: rgb(${str(c.bg)}))[
+  #set align(center)
+  #set text(fill: rgb(${str(c.ink)}))
+  #v(1fr)
+  #text(font: "Literata", size: 30pt, weight: "medium")[${esc(meta.title || "Untitled")}]
+  #v(0.5em)
+  #line(length: 16%, stroke: 0.6pt + rgb(${str(c.ink)}))
+  ${subtitle}
+  ${author}
+]`;
+}
+
+function pushCoverImage(book: Book, images: ImageInput[]): string | undefined {
+  const c = book.cover;
+  if (c.kind !== "image" || !c.image.startsWith("data:")) return undefined;
+  const path = `assets/cover.${imageExtension(c.image)}`;
+  images.push({ path, data: c.image.slice(c.image.indexOf(",") + 1) });
+  return path;
+}
+
 function collectImages(contents: JSONContent[]): { images: ImageInput[]; paths: Map<string, string> } {
   const paths = new Map<string, string>();
   const images: ImageInput[] = [];
@@ -167,8 +204,9 @@ export function extractImages(book: Book): { images: ImageInput[]; paths: Map<st
   return collectImages(book.chapters.map((chapter) => chapter.content));
 }
 
-export function bookToTypst(book: Book, paths: Map<string, string> = new Map()): string {
+export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), coverPath?: string): string {
   const meta = book.metadata;
+  const cover = `${coverBlock(book, coverPath)}\n#pagebreak(weak: true)`;
   const front = `#set page(numbering: none)
 #titlepage(${str(meta.title || "Untitled")}, ${str(meta.subtitle)}, ${str(meta.author)})
 #pagebreak(weak: true)
@@ -183,12 +221,19 @@ export function bookToTypst(book: Book, paths: Map<string, string> = new Map()):
     })
     .join("\n\n");
 
-  return `${preamble(book)}\n\n${front}\n\n${body}\n`;
+  return `${preamble(book)}\n\n${cover}\n\n${front}\n\n${body}\n`;
 }
 
 export function bookToPdfInputs(book: Book): { source: string; images: ImageInput[] } {
   const { images, paths } = extractImages(book);
-  return { source: bookToTypst(book, paths), images };
+  const coverPath = pushCoverImage(book, images);
+  return { source: bookToTypst(book, paths, coverPath), images };
+}
+
+export function coverToPdfInputs(book: Book): { source: string; images: ImageInput[] } {
+  const images: ImageInput[] = [];
+  const coverPath = pushCoverImage(book, images);
+  return { source: `${preamble(book)}\n\n${coverBlock(book, coverPath)}\n`, images };
 }
 
 function chapterToTypst(book: Book, index: number, paths: Map<string, string>): string {

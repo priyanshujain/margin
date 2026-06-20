@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { invoke } from "@tauri-apps/api/core";
-import type { Book } from "../model/book";
+import { type Book, TRIM_DIMS } from "../model/book";
 
 export interface EpubFile {
   path: string;
@@ -41,9 +41,11 @@ function mediaType(path: string): string {
 function inline(node: JSONContent): string {
   if (node.type === "text") {
     let text = esc(node.text ?? "");
-    const marks = (node.marks ?? []).map((m) => m.type);
-    if (marks.includes("bold")) text = `<strong>${text}</strong>`;
-    if (marks.includes("italic")) text = `<em>${text}</em>`;
+    const marks = node.marks ?? [];
+    if (marks.some((m) => m.type === "bold")) text = `<strong>${text}</strong>`;
+    if (marks.some((m) => m.type === "italic")) text = `<em>${text}</em>`;
+    const href = marks.find((m) => m.type === "link")?.attrs?.href;
+    if (href) text = `<a href="${attr(href)}">${text}</a>`;
     return text;
   }
   if (node.type === "hardBreak") return "<br/>";
@@ -103,6 +105,88 @@ function chapterBody(content: JSONContent, paths: Map<string, string>): string {
     .join("\n");
 }
 
+function wrapTitle(title: string, max = 16): string[] {
+  const words = title.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    if (line && (line + " " + word).length > max) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? line + " " + word : word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines.slice(0, 4) : ["Untitled"];
+}
+
+function coverSvg(book: Book): string {
+  const c = book.cover;
+  const m = book.metadata;
+  const dims = TRIM_DIMS[book.settings.trim];
+  const W = 1200;
+  const H = Math.round((W * dims.h) / dims.w);
+
+  const lines = wrapTitle(m.title || "Untitled");
+  const titleSize = lines.length > 2 ? 88 : 104;
+  const lineH = titleSize * 1.12;
+  const blockMid = H * 0.4;
+  const firstY = Math.round(blockMid - ((lines.length - 1) * lineH) / 2);
+  const titleSpans = lines
+    .map((l, i) => `<tspan x="${W / 2}" y="${firstY + Math.round(i * lineH)}">${esc(l)}</tspan>`)
+    .join("");
+  const ruleY = firstY + Math.round((lines.length - 1) * lineH + 84);
+  const rule = `<line x1="${W / 2 - 96}" y1="${ruleY}" x2="${W / 2 + 96}" y2="${ruleY}" stroke="${c.ink}" stroke-width="3" opacity="0.7"/>`;
+  const subtitle = m.subtitle
+    ? `<text x="${W / 2}" y="${ruleY + 96}" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="50" fill="${c.ink}" text-anchor="middle" opacity="0.85">${esc(m.subtitle)}</text>`
+    : "";
+  const author = m.author
+    ? `<text x="${W / 2}" y="${H - 132}" font-family="'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="600" letter-spacing="9" fill="${c.ink}" text-anchor="middle" opacity="0.92">${esc(m.author.toUpperCase())}</text>`
+    : "";
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${c.bg}"/>
+  <text font-family="Georgia, 'Times New Roman', serif" font-size="${titleSize}" font-weight="500" fill="${c.ink}" text-anchor="middle">${titleSpans}</text>
+  ${rule}
+  ${subtitle}
+  ${author}
+</svg>`;
+}
+
+function buildCover(book: Book): { asset: EpubFile; href: string; mediaType: string } {
+  const c = book.cover;
+  if (c.kind === "image" && c.image.startsWith("data:")) {
+    const href = `assets/cover.${imageExtension(c.image)}`;
+    return {
+      asset: { path: `OEBPS/${href}`, data: c.image.slice(c.image.indexOf(",") + 1), encoding: "base64" },
+      href,
+      mediaType: mediaType(href),
+    };
+  }
+  const href = "assets/cover.svg";
+  return {
+    asset: { path: `OEBPS/${href}`, data: coverSvg(book), encoding: "utf8" },
+    href,
+    mediaType: "image/svg+xml",
+  };
+}
+
+function coverXhtml(book: Book, href: string): string {
+  const title = book.metadata.title || "Cover";
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
+  <head>
+    <title>${esc(title)}</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+  </head>
+  <body epub:type="cover">
+    <section class="cover"><img src="${attr(href)}" alt="${attr(title)}"/></section>
+  </body>
+</html>`;
+}
+
 function extractFigures(book: Book): { assets: EpubFile[]; paths: Map<string, string> } {
   const paths = new Map<string, string>();
   const assets: EpubFile[] = [];
@@ -142,9 +226,16 @@ function containerXml(): string {
 </container>`;
 }
 
-function contentOpf(book: Book, chapterIds: string[], assetPaths: string[]): string {
+function contentOpf(
+  book: Book,
+  chapterIds: string[],
+  assetPaths: string[],
+  cover: { href: string; mediaType: string },
+): string {
   const meta = book.metadata;
   const manifest: string[] = [
+    `<item id="cover-image" href="${attr(cover.href)}" media-type="${cover.mediaType}" properties="cover-image"/>`,
+    `<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
     `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
     `<item id="css" href="style.css" media-type="text/css"/>`,
     `<item id="font-regular" href="fonts/Literata-VF.ttf" media-type="font/ttf"/>`,
@@ -161,7 +252,7 @@ function contentOpf(book: Book, chapterIds: string[], assetPaths: string[]): str
     );
   });
 
-  const spine = [`<itemref idref="nav" linear="no"/>`]
+  const spine = [`<itemref idref="cover" linear="yes"/>`, `<itemref idref="nav" linear="no"/>`]
     .concat(chapterIds.map((_, i) => `<itemref idref="chapter-${i + 1}"/>`))
     .join("\n    ");
 
@@ -172,6 +263,7 @@ function contentOpf(book: Book, chapterIds: string[], assetPaths: string[]): str
     <dc:title>${esc(meta.title || "Untitled")}</dc:title>
     <dc:creator>${esc(meta.author || "")}</dc:creator>
     <dc:language>${esc(meta.language || "en")}</dc:language>
+    <meta name="cover" content="cover-image"/>
     <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
   </metadata>
   <manifest>
@@ -243,6 +335,18 @@ function styleCss(): string {
 
 html {
   font-family: "Literata", Georgia, serif;
+}
+
+.cover {
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  page-break-after: always;
+}
+
+.cover img {
+  max-width: 100%;
+  max-height: 100vh;
 }
 
 body {
@@ -366,15 +470,22 @@ figure.placement-float-top {
 
 export function bookToEpub(book: Book): EpubFile[] {
   const { assets, paths } = extractFigures(book);
+  const cover = buildCover(book);
   const chapterIds = book.chapters.map((c) => c.id);
   const assetPaths = Array.from(paths.values());
 
   const files: EpubFile[] = [
     { path: "mimetype", data: "application/epub+zip", encoding: "utf8" },
     { path: "META-INF/container.xml", data: containerXml(), encoding: "utf8" },
-    { path: "OEBPS/content.opf", data: contentOpf(book, chapterIds, assetPaths), encoding: "utf8" },
+    {
+      path: "OEBPS/content.opf",
+      data: contentOpf(book, chapterIds, assetPaths, cover),
+      encoding: "utf8",
+    },
+    { path: "OEBPS/cover.xhtml", data: coverXhtml(book, cover.href), encoding: "utf8" },
     { path: "OEBPS/nav.xhtml", data: navXhtml(book), encoding: "utf8" },
     { path: "OEBPS/style.css", data: styleCss(), encoding: "utf8" },
+    cover.asset,
   ];
 
   book.chapters.forEach((_, i) => {

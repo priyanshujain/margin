@@ -7,6 +7,7 @@ export const editorExtensions: Extensions = [
   StarterKit.configure({
     heading: { levels: [2, 3] },
     codeBlock: false,
+    link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
   }),
   Placeholder.configure({
     placeholder: ({ node }) => (node.type.name === "heading" ? "" : "Begin your chapter…"),
