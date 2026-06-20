@@ -1,3 +1,4 @@
+mod epub;
 mod pdf;
 mod project;
 
@@ -7,6 +8,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            epub::package_epub,
             pdf::compile_pdf,
             project::read_file,
             project::write_file,
