@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import type { Book, TrimSize } from "../model/book";
+import type { ImageInput } from "../ipc";
 
 const TRIM: Record<TrimSize, { w: string; h: string }> = {
   "6x9": { w: "6in", h: "9in" },
@@ -47,28 +48,38 @@ function listItem(item: JSONContent): string {
     .join(" ");
 }
 
-function block(node: JSONContent): string {
+function figure(node: JSONContent, paths: Map<string, string>): string {
+  const path = paths.get(node.attrs?.src);
+  if (!path) return "";
+  const caption = node.attrs?.caption ? `, caption: [${esc(node.attrs.caption)}]` : "";
+  const placement = node.attrs?.placement === "float-top" ? ", placement: top" : "";
+  return `#figure(image(${str(path)}, width: 100%)${caption}${placement})`;
+}
+
+function block(node: JSONContent, paths: Map<string, string>): string {
   switch (node.type) {
     case "paragraph":
       return guardLineStart(inlines(node.content));
     case "heading":
       return `#heading(level: ${node.attrs?.level ?? 2})[${inlines(node.content)}]`;
     case "blockquote":
-      return `#blockquote[${(node.content ?? []).map(block).join("\n\n")}]`;
+      return `#blockquote[${(node.content ?? []).map((n) => block(n, paths)).join("\n\n")}]`;
     case "bulletList":
       return (node.content ?? []).map((li) => `- ${listItem(li)}`).join("\n");
     case "orderedList":
       return (node.content ?? []).map((li) => `+ ${listItem(li)}`).join("\n");
     case "horizontalRule":
       return "#scenebreak";
+    case "figure":
+      return figure(node, paths);
     default:
       return "";
   }
 }
 
-function chapterBody(content: JSONContent): string {
+function chapterBody(content: JSONContent, paths: Map<string, string>): string {
   return (content.content ?? [])
-    .map(block)
+    .map((n) => block(n, paths))
     .filter((s) => s.length > 0)
     .join("\n\n");
 }
@@ -91,7 +102,7 @@ function preamble(book: Book): string {
 
 #let scenebreak = align(center)[#v(0.5em) #line(length: 13%, stroke: 0.5pt + rgb("#d6cfbd")) #v(0.5em)]
 
-#let blockquote(body) = pad(left: 1.2em, rest: 0pt)[#set text(style: "italic", fill: rgb("#6b6458")); #body]
+#let blockquote(body) = pad(left: 1.2em)[#set text(style: "italic", fill: rgb("#6b6458")); #body]
 
 #let chapteropener(num, title) = {
   pagebreak(weak: true, to: "odd")
@@ -105,12 +116,43 @@ function preamble(book: Book): string {
 }`;
 }
 
-export function bookToTypst(book: Book): string {
+function imageExtension(dataUrl: string): string {
+  const match = /^data:image\/([a-z0-9.+-]+)/i.exec(dataUrl);
+  const kind = (match?.[1] ?? "png").toLowerCase();
+  return kind === "jpeg" ? "jpg" : kind;
+}
+
+export function extractImages(book: Book): { images: ImageInput[]; paths: Map<string, string> } {
+  const paths = new Map<string, string>();
+  const images: ImageInput[] = [];
+
+  const visit = (node: JSONContent) => {
+    if (node.type === "figure") {
+      const src: string | undefined = node.attrs?.src;
+      if (src && src.startsWith("data:") && !paths.has(src)) {
+        const path = `assets/figure-${images.length + 1}.${imageExtension(src)}`;
+        paths.set(src, path);
+        images.push({ path, data: src.slice(src.indexOf(",") + 1) });
+      }
+    }
+    (node.content ?? []).forEach(visit);
+  };
+
+  book.chapters.forEach((chapter) => visit(chapter.content));
+  return { images, paths };
+}
+
+export function bookToTypst(book: Book, paths: Map<string, string> = new Map()): string {
   const body = book.chapters
     .map((chapter, i) => {
       const opener = `#chapteropener(${str(String(i + 1))}, [${esc(chapter.title || "Untitled")}])`;
-      return `${opener}\n\n${chapterBody(chapter.content)}`;
+      return `${opener}\n\n${chapterBody(chapter.content, paths)}`;
     })
     .join("\n\n");
   return `${preamble(book)}\n\n${body}\n`;
+}
+
+export function bookToPdfInputs(book: Book): { source: string; images: ImageInput[] } {
+  const { images, paths } = extractImages(book);
+  return { source: bookToTypst(book, paths), images };
 }
