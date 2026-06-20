@@ -18,3 +18,22 @@ export async function openBook(): Promise<{ book: Book; path: string } | null> {
   const contents = await invoke<string>("read_file", { path: selected });
   return { book: JSON.parse(contents) as Book, path: selected };
 }
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+export async function saveBytes(
+  bytes: Uint8Array,
+  defaultName: string,
+  filters: { name: string; extensions: string[] }[]
+): Promise<void> {
+  const path = await save({ filters, defaultPath: defaultName });
+  if (!path) return;
+  await invoke("write_bytes", { path, data: toBase64(bytes) });
+}
