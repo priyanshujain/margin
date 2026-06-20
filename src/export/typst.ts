@@ -93,24 +93,40 @@ function preamble(book: Book): string {
   height: ${trim.h},
   margin: (inside: 0.875in, outside: 0.625in, top: 0.8in, bottom: 0.8in),
   binding: left,
-  numbering: "1",
 )
 #set text(font: "Literata", size: 11pt, lang: ${str(meta.language || "en")}, hyphenate: true)
 #set par(justify: true, leading: 0.72em, spacing: 0.72em, first-line-indent: (amount: 1.3em, all: false))
 #show heading: set text(font: "Literata", weight: "medium")
-#show heading: set block(above: 1.4em, below: 0.8em)
+#show heading.where(level: 1): set text(size: 22pt)
+#show heading.where(level: 2): set block(above: 1.4em, below: 0.6em)
+#show heading.where(level: 3): set block(above: 1.2em, below: 0.5em)
 
 #let scenebreak = align(center)[#v(0.5em) #line(length: 13%, stroke: 0.5pt + rgb("#d6cfbd")) #v(0.5em)]
 
 #let blockquote(body) = pad(left: 1.2em)[#set text(style: "italic", fill: rgb("#6b6458")); #body]
 
+#let titlepage(title, subtitle, author) = {
+  v(2.4in)
+  align(center)[
+    #text(font: "Literata", size: 30pt, weight: "medium")[#title]
+    #if subtitle != "" {
+      v(0.6em)
+      text(font: "Literata", size: 15pt, style: "italic", fill: rgb("#6b6458"))[#subtitle]
+    }
+    #if author != "" {
+      v(1.7em)
+      text(font: "Hanken Grotesk", size: 10.5pt, weight: "medium", tracking: 0.22em)[#upper(author)]
+    }
+  ]
+}
+
 #let chapteropener(num, title) = {
-  pagebreak(weak: true, to: "odd")
+  pagebreak(weak: true)
   v(2.1in)
   align(center)[
     #text(font: "Hanken Grotesk", size: 8.5pt, weight: "semibold", tracking: 0.28em)[#upper("Chapter " + num)]
     #v(0.7em)
-    #text(font: "Literata", size: 22pt, weight: "medium")[#title]
+    #heading(level: 1, numbering: none, outlined: true)[#title]
   ]
   v(1.5em)
 }`;
@@ -143,13 +159,22 @@ export function extractImages(book: Book): { images: ImageInput[]; paths: Map<st
 }
 
 export function bookToTypst(book: Book, paths: Map<string, string> = new Map()): string {
+  const meta = book.metadata;
+  const front = `#set page(numbering: none)
+#titlepage(${str(meta.title || "Untitled")}, ${str(meta.subtitle)}, ${str(meta.author)})
+#pagebreak(weak: true)
+#outline(title: [Contents], depth: 1)
+#set page(numbering: "1")
+#counter(page).update(1)`;
+
   const body = book.chapters
     .map((chapter, i) => {
       const opener = `#chapteropener(${str(String(i + 1))}, [${esc(chapter.title || "Untitled")}])`;
       return `${opener}\n\n${chapterBody(chapter.content, paths)}`;
     })
     .join("\n\n");
-  return `${preamble(book)}\n\n${body}\n`;
+
+  return `${preamble(book)}\n\n${front}\n\n${body}\n`;
 }
 
 export function bookToPdfInputs(book: Book): { source: string; images: ImageInput[] } {
