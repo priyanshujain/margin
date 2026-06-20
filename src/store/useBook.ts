@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { JSONContent } from "@tiptap/core";
-import { type Book, createChapter, starterBook } from "../model/book";
+import { type Book, type BookMetadata, type BookSettings, createChapter, starterBook } from "../model/book";
 
 interface BookState {
   book: Book;
@@ -11,6 +11,8 @@ interface BookState {
   setChapterContent: (id: string, content: JSONContent) => void;
   setChapterTitle: (id: string, title: string) => void;
   addChapter: () => void;
+  setMetadata: (patch: Partial<BookMetadata>) => void;
+  setSettings: (patch: Partial<BookSettings>) => void;
   replaceBook: (book: Book, path: string) => void;
   markSaved: (path: string) => void;
 }
@@ -48,6 +50,10 @@ export const useBook = create<BookState>((set) => {
           book: { ...s.book, chapters: [...s.book.chapters, chapter] },
         };
       }),
+    setMetadata: (patch) =>
+      set((s) => ({ dirty: true, book: { ...s.book, metadata: { ...s.book.metadata, ...patch } } })),
+    setSettings: (patch) =>
+      set((s) => ({ dirty: true, book: { ...s.book, settings: { ...s.book.settings, ...patch } } })),
     replaceBook: (book, path) =>
       set({ book, activeChapterId: book.chapters[0]?.id ?? "", path, dirty: false }),
     markSaved: (path) => set({ path, dirty: false }),
