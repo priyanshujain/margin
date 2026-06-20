@@ -39,6 +39,11 @@
   --selection: rgba(35, 32, 27, 0.14);
   --glass: rgba(252, 251, 247, 0.86);
 
+  --danger: #b4453a;
+  --danger-ink: #963327;
+  --danger-wash: rgba(180, 69, 58, 0.1);
+  --danger-contrast: #faf7f0;
+
   --shadow-page: 0 1px 2px rgba(35, 32, 27, 0.06), 0 14px 30px rgba(35, 32, 27, 0.09);
   --shadow-pop: 0 8px 24px rgba(35, 32, 27, 0.14);
 }
@@ -62,6 +67,11 @@
   --accent-contrast: #1a1714;
   --selection: rgba(239, 233, 220, 0.18);
   --glass: rgba(33, 30, 25, 0.88);
+
+  --danger: #d97a6f;
+  --danger-ink: #e58e84;
+  --danger-wash: rgba(217, 122, 111, 0.16);
+  --danger-contrast: #1a1714;
 
   --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 34px rgba(0, 0, 0, 0.5);
   --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.55);

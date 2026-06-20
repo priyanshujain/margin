@@ -5,7 +5,9 @@ import {
   type BookMetadata,
   type BookSettings,
   type Cover,
+  chapterKind,
   createChapter,
+  createPage,
   normalizeBook,
 } from "../model/book";
 
@@ -21,6 +23,8 @@ interface BookState {
   setChapterContent: (id: string, content: JSONContent) => void;
   setChapterTitle: (id: string, title: string) => void;
   addChapter: () => void;
+  addPage: (group: "front" | "back", title: string) => void;
+  deleteChapter: (id: string) => void;
   moveChapter: (from: number, to: number) => void;
   setMetadata: (patch: Partial<BookMetadata>) => void;
   setSettings: (patch: Partial<BookSettings>) => void;
@@ -41,20 +45,43 @@ export const useBook = create<BookState>((set) => ({
   setChapterContent: (id, content) =>
     set((s) =>
       s.book
-        ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, content } : c)) } }
+        ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, content, updatedAt: Date.now() } : c)) } }
         : {}
     ),
   setChapterTitle: (id, title) =>
     set((s) =>
       s.book
-        ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, title } : c)) } }
+        ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, title, updatedAt: Date.now() } : c)) } }
         : {}
     ),
   addChapter: () =>
     set((s) => {
       if (!s.book) return {};
       const chapter = createChapter();
-      return { activeChapterId: chapter.id, dirty: true, book: { ...s.book, chapters: [...s.book.chapters, chapter] } };
+      const chapters = [...s.book.chapters];
+      const backCount = chapters.filter((c) => chapterKind(c) === "back").length;
+      chapters.splice(chapters.length - backCount, 0, chapter);
+      return { activeChapterId: chapter.id, dirty: true, book: { ...s.book, chapters } };
+    }),
+  addPage: (group, title) =>
+    set((s) => {
+      if (!s.book) return {};
+      const page = createPage(group, title);
+      const chapters = [...s.book.chapters];
+      const insertAt =
+        group === "front" ? chapters.filter((c) => chapterKind(c) === "front").length : chapters.length;
+      chapters.splice(insertAt, 0, page);
+      return { activeChapterId: page.id, dirty: true, book: { ...s.book, chapters } };
+    }),
+  deleteChapter: (id) =>
+    set((s) => {
+      if (!s.book) return {};
+      const index = s.book.chapters.findIndex((c) => c.id === id);
+      if (index === -1) return {};
+      const chapters = s.book.chapters.filter((c) => c.id !== id);
+      const activeChapterId =
+        s.activeChapterId === id ? (chapters[index] ?? chapters[index - 1])?.id ?? COVER_ID : s.activeChapterId;
+      return { dirty: true, activeChapterId, book: { ...s.book, chapters } };
     }),
   moveChapter: (from, to) =>
     set((s) => {

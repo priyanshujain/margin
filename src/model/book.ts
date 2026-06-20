@@ -52,10 +52,46 @@ export function trimRatio(trim: TrimSize): number {
   return w / h;
 }
 
+export type ChapterKind = "front" | "body" | "back";
+
 export interface Chapter {
   id: string;
   title: string;
   content: JSONContent;
+  updatedAt: number;
+  kind?: ChapterKind;
+}
+
+export interface PageType {
+  id: string;
+  label: string;
+  group: "front" | "back";
+}
+
+export const PAGE_TYPES: PageType[] = [
+  { id: "dedication", label: "Dedication", group: "front" },
+  { id: "epigraph", label: "Epigraph", group: "front" },
+  { id: "foreword", label: "Foreword", group: "front" },
+  { id: "preface", label: "Preface", group: "front" },
+  { id: "introduction", label: "Introduction", group: "front" },
+  { id: "prologue", label: "Prologue", group: "front" },
+  { id: "acknowledgments", label: "Acknowledgments", group: "front" },
+  { id: "epilogue", label: "Epilogue", group: "back" },
+  { id: "afterword", label: "Afterword", group: "back" },
+  { id: "appendix", label: "Appendix", group: "back" },
+  { id: "about-author", label: "About the Author", group: "back" },
+  { id: "other", label: "New page", group: "front" },
+];
+
+export function chapterKind(chapter: Chapter): ChapterKind {
+  return chapter.kind ?? "body";
+}
+
+export function bodyNumber(chapters: Chapter[], index: number): number | null {
+  if (index < 0 || index >= chapters.length || chapterKind(chapters[index]) !== "body") return null;
+  let n = 0;
+  for (let i = 0; i <= index; i++) if (chapterKind(chapters[i]) === "body") n++;
+  return n;
 }
 
 export interface Book {
@@ -77,7 +113,11 @@ function emptyDoc(): JSONContent {
 }
 
 export function createChapter(title = "Untitled chapter"): Chapter {
-  return { id: crypto.randomUUID(), title, content: emptyDoc() };
+  return { id: crypto.randomUUID(), title, content: emptyDoc(), updatedAt: Date.now() };
+}
+
+export function createPage(group: "front" | "back", title: string): Chapter {
+  return { id: crypto.randomUUID(), title, content: emptyDoc(), kind: group, updatedAt: Date.now() };
 }
 
 export function createCover(): Cover {
@@ -85,7 +125,11 @@ export function createCover(): Cover {
 }
 
 export function normalizeBook(book: Book): Book {
-  return { ...book, cover: book.cover ? { ...createCover(), ...book.cover } : createCover() };
+  return {
+    ...book,
+    cover: book.cover ? { ...createCover(), ...book.cover } : createCover(),
+    chapters: book.chapters.map((c) => (c.updatedAt ? c : { ...c, updatedAt: Date.now() })),
+  };
 }
 
 export function createBook(): Book {
@@ -107,6 +151,7 @@ export function starterBook(): Book {
     {
       id: crypto.randomUUID(),
       title: "The Lighthouse",
+      updatedAt: Date.now(),
       content: {
         type: "doc",
         content: [

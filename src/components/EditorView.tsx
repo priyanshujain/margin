@@ -9,7 +9,7 @@ import { Editor } from "../editor/Editor";
 import { FloatingToolbar } from "../editor/FloatingToolbar";
 import { COVER_ID, useBook } from "../store/useBook";
 import { useTheme } from "../store/useTheme";
-import type { Book } from "../model/book";
+import { type Book, bodyNumber, chapterKind } from "../model/book";
 import { saveBook } from "../library";
 import { isDesktop } from "../ipc";
 import { exportEpub, exportPdf } from "../export/exporters";
@@ -80,13 +80,16 @@ export function EditorView() {
   const coverActive = activeChapterId === COVER_ID;
   const idx = book.chapters.findIndex((c) => c.id === activeChapterId);
   const chapter = book.chapters[idx] ?? book.chapters[0];
+  const realIdx = book.chapters.findIndex((c) => c.id === chapter?.id);
+  const kind = chapter ? chapterKind(chapter) : "body";
+  const eyebrow =
+    kind === "body" ? `Chapter ${bodyNumber(book.chapters, realIdx) ?? ""}` : kind === "front" ? "Front matter" : "Back matter";
 
   return (
     <div className="app">
       <header className="titlebar" data-tauri-drag-region>
         <button className="doc-title" onClick={() => setSettingsOpen(true)} title="Book setup">
           {book.metadata.title || "Untitled"}
-          {book.metadata.author ? ` — ${book.metadata.author}` : ""}
           {dirty && <span className="dirty-dot" />}
         </button>
         <div className="actions">
@@ -129,11 +132,11 @@ export function EditorView() {
             <>
               <article className="sheet">
                 <header className="chapter-opener">
-                  <div className="chapter-num">Chapter {idx + 1}</div>
+                  <div className="chapter-num">{eyebrow}</div>
                   <input
                     className="chapter-title-input"
                     value={chapter.title}
-                    placeholder="Chapter title"
+                    placeholder={kind === "body" ? "Chapter title" : "Page title"}
                     spellCheck={false}
                     onChange={(e) => setChapterTitle(chapter.id, e.target.value)}
                   />

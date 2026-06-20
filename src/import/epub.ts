@@ -354,6 +354,7 @@ function buildChapter(
     id: crypto.randomUUID(),
     title: title || `Chapter ${index + 1}`,
     content: { type: "doc", content: blocks.length ? blocks : [{ type: "paragraph" }] },
+    updatedAt: Date.now(),
   };
 }
 

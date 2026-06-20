@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { invoke } from "@tauri-apps/api/core";
-import { type Book, TRIM_DIMS } from "../model/book";
+import { type Book, TRIM_DIMS, bodyNumber, chapterKind } from "../model/book";
 
 export interface EpubFile {
   path: string;
@@ -277,10 +277,10 @@ function contentOpf(
 
 function navXhtml(book: Book): string {
   const items = book.chapters
-    .map(
-      (chapter, i) =>
-        `      <li><a href="chapter-${i + 1}.xhtml">${esc(chapter.title || `Chapter ${i + 1}`)}</a></li>`,
-    )
+    .map((chapter, i) => {
+      const fallback = chapterKind(chapter) === "body" ? `Chapter ${bodyNumber(book.chapters, i)}` : "Untitled";
+      return `      <li><a href="chapter-${i + 1}.xhtml">${esc(chapter.title || fallback)}</a></li>`;
+    })
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
@@ -301,16 +301,19 @@ ${items}
 
 function chapterXhtml(book: Book, index: number, paths: Map<string, string>): string {
   const chapter = book.chapters[index];
-  const title = chapter.title || `Chapter ${index + 1}`;
+  const kind = chapterKind(chapter);
+  const num = bodyNumber(book.chapters, index);
+  const title = chapter.title || (kind === "body" ? `Chapter ${num}` : "Untitled");
+  const eyebrow = kind === "body" ? `<p class="eyebrow">Chapter ${num}</p>` : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
   <head>
     <title>${esc(title)}</title>
     <link rel="stylesheet" type="text/css" href="style.css"/>
   </head>
-  <body epub:type="chapter">
+  <body epub:type="${kind === "body" ? "chapter" : kind === "front" ? "frontmatter" : "backmatter"}">
     <header class="chapter-opener">
-      <p class="eyebrow">Chapter ${index + 1}</p>
+      ${eyebrow}
       <h1>${esc(title)}</h1>
     </header>
     ${chapterBody(chapter.content, paths)}

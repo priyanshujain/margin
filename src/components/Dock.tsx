@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { generateHTML } from "@tiptap/core";
 import { COVER_ID, useBook } from "../store/useBook";
-import type { TrimSize } from "../model/book";
+import { type TrimSize, bodyNumber, chapterKind } from "../model/book";
 import { editorExtensions } from "../editor/extensions";
 import { chapterToPdfInputs, coverToPdfInputs } from "../export/typst";
 import { compilePdf, isDesktop } from "../ipc";
@@ -115,6 +115,10 @@ function HtmlDock() {
 
   if (!chapter) return null;
 
+  const kind = chapterKind(chapter);
+  const eyebrow =
+    kind === "body" ? `Chapter ${bodyNumber(chapters, idx) ?? ""}` : kind === "front" ? "Front matter" : "Back matter";
+
   return (
     <section className="dock">
       <div className="dock-head">
@@ -128,7 +132,7 @@ function HtmlDock() {
       </div>
       <div className="page">
         <div className="p-opener">
-          <div className="p-num">Chapter {idx + 1}</div>
+          <div className="p-num">{eyebrow}</div>
           <div className="p-title">{chapter.title || "Untitled"}</div>
         </div>
         <div className="page-body" dangerouslySetInnerHTML={{ __html: html }} />

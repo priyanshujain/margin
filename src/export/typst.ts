@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import type { Book, TrimSize } from "../model/book";
+import { type Book, type TrimSize, bodyNumber, chapterKind } from "../model/book";
 import type { ImageInput } from "../ipc";
 
 const TRIM: Record<TrimSize, { w: string; h: string }> = {
@@ -136,6 +136,15 @@ function preamble(book: Book): string {
     #heading(level: 1, numbering: none, outlined: true)[#title]
   ]
   v(1.5em)
+}
+
+#let pageopener(title) = {
+  pagebreak(weak: true)
+  v(2.1in)
+  align(center)[
+    #heading(level: 1, numbering: none, outlined: true)[#title]
+  ]
+  v(1.5em)
 }`;
 }
 
@@ -216,7 +225,10 @@ export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), 
 
   const body = book.chapters
     .map((chapter, i) => {
-      const opener = `#chapteropener(${str(String(i + 1))}, [${esc(chapter.title || "Untitled")}])`;
+      const opener =
+        chapterKind(chapter) === "body"
+          ? `#chapteropener(${str(String(bodyNumber(book.chapters, i)))}, [${esc(chapter.title || "Untitled")}])`
+          : `#pageopener([${esc(chapter.title || "Untitled")}])`;
       return `${opener}\n\n${chapterBody(chapter.content, paths)}`;
     })
     .join("\n\n");
@@ -238,7 +250,10 @@ export function coverToPdfInputs(book: Book): { source: string; images: ImageInp
 
 function chapterToTypst(book: Book, index: number, paths: Map<string, string>): string {
   const chapter = book.chapters[index];
-  const opener = `#chapteropener(${str(String(index + 1))}, [${esc(chapter.title || "Untitled")}])`;
+  const opener =
+    chapterKind(chapter) === "body"
+      ? `#chapteropener(${str(String(bodyNumber(book.chapters, index)))}, [${esc(chapter.title || "Untitled")}])`
+      : `#pageopener([${esc(chapter.title || "Untitled")}])`;
   return `${preamble(book)}
 
 #set page(numbering: "1")

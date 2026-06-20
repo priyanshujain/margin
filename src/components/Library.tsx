@@ -1,15 +1,18 @@
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useState } from "react";
 import { type BookSummary, deleteBook, exampleBook, listBooks, loadBook, newBook, saveBook } from "../library";
 import type { Book } from "../model/book";
 import { importEpub } from "../import/epub";
 import { isDesktop } from "../ipc";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
+import { RowMenu } from "./RowMenu";
 
 export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<BookSummary | null>(null);
 
   const refresh = () =>
     listBooks()
@@ -32,9 +35,10 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
     onOpen(copy);
   };
 
-  const removeBook = async (e: MouseEvent, id: string) => {
-    e.stopPropagation();
-    await deleteBook(id);
+  const removeBook = async () => {
+    if (!pendingDelete) return;
+    await deleteBook(pendingDelete.id);
+    setPendingDelete(null);
     refresh();
   };
 
@@ -78,9 +82,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
           <div key={b.id} className="card card-book" onClick={() => loadBook(b.id).then(onOpen)}>
             <span className="card-title">{b.title || "Untitled"}</span>
             {b.author && <span className="card-author">{b.author}</span>}
-            <button className="card-delete" title="Delete book" onClick={(e) => removeBook(e, b.id)}>
-              <Icon d="M6 6l12 12M18 6L6 18" size={13} />
-            </button>
+            <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
           </div>
         ))}
       </div>
@@ -88,6 +90,19 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
         <div className="toast" onClick={() => setNotice(null)}>
           {notice}
         </div>
+      )}
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete book"
+          message={
+            <>
+              Delete <strong>{pendingDelete.title || "Untitled"}</strong>? This permanently removes the book and all its
+              chapters.
+            </>
+          }
+          onConfirm={removeBook}
+          onClose={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );
