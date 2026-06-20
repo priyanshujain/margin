@@ -818,33 +818,7 @@ button {
 }
 
 .library-head {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 30px 44px 8px;
-}
-
-.library-head .logo {
-  width: 30px;
-  height: 30px;
-  background-color: var(--ink);
-  -webkit-mask: url("/margin-mark.png") center / contain no-repeat;
-  mask: url("/margin-mark.png") center / contain no-repeat;
-}
-
-.library-head .mark {
-  font-family: var(--font-book);
-  font-size: 23px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  margin-left: -3px;
-}
-
-.library-head .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
+  height: 44px;
 }
 
 .shelf {

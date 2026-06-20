@@ -19,11 +19,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
 
   return (
     <div className="library">
-      <header className="library-head">
-        <span className="logo" aria-hidden="true" />
-        <span className="mark">margin</span>
-        <span className="dot" />
-      </header>
+      <header className="library-head" data-tauri-drag-region />
       <div className="shelf">
         <button className="card card-action" onClick={() => onOpen(newBook())}>
           <Icon d="M12 5v14M5 12h14" size={20} />
