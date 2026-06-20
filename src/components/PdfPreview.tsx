@@ -30,7 +30,8 @@ export function PdfPreview({ data }: { data: Uint8Array }) {
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         canvas.style.width = "100%";
-        await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+        const context = canvas.getContext("2d")!;
+        await page.render({ canvas, canvasContext: context, viewport }).promise;
         if (cancelled) return;
         canvases.push(canvas);
       }
