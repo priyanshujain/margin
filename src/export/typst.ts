@@ -152,7 +152,10 @@ function preamble(book: Book): string {
 #let contents() = {
   pagebreak(weak: true)
   set par(justify: false, first-line-indent: 0pt)
-  block(below: 2em)[#text(font: "Literata", size: 24pt, weight: "medium")[Contents]]
+  block(below: 2em)[
+    #show heading: set block(above: 0pt, below: 0pt)
+    #heading(level: 1, numbering: none, outlined: false, bookmarked: true)[#text(font: "Literata", size: 24pt, weight: "medium")[Contents]]
+  ]
   context {
     let items = query(<chap>).filter(it => it.value.toc != false)
     let prev = none
@@ -254,13 +257,18 @@ function normTitle(title: string): string {
   return cleanTitle(title).toLowerCase();
 }
 
+function inToc(book: Book, index: number): boolean {
+  const chapter = book.chapters[index];
+  const title = cleanTitle(chapter.title) || "Untitled";
+  return !(chapterKind(chapter) === "front" && normTitle(title) === normTitle(book.metadata.title));
+}
+
 function openerCall(book: Book, index: number): string {
   const chapter = book.chapters[index];
   const kind = chapterKind(chapter);
   const num = kind === "body" ? String(bodyNumber(book.chapters, index)) : "";
   const title = cleanTitle(chapter.title) || "Untitled";
-  const inToc = !(kind === "front" && normTitle(title) === normTitle(book.metadata.title));
-  return `#openchapter((kind: ${str(kind)}, num: ${str(num)}, title: ${str(title)}, toc: ${inToc}))`;
+  return `#openchapter((kind: ${str(kind)}, num: ${str(num)}, title: ${str(title)}, toc: ${inToc(book, index)}))`;
 }
 
 export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), coverPath?: string): string {
@@ -270,15 +278,16 @@ export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), 
 #titlepage(${str(meta.title || "Untitled")}, ${str(meta.subtitle)}, ${str(meta.author)})
 #pagebreak(weak: true)
 #set page(numbering: "i")
-#counter(page).update(1)
-#contents()`;
+#counter(page).update(1)`;
 
   const firstBody = book.chapters.findIndex((c) => chapterKind(c) === "body");
+  const firstToc = book.chapters.findIndex((_, i) => inToc(book, i));
 
   const body = book.chapters
     .map((chapter, i) => {
+      const toc = i === firstToc ? `#contents()\n\n` : "";
       const reset = i === firstBody ? `#set page(numbering: "1")\n#counter(page).update(1)\n` : "";
-      return `${reset}${openerCall(book, i)}\n\n${chapterBody(chapter.content, paths)}`;
+      return `${toc}${reset}${openerCall(book, i)}\n\n${chapterBody(chapter.content, paths)}`;
     })
     .join("\n\n");
 
