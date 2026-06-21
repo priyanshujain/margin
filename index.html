@@ -11,6 +11,16 @@
           if (t !== "light" && t !== "dark")
             t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
           document.documentElement.setAttribute("data-theme", t);
+          var w = localStorage.getItem("margin-width");
+          var m = { narrow: "38em", medium: "46em", wide: "62em", full: "80em" }[w];
+          if (m) document.documentElement.style.setProperty("--measure", m);
+          [
+            ["margin-pane-sidebar", "--pane-sidebar"],
+            ["margin-pane-dock", "--pane-dock"],
+          ].forEach(function (p) {
+            var v = parseInt(localStorage.getItem(p[0]), 10);
+            if (v > 0) document.documentElement.style.setProperty(p[1], v + "px");
+          });
         } catch (e) {}
       })();
     </script>

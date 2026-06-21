@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { Sidebar } from "./Sidebar";
 import { Dock } from "./Dock";
+import { ResizeHandle } from "./ResizeHandle";
 import { Icon } from "./Icon";
 import { Settings } from "./Settings";
 import { CoverView } from "./CoverView";
@@ -9,6 +10,8 @@ import { Editor } from "../editor/Editor";
 import { FloatingToolbar } from "../editor/FloatingToolbar";
 import { COVER_ID, useBook } from "../store/useBook";
 import { useTheme } from "../store/useTheme";
+import { useWidth } from "../store/useWidth";
+import { WIDTH_OPTIONS } from "../width";
 import { bodyNumber, chapterKind } from "../model/book";
 import { saveBook } from "../library";
 import { isDesktop } from "../ipc";
@@ -26,11 +29,14 @@ export function EditorView() {
   const markSaved = useBook((s) => s.markSaved);
   const theme = useTheme((s) => s.theme);
   const toggleTheme = useTheme((s) => s.toggle);
+  const width = useWidth((s) => s.width);
+  const setWidth = useWidth((s) => s.setWidth);
 
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [dock, setDock] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [widthOpen, setWidthOpen] = useState(false);
 
   const saveNow = useCallback(() => {
     const current = useBook.getState().book;
@@ -83,8 +89,32 @@ export function EditorView() {
         </button>
         <div className="actions">
           <div className="menu-wrap">
+            <button className="icon-btn" data-on={widthOpen} onClick={() => setWidthOpen((v) => !v)} title="Editor width">
+              <Icon d="M3 5v14M21 5v14M7 12h10M7 12l3-3M7 12l3 3M17 12l-3-3M17 12l-3 3" />
+            </button>
+            {widthOpen && (
+              <>
+                <div className="menu-backdrop" onClick={() => setWidthOpen(false)} />
+                <div className="menu">
+                  {WIDTH_OPTIONS.map((w) => (
+                    <button
+                      key={w.id}
+                      data-on={width === w.id}
+                      onClick={() => {
+                        setWidth(w.id);
+                        setWidthOpen(false);
+                      }}
+                    >
+                      {w.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <div className="menu-wrap">
             <button className="icon-btn" data-on={exportOpen} onClick={() => setExportOpen((v) => !v)} title="Export">
-              <Icon d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" />
+              <Icon d="M5 13v6h14v-6M12 16V3M8 7l4-4 4 4" />
             </button>
             {exportOpen && (
               <>
@@ -114,6 +144,7 @@ export function EditorView() {
 
       <div className="body">
         <Sidebar />
+        <ResizeHandle pane="sidebar" />
         <main className="editor-pane">
           {coverActive ? (
             <CoverView />
@@ -141,6 +172,7 @@ export function EditorView() {
             </>
           )}
         </main>
+        {dock && <ResizeHandle pane="dock" />}
         {dock && <Dock />}
       </div>
 

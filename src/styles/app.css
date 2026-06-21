@@ -98,6 +98,46 @@ button {
   min-height: 0;
 }
 
+.pane-resizer {
+  flex: none;
+  width: 0;
+  position: relative;
+  z-index: 5;
+  cursor: col-resize;
+}
+
+.pane-resizer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+}
+
+.pane-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1px;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+
+.pane-resizer:hover::after,
+body.resizing .pane-resizer::after {
+  opacity: 0.55;
+}
+
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .sidebar {
   width: var(--pane-sidebar);
   flex: none;
@@ -1028,6 +1068,10 @@ button {
 .menu button:hover {
   background: var(--accent-wash);
   color: var(--ink);
+}
+
+.menu button[data-on="true"] {
+  color: var(--accent);
 }
 
 .export-overlay {
