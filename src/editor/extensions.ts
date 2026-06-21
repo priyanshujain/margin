@@ -2,6 +2,7 @@ import type { Extensions } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Figure } from "./figure";
+import { ParagraphIndent } from "./indent";
 
 export const editorExtensions: Extensions = [
   StarterKit.configure({
@@ -13,4 +14,5 @@ export const editorExtensions: Extensions = [
     placeholder: ({ node }) => (node.type.name === "heading" ? "" : "Begin your chapter…"),
   }),
   Figure,
+  ParagraphIndent,
 ];

@@ -393,12 +393,10 @@ button {
   text-align: justify;
   hyphens: auto;
   -webkit-hyphens: auto;
-  text-indent: 1.3em;
 }
 
-.prose p:first-of-type,
-.prose .first {
-  text-indent: 0;
+.prose p[data-indent="true"] {
+  text-indent: 1.3em;
 }
 
 .prose .first::first-letter {
@@ -530,9 +528,12 @@ button {
   line-height: 1.5;
   text-align: justify;
   hyphens: auto;
-  text-indent: 1.2em;
   margin: 0;
   color: #2b2720;
+}
+
+.page p[data-indent="true"] {
+  text-indent: 1.2em;
 }
 
 .page .folio {
@@ -594,10 +595,6 @@ button {
 
 .ProseMirror {
   min-height: 62vh;
-}
-
-.ProseMirror > p:first-child {
-  text-indent: 0;
 }
 
 .ProseMirror hr {

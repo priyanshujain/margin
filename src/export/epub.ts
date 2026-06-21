@@ -80,8 +80,11 @@ function figure(node: JSONContent, paths: Map<string, string>): string {
 
 function block(node: JSONContent, paths: Map<string, string>): string {
   switch (node.type) {
-    case "paragraph":
-      return `<p>${inlines(node.content)}</p>`;
+    case "paragraph": {
+      const body = inlines(node.content);
+      if (!body.trim()) return "<p>&#160;</p>";
+      return `<p${node.attrs?.indent ? ' data-indent="true"' : ""}>${body}</p>`;
+    }
     case "heading":
       return node.attrs?.level === 3
         ? `<h3>${inlines(node.content)}</h3>`
@@ -363,14 +366,16 @@ body {
 p {
   margin: 0;
   text-align: justify;
-  text-indent: 1.3em;
   hyphens: auto;
   -webkit-hyphens: auto;
   -epub-hyphens: auto;
 }
 
+p[data-indent="true"] {
+  text-indent: 1.3em;
+}
+
 h1, h2, h3 {
-  text-indent: 0;
   hyphens: none;
   line-height: 1.25;
   font-weight: 500;
@@ -380,23 +385,9 @@ h2, h3 {
   margin: 1.4em 0 0.6em;
 }
 
-p + p {
-  text-indent: 1.3em;
-}
-
 .chapter-opener {
   text-align: center;
   margin: 3em 0 2.2em;
-}
-
-.chapter-opener p,
-header + p,
-h2 + p,
-h3 + p,
-blockquote + p,
-figure + p,
-hr + p {
-  text-indent: 0;
 }
 
 .eyebrow {

@@ -66,8 +66,11 @@ function figure(node: JSONContent, paths: Map<string, string>): string {
 
 function block(node: JSONContent, paths: Map<string, string>): string {
   switch (node.type) {
-    case "paragraph":
-      return guardLineStart(inlines(node.content));
+    case "paragraph": {
+      const body = guardLineStart(inlines(node.content));
+      if (!body.trim()) return "~";
+      return node.attrs?.indent ? `#h(1.3em)${body}` : body;
+    }
     case "heading":
       return `#heading(level: ${node.attrs?.level ?? 2})[${inlines(node.content)}]`;
     case "blockquote":
@@ -104,7 +107,7 @@ function preamble(book: Book): string {
   binding: left,
 )
 #set text(font: "Literata", size: 11pt, lang: ${str(meta.language || "en")}, hyphenate: true)
-#set par(justify: true, leading: 0.72em, spacing: 0.72em, first-line-indent: (amount: 1.3em, all: false))
+#set par(justify: true, leading: 0.72em, spacing: 0.72em)
 #show heading: set text(font: "Literata", weight: "medium")
 #show heading.where(level: 1): set text(size: 22pt)
 #show heading.where(level: 2): set block(above: 1.4em, below: 0.6em)
