@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { invoke } from "@tauri-apps/api/core";
-import { type Book, TRIM_DIMS, bodyNumber, chapterKind } from "../model/book";
+import { type Book, type FigurePlacement, TRIM_DIMS, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement } from "../model/book";
 
 export interface EpubFile {
   path: string;
@@ -72,7 +72,10 @@ function figure(node: JSONContent, paths: Map<string, string>): string {
   const caption = node.attrs?.caption
     ? `<figcaption>${esc(node.attrs.caption)}</figcaption>`
     : "";
-  return `<figure class="placement-${attr(placement)}"><img src="${attr(path)}" alt="${alt}"/>${caption}</figure>`;
+  const placed = placement as FigurePlacement;
+  const width = (isResizablePlacement(placed) ? node.attrs?.width : null) ?? FIGURE_WIDTH[placed] ?? 100;
+  const style = placement === "full-page" ? "" : ` style="width:${width}%"`;
+  return `<figure class="placement-${attr(placement)}"${style}><img src="${attr(path)}" alt="${alt}"/>${caption}</figure>`;
 }
 
 function block(node: JSONContent, paths: Map<string, string>): string {
@@ -439,7 +442,7 @@ hr.scene-break::before {
 }
 
 figure {
-  margin: 1.4em 0;
+  margin: 1.4em auto;
   text-align: center;
 }
 

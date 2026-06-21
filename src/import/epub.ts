@@ -266,6 +266,13 @@ function readSpine(opf: Document, manifest: Map<string, ManifestItem>): Manifest
     .filter((item) => /xhtml|html/.test(item.mediaType) || /\.x?html?$/.test(item.href));
 }
 
+function cleanLabel(text: string | null | undefined): string {
+  return (text ?? "")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function readNavTitles(
   manifest: Map<string, ManifestItem>,
   byPath: Map<string, RawFile>,
@@ -284,9 +291,9 @@ function readNavTitles(
       const doc = parseXml(file.data, "text/html");
       const baseDir = dirOf(nav.href);
       doc.querySelectorAll("a[href]").forEach((a) => {
-        const href = a.getAttribute("href")!;
-        const label = a.textContent?.trim();
-        if (label) titles.set(resolvePath(baseDir, decodeHref(href)), label);
+        const key = resolvePath(baseDir, decodeHref(a.getAttribute("href")!));
+        const label = cleanLabel(a.textContent);
+        if (label && !titles.has(key)) titles.set(key, label);
       });
     }
   }
@@ -298,9 +305,12 @@ function readNavTitles(
       Array.from(doc.getElementsByTagName("*"))
         .filter((el) => el.localName === "navPoint")
         .forEach((point) => {
-          const label = firstByLocal(point, "text")?.textContent?.trim();
+          const label = cleanLabel(firstByLocal(point, "text")?.textContent);
           const src = firstByLocal(point, "content")?.getAttribute("src");
-          if (label && src) titles.set(resolvePath(baseDir, decodeHref(src)), label);
+          if (label && src) {
+            const key = resolvePath(baseDir, decodeHref(src));
+            if (!titles.has(key)) titles.set(key, label);
+          }
         });
     }
   }

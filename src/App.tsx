@@ -5,7 +5,7 @@ import { EditorView } from "./components/EditorView";
 import { useBook } from "./store/useBook";
 import { isDesktop } from "./ipc";
 import { newBook } from "./library";
-import { exportEpub, exportPdf } from "./export/exporters";
+import { runExport } from "./export/run";
 
 function App() {
   const book = useBook((s) => s.book);
@@ -16,8 +16,8 @@ function App() {
     const unlisten = listen<string>("menu-action", (event) => {
       const state = useBook.getState();
       if (event.payload === "new-book") state.openBook(newBook());
-      else if (event.payload === "export-pdf" && state.book) exportPdf(state.book);
-      else if (event.payload === "export-epub" && state.book) exportEpub(state.book);
+      else if (event.payload === "export-pdf") runExport("pdf");
+      else if (event.payload === "export-epub") runExport("epub");
     });
     return () => {
       unlisten.then((stop) => stop());

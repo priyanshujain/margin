@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { COVER_ID, useBook } from "../store/useBook";
 import { type Chapter, type ChapterKind, bodyNumber, chapterKind } from "../model/book";
 import { AddPageMenu } from "./AddPageMenu";
@@ -10,6 +10,11 @@ interface Row {
   chapter: Chapter;
   index: number;
   num: number | null;
+}
+
+interface DropTarget {
+  kind: ChapterKind;
+  index: number;
 }
 
 function formatEdited(ts: number, now: number): string {
@@ -42,10 +47,14 @@ export function Sidebar() {
   const moveChapter = useBook((s) => s.moveChapter);
   const closeBook = useBook((s) => s.closeBook);
 
-  const [drag, setDrag] = useState<{ kind: ChapterKind; index: number } | null>(null);
-  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
   const [now, setNow] = useState(() => Date.now());
+
+  const dropRef = useRef<DropTarget | null>(null);
+  const gesture = useRef<{ from: number; x: number; y: number; active: boolean } | null>(null);
+  const suppressClick = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60_000);
@@ -58,27 +67,76 @@ export function Sidebar() {
     { kind: "body", label: "Chapters", rows: rows.filter((r) => chapterKind(r.chapter) === "body") },
     { kind: "back", label: "Back matter", rows: rows.filter((r) => chapterKind(r.chapter) === "back") },
   ];
-
-  const onDragOver = (e: React.DragEvent, kind: ChapterKind, index: number) => {
-    if (!drag || drag.kind !== kind) return;
-    e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const after = e.clientY > rect.top + rect.height / 2;
-    setDropIndex(after ? index + 1 : index);
+  const groupEnd: Record<ChapterKind, number> = {
+    front: groups[0].rows.length,
+    body: groups[0].rows.length + groups[1].rows.length,
+    back: rows.length,
   };
 
-  const onDrop = () => {
-    if (drag && dropIndex !== null) {
-      const to = drag.index < dropIndex ? dropIndex - 1 : dropIndex;
-      moveChapter(drag.index, to);
+  const dragging = dragIndex !== null;
+
+  const setDrop = (t: DropTarget | null) => {
+    dropRef.current = t;
+    setDropTarget(t);
+  };
+
+  const computeDrop = (x: number, y: number): DropTarget | null => {
+    const el = document.elementFromPoint(x, y) as HTMLElement | null;
+    const row = el?.closest<HTMLElement>(".chapter");
+    if (row?.dataset.idx) {
+      const rect = row.getBoundingClientRect();
+      const idx = Number(row.dataset.idx);
+      const after = y > rect.top + rect.height / 2;
+      return { kind: row.dataset.kind as ChapterKind, index: after ? idx + 1 : idx };
     }
-    setDrag(null);
-    setDropIndex(null);
+    const section = el?.closest<HTMLElement>(".nav-section");
+    if (section?.dataset.kind) {
+      const kind = section.dataset.kind as ChapterKind;
+      return { kind, index: groupEnd[kind] };
+    }
+    return null;
   };
 
-  const reset = () => {
-    setDrag(null);
-    setDropIndex(null);
+  const onPointerMove = (e: PointerEvent) => {
+    const g = gesture.current;
+    if (!g) return;
+    if (!g.active) {
+      if (Math.abs(e.clientX - g.x) < 4 && Math.abs(e.clientY - g.y) < 4) return;
+      g.active = true;
+      setDragIndex(g.from);
+    }
+    const t = computeDrop(e.clientX, e.clientY);
+    if (t) setDrop(t);
+  };
+
+  const onPointerUp = () => {
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    const g = gesture.current;
+    gesture.current = null;
+    if (g?.active) {
+      suppressClick.current = true;
+      const t = dropRef.current;
+      if (t) moveChapter(g.from, t.index, t.kind);
+    }
+    setDragIndex(null);
+    setDrop(null);
+  };
+
+  const onRowPointerDown = (e: React.PointerEvent, index: number) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest(".row-menu-btn")) return;
+    suppressClick.current = false;
+    gesture.current = { from: index, x: e.clientX, y: e.clientY, active: false };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
+  const onRowClick = (id: string) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    setActiveChapter(id);
   };
 
   return (
@@ -99,24 +157,22 @@ export function Sidebar() {
 
       <div className="nav-scroll">
         {groups.map((group) =>
-          group.kind === "body" || group.rows.length ? (
-            <div key={group.kind} className="nav-section">
+          group.kind === "body" || group.rows.length || dragging ? (
+            <div key={group.kind} className="nav-section" data-kind={group.kind}>
               <div className="nav-label">{group.label}</div>
               <ul className="chapters">
                 {group.rows.map((row, i) => (
                   <li
                     key={row.chapter.id}
                     className="chapter"
+                    data-idx={row.index}
+                    data-kind={group.kind}
                     data-active={row.chapter.id === activeChapterId}
-                    data-dragging={drag?.index === row.index}
-                    data-drop-before={drag?.kind === group.kind && dropIndex === row.index}
-                    data-drop-after={drag?.kind === group.kind && i === group.rows.length - 1 && dropIndex === row.index + 1}
-                    draggable
-                    onClick={() => setActiveChapter(row.chapter.id)}
-                    onDragStart={() => setDrag({ kind: group.kind, index: row.index })}
-                    onDragOver={(e) => onDragOver(e, group.kind, row.index)}
-                    onDrop={onDrop}
-                    onDragEnd={reset}
+                    data-dragging={dragIndex === row.index}
+                    data-drop-before={dropTarget?.kind === group.kind && dropTarget.index === row.index}
+                    data-drop-after={dropTarget?.kind === group.kind && i === group.rows.length - 1 && dropTarget.index === row.index + 1}
+                    onClick={() => onRowClick(row.chapter.id)}
+                    onPointerDown={(e) => onRowPointerDown(e, row.index)}
                   >
                     <span className="grip" title="Drag to reorder">
                       <Icon d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" size={14} />
@@ -134,6 +190,11 @@ export function Sidebar() {
                     />
                   </li>
                 ))}
+                {!group.rows.length && (
+                  <li className="chapter-drop" data-on={dropTarget?.kind === group.kind}>
+                    Drop here
+                  </li>
+                )}
               </ul>
               {group.kind === "body" && (
                 <button className="add-chapter" onClick={addChapter}>

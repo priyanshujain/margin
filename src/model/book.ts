@@ -3,6 +3,16 @@ import type { JSONContent } from "@tiptap/core";
 export type TrimSize = "6x9" | "5.5x8.5" | "5x8" | "a5";
 export type FigurePlacement = "inline" | "full-width" | "full-page" | "float-top";
 
+export const FIGURE_WIDTH: Record<FigurePlacement, number> = {
+  inline: 62,
+  "full-width": 100,
+  "full-page": 100,
+  "float-top": 46,
+};
+
+export const isResizablePlacement = (placement: FigurePlacement): boolean =>
+  placement === "inline" || placement === "float-top";
+
 export interface BookMetadata {
   title: string;
   subtitle: string;

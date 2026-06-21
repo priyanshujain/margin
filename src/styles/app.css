@@ -106,6 +106,8 @@ button {
   display: flex;
   flex-direction: column;
   padding: 6px 0 10px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .brand {
@@ -322,10 +324,12 @@ button {
 }
 
 .add-chapter {
-  margin: 8px 18px 4px;
+  margin: 8px 10px 4px;
+  width: calc(100% - 20px);
   padding: 9px 12px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   border-radius: var(--r-sm);
   color: var(--ink-faint);
@@ -739,7 +743,7 @@ button {
 }
 
 .figure {
-  margin: 1.8rem 0;
+  margin: 1.8rem auto;
 }
 
 .figure img {
@@ -760,9 +764,23 @@ button {
 }
 
 .figure-frame {
+  position: relative;
   background: var(--sidebar);
   border-radius: 3px;
   overflow: hidden;
+}
+
+.figure-handle {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--accent);
+  border: 2px solid var(--accent-contrast);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: nwse-resize;
 }
 
 .figure-empty {
@@ -800,12 +818,15 @@ button {
 
 .figure-controls {
   display: flex;
+  flex-wrap: nowrap;
   gap: 4px;
   justify-content: center;
   margin-top: 9px;
 }
 
 .figure-controls button {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-family: var(--font-ui);
   font-size: var(--t-1);
   padding: 5px 10px;
@@ -818,6 +839,15 @@ button {
 .figure-controls button[data-on="true"] {
   background: var(--accent);
   color: var(--accent-contrast);
+}
+
+.figure-width {
+  align-self: center;
+  margin-left: 2px;
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .pdf-pages {
@@ -1001,6 +1031,42 @@ button {
 .menu button:hover {
   background: var(--accent-wash);
   color: var(--ink);
+}
+
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(35, 32, 27, 0.32);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.export-overlay p {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  color: #fcfbf7;
+}
+
+.spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(255, 255, 255, 0.28);
+  border-top-color: #fcfbf7;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .toast {
@@ -1496,4 +1562,21 @@ button {
 
 .nav-section + .nav-section {
   margin-top: 6px;
+}
+
+.chapter-drop {
+  margin: 2px 0;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--line-strong);
+  color: var(--ink-faint);
+  font-size: var(--t-2);
+  text-align: center;
+  transition: border-color 120ms var(--ease), color 120ms var(--ease), background 120ms var(--ease);
+}
+
+.chapter-drop[data-on="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-wash);
 }

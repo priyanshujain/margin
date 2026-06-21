@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
+import { isResizablePlacement } from "../model/book";
 import { FigureView } from "./FigureView";
 
 export const Figure = Node.create({
@@ -15,6 +16,7 @@ export const Figure = Node.create({
       alt: { default: "" },
       caption: { default: "" },
       placement: { default: "full-width" },
+      width: { default: null },
     };
   },
 
@@ -23,10 +25,11 @@ export const Figure = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const { src, alt, caption, placement } = HTMLAttributes;
+    const { src, alt, caption, placement, width } = HTMLAttributes;
+    const style = width != null && isResizablePlacement(placement) ? `width:${width}%` : null;
     return [
       "figure",
-      mergeAttributes({ "data-figure": "", "data-placement": placement }),
+      mergeAttributes({ "data-figure": "", "data-placement": placement, style }),
       ["img", { src, alt }],
       ["figcaption", {}, caption ?? ""],
     ];

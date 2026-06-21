@@ -9,18 +9,18 @@ import { Editor } from "../editor/Editor";
 import { FloatingToolbar } from "../editor/FloatingToolbar";
 import { COVER_ID, useBook } from "../store/useBook";
 import { useTheme } from "../store/useTheme";
-import { type Book, bodyNumber, chapterKind } from "../model/book";
+import { bodyNumber, chapterKind } from "../model/book";
 import { saveBook } from "../library";
 import { isDesktop } from "../ipc";
-import { exportEpub, exportPdf } from "../export/exporters";
-
-const DESKTOP_ONLY =
-  'Export runs in the desktop app only — open the window from "pnpm tauri dev" (you are viewing the browser preview).';
+import { runExport } from "../export/run";
 
 export function EditorView() {
   const book = useBook((s) => s.book);
   const activeChapterId = useBook((s) => s.activeChapterId);
   const dirty = useBook((s) => s.dirty);
+  const exporting = useBook((s) => s.exporting);
+  const notice = useBook((s) => s.notice);
+  const setNotice = useBook((s) => s.setNotice);
   const setChapterContent = useBook((s) => s.setChapterContent);
   const setChapterTitle = useBook((s) => s.setChapterTitle);
   const markSaved = useBook((s) => s.markSaved);
@@ -31,7 +31,6 @@ export function EditorView() {
   const [dock, setDock] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const saveNow = useCallback(() => {
     const current = useBook.getState().book;
@@ -61,19 +60,9 @@ export function EditorView() {
     return () => clearTimeout(timer);
   }, [notice]);
 
-  const runExport = async (label: string, fn: (book: Book) => Promise<void>) => {
+  const handleExport = (format: "pdf" | "epub") => {
     setExportOpen(false);
-    if (!isDesktop) {
-      setNotice(DESKTOP_ONLY);
-      return;
-    }
-    const current = useBook.getState().book;
-    if (!current) return;
-    try {
-      await fn(current);
-    } catch (e) {
-      setNotice(`${label} export failed: ${e}`);
-    }
+    runExport(format);
   };
 
   if (!book) return null;
@@ -101,8 +90,8 @@ export function EditorView() {
               <>
                 <div className="menu-backdrop" onClick={() => setExportOpen(false)} />
                 <div className="menu">
-                  <button onClick={() => runExport("PDF", exportPdf)}>Export PDF…</button>
-                  <button onClick={() => runExport("EPUB", exportEpub)}>Export EPUB…</button>
+                  <button onClick={() => handleExport("pdf")}>Export PDF…</button>
+                  <button onClick={() => handleExport("epub")}>Export EPUB…</button>
                 </div>
               </>
             )}
@@ -156,6 +145,12 @@ export function EditorView() {
       </div>
 
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} onSave={saveNow} />}
+      {exporting && (
+        <div className="export-overlay">
+          <div className="spinner" />
+          <p>Exporting {exporting}…</p>
+        </div>
+      )}
       {notice && (
         <div className="toast" onClick={() => setNotice(null)}>
           {notice}

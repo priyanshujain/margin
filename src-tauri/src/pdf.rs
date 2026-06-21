@@ -36,7 +36,7 @@ fn compile(source: String, images: &[ImageInput]) -> Result<Vec<u8>, String> {
     typst_pdf::pdf(&document, &Default::default()).map_err(|d| format_source_diagnostics(&d))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn compile_pdf(source: String, images: Vec<ImageInput>) -> Result<tauri::ipc::Response, String> {
     compile(source, &images).map(tauri::ipc::Response::new)
 }

@@ -59,7 +59,7 @@ fn build(files: &[EpubFile]) -> Result<Vec<u8>, String> {
     Ok(zip.finish().map_err(|e| e.to_string())?.into_inner())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn package_epub(files: Vec<EpubFile>) -> Result<tauri::ipc::Response, String> {
     build(&files).map(tauri::ipc::Response::new)
 }

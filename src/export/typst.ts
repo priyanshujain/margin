@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import { type Book, type TrimSize, bodyNumber, chapterKind } from "../model/book";
+import { type Book, type FigurePlacement, type TrimSize, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement } from "../model/book";
 import type { ImageInput } from "../ipc";
 
 const TRIM: Record<TrimSize, { w: string; h: string }> = {
@@ -57,9 +57,11 @@ function figure(node: JSONContent, paths: Map<string, string>): string {
   if (placement === "full-page") {
     return `#page(margin: 0pt, numbering: none)[#image(${str(path)}, width: 100%, height: 100%, fit: "cover")]`;
   }
+  const placed = placement as FigurePlacement;
+  const width = (isResizablePlacement(placed) ? node.attrs?.width : null) ?? FIGURE_WIDTH[placed] ?? 100;
   const caption = node.attrs?.caption ? `, caption: [${esc(node.attrs.caption)}]` : "";
   const float = placement === "float-top" ? ", placement: top" : "";
-  return `#figure(image(${str(path)}, width: 100%)${caption}${float})`;
+  return `#figure(image(${str(path)}, width: ${width}%)${caption}${float})`;
 }
 
 function block(node: JSONContent, paths: Map<string, string>): string {
@@ -127,24 +129,52 @@ function preamble(book: Book): string {
   ]
 }
 
-#let chapteropener(num, title) = {
+#let openchapter(info) = {
   pagebreak(weak: true)
+  [#metadata(info) <chap>]
   v(2.1in)
   align(center)[
-    #text(font: "Hanken Grotesk", size: 8.5pt, weight: "semibold", tracking: 0.28em)[#upper("Chapter " + num)]
-    #v(0.7em)
-    #heading(level: 1, numbering: none, outlined: true)[#title]
+    #if info.kind == "body" {
+      text(font: "Hanken Grotesk", size: 8.5pt, weight: "semibold", tracking: 0.28em)[#upper("Chapter " + info.num)]
+      v(0.7em)
+    }
+    #heading(level: 1, numbering: none, outlined: info.toc)[#info.title]
   ]
   v(1.5em)
 }
 
-#let pageopener(title) = {
+#let pageof(loc) = {
+  let pat = loc.page-numbering()
+  if pat == none { pat = "1" }
+  numbering(pat, ..counter(page).at(loc))
+}
+
+#let contents() = {
   pagebreak(weak: true)
-  v(2.1in)
-  align(center)[
-    #heading(level: 1, numbering: none, outlined: true)[#title]
-  ]
-  v(1.5em)
+  set par(justify: false, first-line-indent: 0pt)
+  block(below: 2em)[#text(font: "Literata", size: 24pt, weight: "medium")[Contents]]
+  context {
+    let items = query(<chap>).filter(it => it.value.toc != false)
+    let prev = none
+    for it in items {
+      let info = it.value
+      let pg = pageof(it.location())
+      let body = info.kind == "body"
+      let gap = if prev != none and prev != info.kind { 1.7em } else { 0.95em }
+      prev = info.kind
+      block(width: 100%, above: gap, below: 0.95em, {
+        set text(size: 11.5pt)
+        link(it.location())[#grid(
+          columns: (1.9em, 1fr, auto),
+          column-gutter: (0.65em, 1em),
+          align: (right + top, left + top, right + top),
+          if body { info.num } else { [] },
+          if body { info.title } else { emph(info.title) },
+          pg,
+        )]
+      })
+    }
+  }
 }`;
 }
 
@@ -213,23 +243,42 @@ export function extractImages(book: Book): { images: ImageInput[]; paths: Map<st
   return collectImages(book.chapters.map((chapter) => chapter.content));
 }
 
+function cleanTitle(title: string): string {
+  return (title || "")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normTitle(title: string): string {
+  return cleanTitle(title).toLowerCase();
+}
+
+function openerCall(book: Book, index: number): string {
+  const chapter = book.chapters[index];
+  const kind = chapterKind(chapter);
+  const num = kind === "body" ? String(bodyNumber(book.chapters, index)) : "";
+  const title = cleanTitle(chapter.title) || "Untitled";
+  const inToc = !(kind === "front" && normTitle(title) === normTitle(book.metadata.title));
+  return `#openchapter((kind: ${str(kind)}, num: ${str(num)}, title: ${str(title)}, toc: ${inToc}))`;
+}
+
 export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), coverPath?: string): string {
   const meta = book.metadata;
   const cover = `${coverBlock(book, coverPath)}\n#pagebreak(weak: true)`;
   const front = `#set page(numbering: none)
 #titlepage(${str(meta.title || "Untitled")}, ${str(meta.subtitle)}, ${str(meta.author)})
 #pagebreak(weak: true)
-#outline(title: [Contents], depth: 1)
-#set page(numbering: "1")
-#counter(page).update(1)`;
+#set page(numbering: "i")
+#counter(page).update(1)
+#contents()`;
+
+  const firstBody = book.chapters.findIndex((c) => chapterKind(c) === "body");
 
   const body = book.chapters
     .map((chapter, i) => {
-      const opener =
-        chapterKind(chapter) === "body"
-          ? `#chapteropener(${str(String(bodyNumber(book.chapters, i)))}, [${esc(chapter.title || "Untitled")}])`
-          : `#pageopener([${esc(chapter.title || "Untitled")}])`;
-      return `${opener}\n\n${chapterBody(chapter.content, paths)}`;
+      const reset = i === firstBody ? `#set page(numbering: "1")\n#counter(page).update(1)\n` : "";
+      return `${reset}${openerCall(book, i)}\n\n${chapterBody(chapter.content, paths)}`;
     })
     .join("\n\n");
 
@@ -249,19 +298,14 @@ export function coverToPdfInputs(book: Book): { source: string; images: ImageInp
 }
 
 function chapterToTypst(book: Book, index: number, paths: Map<string, string>): string {
-  const chapter = book.chapters[index];
-  const opener =
-    chapterKind(chapter) === "body"
-      ? `#chapteropener(${str(String(bodyNumber(book.chapters, index)))}, [${esc(chapter.title || "Untitled")}])`
-      : `#pageopener([${esc(chapter.title || "Untitled")}])`;
   return `${preamble(book)}
 
 #set page(numbering: "1")
 #counter(page).update(1)
 
-${opener}
+${openerCall(book, index)}
 
-${chapterBody(chapter.content, paths)}
+${chapterBody(book.chapters[index].content, paths)}
 `;
 }
 
