@@ -179,7 +179,16 @@ export function Sidebar() {
                     </span>
                     <span className="num">{row.num ?? ""}</span>
                     <span className="text">
-                      <span className="title">{row.chapter.title || "Untitled"}</span>
+                      <span
+                        className="title"
+                        onMouseEnter={(e) => {
+                          const el = e.currentTarget;
+                          if (el.scrollWidth > el.clientWidth) el.title = row.chapter.title || "Untitled";
+                          else el.removeAttribute("title");
+                        }}
+                      >
+                        {row.chapter.title || "Untitled"}
+                      </span>
                       {row.chapter.id === activeChapterId && (
                         <span className="meta">Edited {formatEdited(row.chapter.updatedAt, now)}</span>
                       )}
