@@ -29,6 +29,13 @@ fn library_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+fn book_path(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
+    if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        return Err("invalid book id".to_string());
+    }
+    Ok(library_dir(app)?.join(format!("{id}.margin")))
+}
+
 #[tauri::command]
 pub fn list_books(app: tauri::AppHandle) -> Result<Vec<BookSummary>, String> {
     let dir = library_dir(&app)?;
@@ -84,19 +91,19 @@ pub fn list_books(app: tauri::AppHandle) -> Result<Vec<BookSummary>, String> {
 
 #[tauri::command]
 pub fn load_book(app: tauri::AppHandle, id: String) -> Result<String, String> {
-    let path = library_dir(&app)?.join(format!("{id}.margin"));
+    let path = book_path(&app, &id)?;
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn save_book(app: tauri::AppHandle, id: String, contents: String) -> Result<(), String> {
-    let path = library_dir(&app)?.join(format!("{id}.margin"));
+    let path = book_path(&app, &id)?;
     crate::project::atomic_write(&path, contents.as_bytes(), true)
 }
 
 #[tauri::command]
 pub fn delete_book(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let path = library_dir(&app)?.join(format!("{id}.margin"));
+    let path = book_path(&app, &id)?;
     if path.exists() {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
     }
