@@ -139,9 +139,11 @@ function preamble(book: Book): string {
   align(center)[
     #if info.kind == "body" {
       text(font: "Hanken Grotesk", size: 8.5pt, weight: "semibold", tracking: 0.28em)[#upper("Chapter " + info.num)]
-      v(0.7em)
+      if not info.notitle { v(0.7em) }
     }
-    #heading(level: 1, numbering: none, outlined: info.toc)[#info.title]
+    #if not info.notitle {
+      heading(level: 1, numbering: none, outlined: info.toc)[#info.title]
+    }
   ]
   v(1.5em)
 }
@@ -262,6 +264,7 @@ function normTitle(title: string): string {
 
 function inToc(book: Book, index: number): boolean {
   const chapter = book.chapters[index];
+  if (chapter.noTitle && chapterKind(chapter) !== "body") return false;
   const title = cleanTitle(chapter.title) || "Untitled";
   return !(chapterKind(chapter) === "front" && normTitle(title) === normTitle(book.metadata.title));
 }
@@ -270,8 +273,9 @@ function openerCall(book: Book, index: number): string {
   const chapter = book.chapters[index];
   const kind = chapterKind(chapter);
   const num = kind === "body" ? String(bodyNumber(book.chapters, index)) : "";
-  const title = cleanTitle(chapter.title) || "Untitled";
-  return `#openchapter((kind: ${str(kind)}, num: ${str(num)}, title: ${str(title)}, toc: ${inToc(book, index)}))`;
+  const notitle = !!chapter.noTitle;
+  const title = notitle ? "" : cleanTitle(chapter.title) || "Untitled";
+  return `#openchapter((kind: ${str(kind)}, num: ${str(num)}, title: ${str(title)}, notitle: ${notitle}, toc: ${inToc(book, index)}))`;
 }
 
 export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), coverPath?: string): string {

@@ -7,6 +7,7 @@ import {
   type ChapterKind,
   type Cover,
   chapterKind,
+  cloneChapter,
   createChapter,
   createPage,
   normalizeBook,
@@ -27,8 +28,10 @@ interface BookState {
   setActiveChapter: (id: string) => void;
   setChapterContent: (id: string, content: JSONContent) => void;
   setChapterTitle: (id: string, title: string) => void;
+  setChapterNoTitle: (id: string, noTitle: boolean) => void;
   addChapter: () => void;
   addPage: (group: "front" | "back", title: string) => void;
+  duplicateChapter: (id: string) => void;
   deleteChapter: (id: string) => void;
   moveChapter: (from: number, to: number, toKind?: ChapterKind) => void;
   setMetadata: (patch: Partial<BookMetadata>) => void;
@@ -63,6 +66,12 @@ export const useBook = create<BookState>((set) => ({
         ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, title, updatedAt: Date.now() } : c)) } }
         : {}
     ),
+  setChapterNoTitle: (id, noTitle) =>
+    set((s) =>
+      s.book
+        ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, noTitle, title: noTitle ? "" : c.title, updatedAt: Date.now() } : c)) } }
+        : {}
+    ),
   addChapter: () =>
     set((s) => {
       if (!s.book) return {};
@@ -81,6 +90,16 @@ export const useBook = create<BookState>((set) => ({
         group === "front" ? chapters.filter((c) => chapterKind(c) === "front").length : chapters.length;
       chapters.splice(insertAt, 0, page);
       return { activeChapterId: page.id, dirty: true, book: { ...s.book, chapters } };
+    }),
+  duplicateChapter: (id) =>
+    set((s) => {
+      if (!s.book) return {};
+      const index = s.book.chapters.findIndex((c) => c.id === id);
+      if (index === -1) return {};
+      const copy = cloneChapter(s.book.chapters[index]);
+      const chapters = [...s.book.chapters];
+      chapters.splice(index + 1, 0, copy);
+      return { activeChapterId: copy.id, dirty: true, book: { ...s.book, chapters } };
     }),
   deleteChapter: (id) =>
     set((s) => {

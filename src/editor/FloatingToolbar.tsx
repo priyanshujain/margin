@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { Icon } from "../components/Icon";
 
@@ -23,10 +23,20 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
+  const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
   useEffect(() => {
     if (linkOpen) linkInputRef.current?.focus();
   }, [linkOpen]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => forceUpdate();
+    editor.on("transaction", update);
+    return () => {
+      editor.off("transaction", update);
+    };
+  }, [editor]);
 
   if (!editor) return null;
 

@@ -70,6 +70,7 @@ export interface Chapter {
   content: JSONContent;
   updatedAt: number;
   kind?: ChapterKind;
+  noTitle?: boolean;
 }
 
 export interface PageType {
@@ -128,6 +129,11 @@ export function createChapter(title = "Untitled chapter"): Chapter {
 
 export function createPage(group: "front" | "back", title: string): Chapter {
   return { id: crypto.randomUUID(), title, content: emptyDoc(), kind: group, updatedAt: Date.now() };
+}
+
+export function cloneChapter(chapter: Chapter): Chapter {
+  const title = chapter.noTitle || !chapter.title ? chapter.title : `${chapter.title} (copy)`;
+  return { ...chapter, id: crypto.randomUUID(), title, content: structuredClone(chapter.content), updatedAt: Date.now() };
 }
 
 export function createCover(): Cover {

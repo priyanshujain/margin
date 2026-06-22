@@ -133,7 +133,7 @@ function HtmlDock() {
       <div className="page">
         <div className="p-opener">
           <div className="p-num">{eyebrow}</div>
-          <div className="p-title">{chapter.title || "Untitled"}</div>
+          {!chapter.noTitle && <div className="p-title">{chapter.title || "Untitled"}</div>}
         </div>
         <div className="page-body" dangerouslySetInnerHTML={{ __html: html }} />
         <div className="folio">{idx * 8 + 7}</div>

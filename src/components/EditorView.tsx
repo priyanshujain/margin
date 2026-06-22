@@ -6,15 +6,20 @@ import { ResizeHandle } from "./ResizeHandle";
 import { Icon } from "./Icon";
 import { Settings } from "./Settings";
 import { CoverView } from "./CoverView";
+import { FindBar } from "./FindBar";
+import { ProofPopover } from "./ProofPopover";
 import { Editor } from "../editor/Editor";
 import { FloatingToolbar } from "../editor/FloatingToolbar";
+import type { ProofCoords, ProofIssue, ProofingStorage } from "../editor/proofing";
 import { COVER_ID, useBook } from "../store/useBook";
+import { useProofing } from "../store/useProofing";
 import { useTheme } from "../store/useTheme";
 import { useWidth } from "../store/useWidth";
 import { WIDTH_OPTIONS } from "../width";
 import { bodyNumber, chapterKind } from "../model/book";
 import { saveBook } from "../library";
 import { isDesktop } from "../ipc";
+import { issueSignature, rememberWord, runProof } from "../proofing";
 import { runExport } from "../export/run";
 
 export function EditorView() {
@@ -26,6 +31,7 @@ export function EditorView() {
   const setNotice = useBook((s) => s.setNotice);
   const setChapterContent = useBook((s) => s.setChapterContent);
   const setChapterTitle = useBook((s) => s.setChapterTitle);
+  const setChapterNoTitle = useBook((s) => s.setChapterNoTitle);
   const markSaved = useBook((s) => s.markSaved);
   const theme = useTheme((s) => s.theme);
   const toggleTheme = useTheme((s) => s.toggle);
@@ -37,6 +43,35 @@ export function EditorView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [widthOpen, setWidthOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findExpanded, setFindExpanded] = useState(false);
+  const [proofPopover, setProofPopover] = useState<{ issue: ProofIssue; coords: ProofCoords } | null>(null);
+
+  const spelling = useProofing((s) => s.spelling);
+  const grammar = useProofing((s) => s.grammar);
+  const ignored = useProofing((s) => s.ignored);
+  const toggleSpelling = useProofing((s) => s.toggleSpelling);
+  const toggleGrammar = useProofing((s) => s.toggleGrammar);
+
+  const coverActive = activeChapterId === COVER_ID;
+  const proofingAvailable = isDesktop && book?.metadata.language === "en";
+
+  const openFind = useCallback((expanded: boolean) => {
+    setFindExpanded(expanded);
+    setFindOpen(true);
+  }, []);
+
+  const reproof = useCallback(() => {
+    if (!editor) return;
+    const state = useProofing.getState();
+    if (!proofingAvailable || (!state.spelling && !state.grammar)) {
+      editor.commands.clearProofIssues();
+      return;
+    }
+    runProof(editor.state.doc, { spelling: state.spelling, grammar: state.grammar }, state.ignored)
+      .then((issues) => editor.commands.setProofIssues(issues))
+      .catch(() => {});
+  }, [editor, proofingAvailable]);
 
   const saveNow = useCallback(() => {
     const current = useBook.getState().book;
@@ -54,11 +89,14 @@ export function EditorView() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         saveNow();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        openFind(e.altKey);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [saveNow]);
+  }, [saveNow, openFind]);
 
   useEffect(() => {
     if (!notice) return;
@@ -66,13 +104,45 @@ export function EditorView() {
     return () => clearTimeout(timer);
   }, [notice]);
 
+  useEffect(() => {
+    if (!editor) return;
+    const storage = (editor.storage as unknown as Record<string, ProofingStorage>).proofing;
+    storage.onClickIssue = (issue, coords) => setProofPopover({ issue, coords });
+    const closePopover = () => setProofPopover(null);
+    editor.on("update", closePopover);
+    return () => {
+      storage.onClickIssue = null;
+      editor.off("update", closePopover);
+    };
+  }, [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    if (!proofingAvailable || coverActive || (!spelling && !grammar)) {
+      editor.commands.clearProofIssues();
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = (delay: number) => {
+      clearTimeout(timer);
+      timer = setTimeout(reproof, delay);
+    };
+    editor.commands.clearProofIssues();
+    schedule(150);
+    const onUpdate = () => schedule(500);
+    editor.on("update", onUpdate);
+    return () => {
+      clearTimeout(timer);
+      editor.off("update", onUpdate);
+    };
+  }, [editor, spelling, grammar, ignored, activeChapterId, coverActive, proofingAvailable, reproof]);
+
   const handleExport = (format: "pdf" | "epub") => {
     setExportOpen(false);
     runExport(format);
   };
 
   if (!book) return null;
-  const coverActive = activeChapterId === COVER_ID;
   const idx = book.chapters.findIndex((c) => c.id === activeChapterId);
   const chapter = book.chapters[idx] ?? book.chapters[0];
   const realIdx = book.chapters.findIndex((c) => c.id === chapter?.id);
@@ -88,6 +158,19 @@ export function EditorView() {
           {dirty && <span className="dirty-dot" />}
         </button>
         <div className="actions">
+          <button className="icon-btn" data-on={findOpen} onClick={() => (findOpen ? setFindOpen(false) : openFind(false))} title="Find (⌘F)">
+            <Icon d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4" />
+          </button>
+          {proofingAvailable && !coverActive && (
+            <>
+              <button className="icon-btn" data-on={spelling} onClick={toggleSpelling} title="Check spelling">
+                <Icon d="M4 17l4-10 4 10M5.4 13.4h5.2M15 17l2.5 2.5L22 14" />
+              </button>
+              <button className="icon-btn" data-on={grammar} onClick={toggleGrammar} title="Check grammar">
+                <Icon d="M4 7h16M4 12h12M4 17h7M13.5 18.5c1-1.2 2-1.2 3 0s2 1.2 3 0" />
+              </button>
+            </>
+          )}
           <div className="menu-wrap">
             <button className="icon-btn" data-on={widthOpen} onClick={() => setWidthOpen((v) => !v)} title="Editor width">
               <Icon d="M3 5v14M21 5v14M7 12h10M7 12l3-3M7 12l3 3M17 12l-3-3M17 12l-3 3" />
@@ -142,6 +225,13 @@ export function EditorView() {
         </div>
       </header>
 
+      <FindBar
+        editor={coverActive ? null : editor}
+        open={findOpen && !coverActive}
+        initialExpanded={findExpanded}
+        onClose={() => setFindOpen(false)}
+      />
+
       <div className="body">
         <Sidebar />
         <ResizeHandle pane="sidebar" />
@@ -155,11 +245,22 @@ export function EditorView() {
                   <div className="chapter-num">{eyebrow}</div>
                   <input
                     className="chapter-title-input"
-                    value={chapter.title}
-                    placeholder={kind === "body" ? "Chapter title" : "Page title"}
+                    value={chapter.noTitle ? "" : chapter.title}
+                    placeholder={chapter.noTitle ? "No title" : kind === "body" ? "Chapter title" : "Page title"}
                     spellCheck={false}
+                    disabled={chapter.noTitle}
                     onChange={(e) => setChapterTitle(chapter.id, e.target.value)}
                   />
+                  {(chapter.noTitle || !chapter.title.trim()) && (
+                    <label className="no-title-check">
+                      <input
+                        type="checkbox"
+                        checked={!!chapter.noTitle}
+                        onChange={(e) => setChapterNoTitle(chapter.id, e.target.checked)}
+                      />
+                      No title
+                    </label>
+                  )}
                 </header>
                 <Editor
                   chapterId={chapter.id}
@@ -175,6 +276,28 @@ export function EditorView() {
         {dock && <ResizeHandle pane="dock" />}
         {dock && <Dock />}
       </div>
+
+      {proofPopover && editor && (
+        <ProofPopover
+          issue={proofPopover.issue}
+          coords={proofPopover.coords}
+          onReplace={(suggestion) => {
+            const { from, to } = proofPopover.issue;
+            if (suggestion === "") editor.chain().focus().deleteRange({ from, to }).run();
+            else editor.chain().focus().insertContentAt({ from, to }, suggestion).run();
+            setProofPopover(null);
+          }}
+          onIgnore={() => {
+            useProofing.getState().ignore(issueSignature(proofPopover.issue));
+            setProofPopover(null);
+          }}
+          onRemember={() => {
+            rememberWord(proofPopover.issue.word).then(reproof).catch(() => {});
+            setProofPopover(null);
+          }}
+          onClose={() => setProofPopover(null)}
+        />
+      )}
 
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} onSave={saveNow} />}
       {exporting && (

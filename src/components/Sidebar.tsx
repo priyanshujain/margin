@@ -43,6 +43,7 @@ export function Sidebar() {
   const setActiveChapter = useBook((s) => s.setActiveChapter);
   const addChapter = useBook((s) => s.addChapter);
   const addPage = useBook((s) => s.addPage);
+  const duplicateChapter = useBook((s) => s.duplicateChapter);
   const deleteChapter = useBook((s) => s.deleteChapter);
   const moveChapter = useBook((s) => s.moveChapter);
   const closeBook = useBook((s) => s.closeBook);
@@ -195,6 +196,7 @@ export function Sidebar() {
                     </span>
                     <RowMenu
                       label="Page options"
+                      onDuplicate={() => duplicateChapter(row.chapter.id)}
                       onDelete={() => setPendingDelete({ id: row.chapter.id, title: row.chapter.title || "Untitled" })}
                     />
                   </li>

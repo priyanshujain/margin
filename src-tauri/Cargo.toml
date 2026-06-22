@@ -21,6 +21,8 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"
@@ -28,4 +30,25 @@ zip = "2"
 typst = "0.14.2"
 typst-pdf = "0.14.2"
 typst-as-lib = "0.15.5"
+spellbook = "0.4"
+# Pinned exactly: the [patch] stubs below are tied to this version's burn/cubecl graph. A minor
+# bump could silently invalidate the patch ("unused") and pull the broken CUDA subtree back in,
+# so bump deliberately and re-audit the stubs. (see [patch.crates-io])
+harper-core = { version = "=2.5.0", features = ["concurrent"] }
+
+# harper-core transitively declares an optional, disabled `burn-cuda` (CUDA backend).
+# Cargo still version-resolves that dead subtree, which currently fails (broken tracel-llvm
+# prereleases) and links-collides with `zip`'s lzma. Replace it with an empty stub so the
+# whole cubecl/tracel/CUDA subtree leaves the graph. The `cuda` feature is off, so nothing here
+# is ever compiled.
+[patch.crates-io]
+burn-cuda = { path = "stubs/burn-cuda" }
+cubecl-cpu = { path = "stubs/cubecl-cpu" }
+
+# Optimize dependencies even in dev builds. Harper's grammar engine (and its burn-ndarray POS
+# tagger) is ~10x slower unoptimized, which made `tauri dev` grammar checks take seconds. This
+# compiles deps at opt-level 3 while keeping margin-app itself unoptimized, so incremental
+# rebuilds of our own code stay fast. First build after this is slower (deps recompile once).
+[profile.dev.package."*"]
+opt-level = 3
 

@@ -4,11 +4,12 @@ import { Icon } from "./Icon";
 
 interface RowMenuProps {
   label: string;
+  onDuplicate?: () => void;
   onDelete: () => void;
   className?: string;
 }
 
-export function RowMenu({ label, onDelete, className = "" }: RowMenuProps) {
+export function RowMenu({ label, onDuplicate, onDelete, className = "" }: RowMenuProps) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -40,6 +41,12 @@ export function RowMenu({ label, onDelete, className = "" }: RowMenuProps) {
     };
   }, [open]);
 
+  const duplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(false);
+    onDuplicate?.();
+  };
+
   const remove = (e: React.MouseEvent) => {
     e.stopPropagation();
     setOpen(false);
@@ -61,6 +68,12 @@ export function RowMenu({ label, onDelete, className = "" }: RowMenuProps) {
       {open &&
         createPortal(
           <div ref={popRef} className="row-menu-pop" style={{ top: coords.top, right: coords.right }}>
+            {onDuplicate && (
+              <button className="row-menu-item" onClick={duplicate}>
+                <Icon d="M9 9h11v11h-11z M6 15V5h9" size={14} />
+                Duplicate
+              </button>
+            )}
             <button className="row-menu-item danger" onClick={remove}>
               <Icon d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13M10 11v6M14 11v6" size={14} />
               Delete

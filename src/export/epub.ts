@@ -284,9 +284,12 @@ function contentOpf(
 function navXhtml(book: Book): string {
   const items = book.chapters
     .map((chapter, i) => {
+      if (chapter.noTitle && chapterKind(chapter) !== "body") return "";
       const fallback = chapterKind(chapter) === "body" ? `Chapter ${bodyNumber(book.chapters, i)}` : "Untitled";
-      return `      <li><a href="chapter-${i + 1}.xhtml">${esc(chapter.title || fallback)}</a></li>`;
+      const label = chapter.noTitle ? fallback : chapter.title || fallback;
+      return `      <li><a href="chapter-${i + 1}.xhtml">${esc(label)}</a></li>`;
     })
+    .filter(Boolean)
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
@@ -311,6 +314,7 @@ function chapterXhtml(book: Book, index: number, paths: Map<string, string>): st
   const num = bodyNumber(book.chapters, index);
   const title = chapter.title || (kind === "body" ? `Chapter ${num}` : "Untitled");
   const eyebrow = kind === "body" ? `<p class="eyebrow">Chapter ${num}</p>` : "";
+  const heading = chapter.noTitle ? "" : `<h1>${esc(title)}</h1>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
   <head>
@@ -320,7 +324,7 @@ function chapterXhtml(book: Book, index: number, paths: Map<string, string>): st
   <body epub:type="${kind === "body" ? "chapter" : kind === "front" ? "frontmatter" : "backmatter"}">
     <header class="chapter-opener">
       ${eyebrow}
-      <h1>${esc(title)}</h1>
+      ${heading}
     </header>
     ${chapterBody(chapter.content, paths)}
   </body>

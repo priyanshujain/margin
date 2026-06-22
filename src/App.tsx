@@ -6,6 +6,7 @@ import { useBook } from "./store/useBook";
 import { isDesktop } from "./ipc";
 import { newBook } from "./library";
 import { runExport } from "./export/run";
+import { checkForUpdates } from "./updater";
 
 function App() {
   const book = useBook((s) => s.book);
@@ -13,11 +14,13 @@ function App() {
 
   useEffect(() => {
     if (!isDesktop) return;
+    checkForUpdates(true);
     const unlisten = listen<string>("menu-action", (event) => {
       const state = useBook.getState();
       if (event.payload === "new-book") state.openBook(newBook());
       else if (event.payload === "export-pdf") runExport("pdf");
       else if (event.payload === "export-epub") runExport("epub");
+      else if (event.payload === "check-updates") checkForUpdates(false);
     });
     return () => {
       unlisten.then((stop) => stop());
