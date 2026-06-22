@@ -9,7 +9,7 @@ export interface RawFile {
   encoding: "utf8" | "base64";
 }
 
-type Mark = { type: string };
+type Mark = { type: string; attrs?: Record<string, unknown> };
 
 const BLOCK_TAGS = new Set([
   "p", "div", "section", "article", "main", "header", "footer", "aside",
@@ -81,8 +81,8 @@ function hasMark(marks: Mark[], type: string): boolean {
   return marks.some((m) => m.type === type);
 }
 
-function addMark(marks: Mark[], type: string): Mark[] {
-  return hasMark(marks, type) ? marks : [...marks, { type }];
+function addMark(marks: Mark[], type: string, attrs?: Record<string, unknown>): Mark[] {
+  return hasMark(marks, type) ? marks : [...marks, attrs ? { type, attrs } : { type }];
 }
 
 function collectInline(node: Node, marks: Mark[], out: JSONContent[]): void {
@@ -102,6 +102,15 @@ function collectInline(node: Node, marks: Mark[], out: JSONContent[]): void {
       collectInline(el, addMark(marks, "bold"), out);
     } else if (tag === "em" || tag === "i") {
       collectInline(el, addMark(marks, "italic"), out);
+    } else if (tag === "u") {
+      collectInline(el, addMark(marks, "underline"), out);
+    } else if (tag === "s" || tag === "strike" || tag === "del") {
+      collectInline(el, addMark(marks, "strike"), out);
+    } else if (tag === "code") {
+      collectInline(el, addMark(marks, "code"), out);
+    } else if (tag === "a") {
+      const href = el.getAttribute("href");
+      collectInline(el, href ? addMark(marks, "link", { href }) : marks, out);
     } else if (!BLOCK_TAGS.has(tag)) {
       collectInline(el, marks, out);
     }
