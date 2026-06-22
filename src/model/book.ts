@@ -1,4 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
+import { type BookFonts, DEFAULT_FONTS } from "./fonts";
 
 export type TrimSize = "6x9" | "5.5x8.5" | "5x8" | "a5";
 export type FigurePlacement = "inline" | "full-width" | "full-page" | "float-top";
@@ -24,6 +25,7 @@ export interface BookMetadata {
 export interface BookSettings {
   trim: TrimSize;
   bleed: boolean;
+  fonts: BookFonts;
 }
 
 export type CoverKind = "default" | "image";
@@ -149,14 +151,14 @@ export function createCover(): Cover {
 }
 
 const DEFAULT_METADATA: BookMetadata = { title: "Untitled", subtitle: "", author: "", isbn: "", language: "en" };
-const DEFAULT_SETTINGS: BookSettings = { trim: "6x9", bleed: true };
+const DEFAULT_SETTINGS: BookSettings = { trim: "6x9", bleed: true, fonts: DEFAULT_FONTS };
 
 export function normalizeBook(book: Book): Book {
   const chapters = (Array.isArray(book.chapters) ? book.chapters : []).filter(Boolean);
   return {
     ...book,
     metadata: { ...DEFAULT_METADATA, ...book.metadata },
-    settings: { ...DEFAULT_SETTINGS, ...book.settings },
+    settings: { ...DEFAULT_SETTINGS, ...book.settings, fonts: { ...DEFAULT_FONTS, ...book.settings?.fonts } },
     cover: book.cover ? { ...createCover(), ...book.cover } : createCover(),
     chapters: (chapters.length ? chapters : [createChapter()]).map((c) =>
       c.updatedAt ? c : { ...c, updatedAt: Date.now() },

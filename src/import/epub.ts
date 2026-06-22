@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { JSONContent } from "@tiptap/core";
 import { type Book, type BookMetadata, type Chapter, type Cover, createCover } from "../model/book";
+import { DEFAULT_FONTS } from "../model/fonts";
 
 export interface RawFile {
   path: string;
@@ -515,7 +516,7 @@ export function filesToBook(files: RawFile[], fallbackName = "Imported book"): B
     id: crypto.randomUUID(),
     metadata,
     theme: "quiet-press",
-    settings: { trim: "6x9", bleed: true },
+    settings: { trim: "6x9", bleed: true, fonts: DEFAULT_FONTS },
     cover: findCover(opf, manifest, byPath),
     chapters,
   };
