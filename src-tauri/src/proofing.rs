@@ -176,36 +176,40 @@ fn collect_grammar(harper: &mut Harper, text: &str, chars: &[char], issues: &mut
 #[tauri::command]
 pub async fn proof_text(
     app: tauri::AppHandle,
-    state: tauri::State<'_, ProofState>,
     text: String,
     spelling: bool,
     grammar: bool,
 ) -> Result<Vec<Issue>, String> {
-    let mut guard = state.inner().lock().map_err(|e| e.to_string())?;
-    if guard.is_none() {
-        *guard = Some(Engine {
-            speller: None,
-            harper: None,
-            custom: load_custom(&app),
-        });
-    }
-    let engine = guard.as_mut().unwrap();
+    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<Issue>, String> {
+        let state = app.state::<ProofState>();
+        let mut guard = state.lock().map_err(|e| e.to_string())?;
+        if guard.is_none() {
+            *guard = Some(Engine {
+                speller: None,
+                harper: None,
+                custom: load_custom(&app),
+            });
+        }
+        let engine = guard.as_mut().unwrap();
 
-    let chars: Vec<char> = text.chars().collect();
-    let mut issues = Vec::new();
-    if spelling {
-        if engine.speller.is_none() {
-            engine.speller = Some(build_speller(&app)?);
+        let chars: Vec<char> = text.chars().collect();
+        let mut issues = Vec::new();
+        if spelling {
+            if engine.speller.is_none() {
+                engine.speller = Some(build_speller(&app)?);
+            }
+            collect_spelling(engine.speller.as_ref().unwrap(), &engine.custom, &chars, &mut issues);
         }
-        collect_spelling(engine.speller.as_ref().unwrap(), &engine.custom, &chars, &mut issues);
-    }
-    if grammar {
-        if engine.harper.is_none() {
-            engine.harper = Some(build_harper());
+        if grammar {
+            if engine.harper.is_none() {
+                engine.harper = Some(build_harper());
+            }
+            collect_grammar(engine.harper.as_mut().unwrap(), &text, &chars, &mut issues);
         }
-        collect_grammar(engine.harper.as_mut().unwrap(), &text, &chars, &mut issues);
-    }
-    Ok(issues)
+        Ok(issues)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
