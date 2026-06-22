@@ -5,6 +5,7 @@ import { Dock } from "./Dock";
 import { ResizeHandle } from "./ResizeHandle";
 import { Icon } from "./Icon";
 import { Settings } from "./Settings";
+import { BackupButton } from "./BackupButton";
 import { CoverView } from "./CoverView";
 import { FindBar } from "./FindBar";
 import { ProofPopover } from "./ProofPopover";
@@ -12,6 +13,7 @@ import { Editor } from "../editor/Editor";
 import { FloatingToolbar } from "../editor/FloatingToolbar";
 import type { ProofCoords, ProofIssue, ProofingStorage } from "../editor/proofing";
 import { COVER_ID, useBook } from "../store/useBook";
+import { useBackup } from "../store/useBackup";
 import { useProofing } from "../store/useProofing";
 import { useTheme } from "../store/useTheme";
 import { useWidth } from "../store/useWidth";
@@ -79,6 +81,7 @@ export function EditorView() {
     saveBook(current)
       .then(() => {
         if (useBook.getState().book === current) markSaved();
+        useBackup.getState().refresh();
       })
       .catch((e) => setNotice(`Save failed: ${e}`));
   }, [markSaved, setNotice]);
@@ -163,6 +166,7 @@ export function EditorView() {
           {dirty && <span className="dirty-dot" />}
         </button>
         <div className="actions">
+          {isDesktop && <BackupButton />}
           <button className="icon-btn" data-on={findOpen} onClick={() => (findOpen ? setFindOpen(false) : openFind(false))} title="Find (⌘F)">
             <Icon d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4" />
           </button>

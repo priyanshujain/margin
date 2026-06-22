@@ -1257,6 +1257,10 @@ body.resizing {
 
 .library-head {
   height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 14px;
 }
 
 .shelf {
@@ -2282,4 +2286,171 @@ body.resizing {
   box-shadow: none;
   border: none;
   border-radius: 0;
+}
+
+/* Google Drive backup */
+.backup-btn[data-state="pending"] {
+  color: var(--accent);
+}
+
+.backup-btn[data-state="error"] {
+  color: var(--danger);
+}
+
+.backup-btn[data-state="working"] svg {
+  animation: backup-spin 0.9s linear infinite;
+}
+
+@keyframes backup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.library-restore {
+  display: flex;
+  justify-content: center;
+  padding: 0 44px 60px;
+}
+
+.restore-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-faint);
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  transition: color 120ms var(--ease);
+}
+
+.restore-link:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.restore-link:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.backup-intro,
+.backup-connecting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.backup-intro p,
+.backup-connecting p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  line-height: 1.55;
+}
+
+.backup-text-btn {
+  color: var(--ink-faint);
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  transition: color 120ms var(--ease);
+}
+
+.backup-text-btn:hover {
+  color: var(--accent);
+}
+
+.backup-waiting {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  color: var(--ink);
+}
+
+.backup-waiting svg {
+  color: var(--ink-soft);
+  animation: backup-spin 0.9s linear infinite;
+}
+
+.backup-links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.backup-link-sep {
+  color: var(--line-strong);
+}
+
+.backup-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.backup-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.backup-account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.backup-email {
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-status-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 0;
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  color: var(--ink-soft);
+}
+
+.backup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.backup-dot.is-synced {
+  background: var(--ink-faint);
+}
+
+.backup-dot.is-pending {
+  background: var(--accent);
+}
+
+.backup-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.backup-note {
+  margin: 18px 0 0;
+  color: var(--ink-faint);
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  line-height: 1.5;
 }

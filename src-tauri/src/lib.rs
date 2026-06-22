@@ -1,5 +1,6 @@
 mod epub;
 mod fonts;
+mod gdrive;
 mod library;
 mod pdf;
 mod project;
@@ -72,6 +73,11 @@ pub fn run() {
 
     builder
         .manage(proofing::new_state())
+        .manage(gdrive::GDriveState::default())
+        .setup(|app| {
+            gdrive::init_session(app.handle());
+            Ok(())
+        })
         .menu(|handle| build_menu(handle))
         .on_menu_event(|app, event| {
             if matches!(
@@ -94,7 +100,13 @@ pub fn run() {
             library::save_book,
             library::delete_book,
             proofing::proof_text,
-            proofing::remember_word
+            proofing::remember_word,
+            gdrive::gdrive_connect,
+            gdrive::gdrive_disconnect,
+            gdrive::gdrive_status,
+            gdrive::gdrive_backup,
+            gdrive::gdrive_restore,
+            gdrive::gdrive_list_backups
         ])
         .run(context)
         .expect("error while running margin");

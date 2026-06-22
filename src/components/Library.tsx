@@ -7,13 +7,20 @@ import { isDesktop } from "../ipc";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
 import { RowMenu } from "./RowMenu";
+import { BackupButton } from "./BackupButton";
+import { useBackup } from "../store/useBackup";
+import { useBook } from "../store/useBook";
 
 export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<BookSummary | null>(null);
+  const notice = useBook((s) => s.notice);
+  const setNotice = useBook((s) => s.setNotice);
+  const restoreNonce = useBackup((s) => s.restoreNonce);
+  const restoreWorking = useBackup((s) => s.phase === "working");
+  const restoreFromDrive = useBackup((s) => s.restoreFromDrive);
 
   const refresh = () =>
     listBooks()
@@ -23,6 +30,14 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   useEffect(() => {
     refresh();
   }, []);
+  useEffect(() => {
+    if (restoreNonce) refresh();
+  }, [restoreNonce]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const handleExample = async () => {
     const copy = exampleBook();
@@ -64,7 +79,9 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
 
   return (
     <div className="library">
-      <header className="library-head" data-tauri-drag-region />
+      <header className="library-head" data-tauri-drag-region>
+        {isDesktop && <BackupButton />}
+      </header>
       <div className="shelf">
         <button className="card card-action" onClick={() => createAndOpenBook(onOpen, setNotice)}>
           <Icon d="M12 5v14M5 12h14" size={20} />
@@ -100,6 +117,14 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
           ),
         )}
       </div>
+      {loaded && books.length === 0 && isDesktop && (
+        <div className="library-restore">
+          <button className="restore-link" onClick={restoreFromDrive} disabled={restoreWorking}>
+            <Icon d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5" size={15} />
+            {restoreWorking ? "Restoring…" : "Restore from Google Drive"}
+          </button>
+        </div>
+      )}
       {notice && (
         <div className="toast" onClick={() => setNotice(null)}>
           {notice}

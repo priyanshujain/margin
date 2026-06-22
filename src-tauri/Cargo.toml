@@ -36,6 +36,10 @@ spellbook = "0.4"
 # bump could silently invalidate the patch ("unused") and pull the broken CUDA subtree back in,
 # so bump deliberately and re-audit the stubs. (see [patch.crates-io])
 harper-core = { version = "=2.5.0", features = ["concurrent"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+sha2 = "0.10"
+rand = "0.8"
+url = "2"
 
 # harper-core transitively declares an optional, disabled `burn-cuda` (CUDA backend).
 # Cargo still version-resolves that dead subtree, which currently fails (broken tracel-llvm

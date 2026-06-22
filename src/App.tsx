@@ -3,7 +3,9 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Library } from "./components/Library";
 import { EditorView } from "./components/EditorView";
+import { BackupSettings } from "./components/BackupSettings";
 import { useBook } from "./store/useBook";
+import { useBackup } from "./store/useBackup";
 import { isDesktop } from "./ipc";
 import { createAndOpenBook, saveBook } from "./library";
 import { runExport } from "./export/run";
@@ -37,9 +39,16 @@ function App() {
     const win = getCurrentWindow();
     const unlisten = win.onCloseRequested(async (event) => {
       const { book, dirty } = useBook.getState();
-      if (!book || !dirty) return;
+      const { connected } = useBackup.getState();
+      if ((!book || !dirty) && !connected) return;
       event.preventDefault();
-      await saveBook(book).catch(() => {});
+      if (book && dirty) await saveBook(book).catch(() => {});
+      if (connected) {
+        await Promise.race([
+          useBackup.getState().backup(true),
+          new Promise((resolve) => setTimeout(resolve, 8000)),
+        ]);
+      }
       win.destroy();
     });
     return () => {
@@ -47,7 +56,34 @@ function App() {
     };
   }, []);
 
-  return book ? <EditorView /> : <Library onOpen={openBook} />;
+  useEffect(() => {
+    if (!isDesktop) return;
+    const unlisten = listen<{ ok: boolean; error: string | null }>("gdrive-auth", (event) => {
+      useBackup.getState().handleAuthEvent(event.payload.ok, event.payload.error);
+    });
+    return () => {
+      unlisten.then((stop) => stop());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    const tick = async () => {
+      await useBackup.getState().refresh();
+      const state = useBackup.getState();
+      if (state.connected && state.pending) state.backup(true);
+    };
+    tick();
+    const id = setInterval(tick, 15 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <>
+      {book ? <EditorView /> : <Library onOpen={openBook} />}
+      {isDesktop && <BackupSettings />}
+    </>
+  );
 }
 
 export default App;

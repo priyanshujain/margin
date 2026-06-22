@@ -26,6 +26,10 @@ dist-ssr
 # Tauri build output
 src-tauri/target/
 
+# Google OAuth desktop client (real values, never commit)
+/google-credentials.json
+/client_secret_*.json
+
 # Screenshots & Playwright MCP artifacts
 .playwright-mcp/
 /*.png
