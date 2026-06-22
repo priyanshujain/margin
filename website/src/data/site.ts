@@ -5,7 +5,7 @@ export const site = {
   tagline: "Write your book. Own every word.",
   description:
     "Margin is a calm, offline writing studio for authors. Write your book and send it to print and to every ebook store, all from your own machine. Buy once, own it forever.",
-  domain: "https://margin.studio",
+  domain: "https://margin.73ai.org",
 
   // The regular one-time price, shown struck through during the launch offer.
   price: "$10",

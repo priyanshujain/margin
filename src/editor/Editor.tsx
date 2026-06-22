@@ -40,7 +40,8 @@ export function Editor({ chapterId, content, onChange, onReady }: EditorProps) {
     const scroller = editor.view.dom.closest(".editor-pane") as HTMLElement | null;
 
     const previous = openChapter.current;
-    if (previous !== chapterId) {
+    const switching = previous !== chapterId;
+    if (switching) {
       const { from, to } = editor.state.selection;
       positions.current.set(previous, { from, to, scroll: scroller?.scrollTop ?? 0 });
     }
@@ -50,9 +51,12 @@ export function Editor({ chapterId, content, onChange, onReady }: EditorProps) {
 
     const saved = positions.current.get(chapterId);
     const size = editor.state.doc.content.size;
-    editor.commands.setTextSelection(
-      saved ? { from: Math.min(saved.from, size), to: Math.min(saved.to, size) } : 0
-    );
+    const selection = saved ? { from: Math.min(saved.from, size), to: Math.min(saved.to, size) } : 0;
+    if (switching) {
+      editor.chain().setTextSelection(selection).focus(undefined, { scrollIntoView: false }).run();
+    } else {
+      editor.commands.setTextSelection(selection);
+    }
 
     if (scroller) {
       const top = saved?.scroll ?? 0;
