@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type BookSummary, deleteBook, exampleBook, listBooks, loadBook, newBook, saveBook } from "../library";
+import { type BookSummary, createAndOpenBook, deleteBook, exampleBook, listBooks, loadBook, saveBook } from "../library";
 import type { Book } from "../model/book";
 import { importEpub } from "../import/epub";
 import { isDesktop } from "../ipc";
@@ -64,7 +64,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
     <div className="library">
       <header className="library-head" data-tauri-drag-region />
       <div className="shelf">
-        <button className="card card-action" onClick={() => onOpen(newBook())}>
+        <button className="card card-action" onClick={() => createAndOpenBook(onOpen, setNotice)}>
           <Icon d="M12 5v14M5 12h14" size={20} />
           <span>New book</span>
         </button>

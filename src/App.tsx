@@ -5,7 +5,7 @@ import { Library } from "./components/Library";
 import { EditorView } from "./components/EditorView";
 import { useBook } from "./store/useBook";
 import { isDesktop } from "./ipc";
-import { newBook, saveBook } from "./library";
+import { createAndOpenBook, saveBook } from "./library";
 import { runExport } from "./export/run";
 import { checkForUpdates } from "./updater";
 
@@ -18,7 +18,7 @@ function App() {
     checkForUpdates(true);
     const unlisten = listen<string>("menu-action", (event) => {
       const state = useBook.getState();
-      if (event.payload === "new-book") state.openBook(newBook());
+      if (event.payload === "new-book") createAndOpenBook(state.openBook, state.setNotice);
       else if (event.payload === "export-pdf") runExport("pdf");
       else if (event.payload === "export-epub") runExport("epub");
       else if (event.payload === "check-updates") checkForUpdates(false);

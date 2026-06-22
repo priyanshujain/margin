@@ -35,3 +35,18 @@ export function newBook(): Book {
 export function exampleBook(): Book {
   return starterBook();
 }
+
+export async function createAndOpenBook(
+  open: (book: Book) => void,
+  onError?: (message: string) => void,
+): Promise<void> {
+  const book = newBook();
+  if (isDesktop) {
+    try {
+      await saveBook(book);
+    } catch (e) {
+      onError?.(`Could not create book: ${e}`);
+    }
+  }
+  open(book);
+}
