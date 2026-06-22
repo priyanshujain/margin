@@ -54,6 +54,14 @@ export function bundledFont(id: string): BundledFont | undefined {
   return BUNDLED_FONTS.find((f) => f.id === id);
 }
 
+export function encodeRef(ref: FontRef): string {
+  return ref.kind === "bundled" ? `b:${ref.id}` : `s:${ref.family}`;
+}
+
+export function decodeRef(value: string): FontRef {
+  return value.startsWith("s:") ? { kind: "system", family: value.slice(2) } : { kind: "bundled", id: value.slice(2) };
+}
+
 export function fontFamilyName(ref: FontRef): string {
   if (ref.kind === "system") return ref.family;
   return bundledFont(ref.id)?.family ?? "Literata";

@@ -15,3 +15,12 @@ export async function compilePdf(
   const buffer = await invoke<ArrayBuffer>("compile_pdf", { source, images, emitWarnings });
   return new Uint8Array(buffer);
 }
+
+export async function listSystemFonts(): Promise<string[]> {
+  if (!isDesktop) return [];
+  try {
+    return await invoke<string[]>("list_system_fonts");
+  } catch {
+    return [];
+  }
+}

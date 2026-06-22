@@ -1,6 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useBook } from "../store/useBook";
+import { listSystemFonts } from "../ipc";
+import {
+  type BookFonts,
+  type FontRef,
+  BUNDLED_FONTS,
+  FONT_PAIRINGS,
+  decodeRef,
+  encodeRef,
+  fontStack,
+  pairingFor,
+} from "../model/fonts";
 import { Icon } from "./Icon";
 
 const LANGUAGES = [
@@ -12,6 +23,8 @@ const LANGUAGES = [
   { value: "pt", label: "Portuguese" },
 ];
 
+let systemFontCache: string[] | null = null;
+
 interface Draft {
   title: string;
   subtitle: string;
@@ -19,6 +32,7 @@ interface Draft {
   isbn: string;
   language: string;
   bleed: boolean;
+  fonts: BookFonts;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -27,6 +41,30 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="field-label">{label}</span>
       {children}
     </label>
+  );
+}
+
+function FontSelect({ value, system, onChange }: { value: FontRef; system: string[]; onChange: (ref: FontRef) => void }) {
+  const extra = value.kind === "system" && !system.includes(value.family) ? [value.family] : [];
+  return (
+    <select value={encodeRef(value)} style={{ fontFamily: fontStack(value) }} onChange={(e) => onChange(decodeRef(e.target.value))}>
+      <optgroup label="Bundled">
+        {BUNDLED_FONTS.map((f) => (
+          <option key={f.id} value={`b:${f.id}`}>
+            {f.label}
+          </option>
+        ))}
+      </optgroup>
+      {(system.length > 0 || extra.length > 0) && (
+        <optgroup label="System">
+          {[...extra, ...system].map((name) => (
+            <option key={name} value={`s:${name}`}>
+              {name}
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </select>
   );
 }
 
@@ -42,16 +80,31 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
     isbn: book?.metadata.isbn ?? "",
     language: book?.metadata.language ?? "en",
     bleed: book?.settings.bleed ?? true,
+    fonts: book?.settings.fonts ?? FONT_PAIRINGS[0],
   }));
+  const [system, setSystem] = useState<string[]>(() => systemFontCache ?? []);
+  const [advanced, setAdvanced] = useState(() => pairingFor(draft.fonts) === null);
+
+  useEffect(() => {
+    if (systemFontCache) return;
+    listSystemFonts().then((fonts) => {
+      systemFontCache = fonts;
+      setSystem(fonts);
+    });
+  }, []);
 
   if (!book) return null;
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  const setFont = (slot: "body" | "heading", ref: FontRef) => set({ fonts: { ...draft.fonts, [slot]: ref } });
+
+  const activePreset = pairingFor(draft.fonts);
+  const usesSystem = draft.fonts.body.kind === "system" || draft.fonts.heading.kind === "system";
 
   const save = () => {
-    const { bleed, ...metadata } = draft;
+    const { bleed, fonts, ...metadata } = draft;
     setMetadata(metadata);
-    setSettings({ bleed });
+    setSettings({ bleed, fonts });
     onSave();
     onClose();
   };
@@ -87,6 +140,51 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
               ))}
             </select>
           </Field>
+
+          <div className="field">
+            <span className="field-label">Typography</span>
+            <div className="font-presets">
+              {FONT_PAIRINGS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="font-preset"
+                  data-on={activePreset === p.id}
+                  onClick={() => set({ fonts: { body: p.body, heading: p.heading } })}
+                >
+                  <span className="font-preset-demo" style={{ fontFamily: fontStack(p.heading) }}>
+                    Ag
+                  </span>
+                  <span className="font-preset-name">{p.label}</span>
+                </button>
+              ))}
+            </div>
+            <button type="button" className="font-advanced" onClick={() => setAdvanced((v) => !v)}>
+              {advanced ? "Hide custom fonts" : "Customize fonts"}
+            </button>
+          </div>
+
+          {advanced && (
+            <>
+              <Field label="Body font">
+                <FontSelect value={draft.fonts.body} system={system} onChange={(ref) => setFont("body", ref)} />
+              </Field>
+              <Field label="Heading font">
+                <FontSelect value={draft.fonts.heading} system={system} onChange={(ref) => setFont("heading", ref)} />
+              </Field>
+              {usesSystem && (
+                <p className="font-note">System fonts preview here but may not embed in exported PDF or EPUB, so they can look different on other devices.</p>
+              )}
+            </>
+          )}
+
+          <div className="font-sample" style={{ fontFamily: fontStack(draft.fonts.body) }}>
+            <span className="font-sample-title" style={{ fontFamily: fontStack(draft.fonts.heading) }}>
+              Chapter One
+            </span>
+            She read the first line twice, and the whole quiet house seemed to lean in to listen.
+          </div>
+
           <label className="check">
             <input type="checkbox" checked={draft.bleed} onChange={(e) => set({ bleed: e.target.checked })} />
             Add bleed for full-page images (print)

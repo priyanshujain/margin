@@ -669,6 +669,87 @@ body.resizing {
   accent-color: var(--ink-soft);
 }
 
+.font-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.font-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 12px;
+  min-width: 70px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  cursor: pointer;
+  transition: border-color 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+
+.font-preset:hover {
+  border-color: var(--ink-faint);
+}
+
+.font-preset[data-on="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.font-preset-demo {
+  font-size: 23px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.font-preset-name {
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  color: var(--ink-soft);
+}
+
+.font-advanced {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.font-note {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.font-sample {
+  padding: 15px 17px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.font-sample-title {
+  display: block;
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
 .editor-host,
 .ProseMirror {
   outline: none;
