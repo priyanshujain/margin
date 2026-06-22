@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { JSONContent } from "@tiptap/core";
-import { type Book, type BookMetadata, type Chapter, createCover } from "../model/book";
+import { type Book, type BookMetadata, type Chapter, type Cover, createCover } from "../model/book";
 
 export interface RawFile {
   path: string;
@@ -357,6 +357,11 @@ function readNavTitles(
   return titles;
 }
 
+function fileToDataUri(file: RawFile, mime: string): string {
+  const data = file.encoding === "base64" ? file.data : btoa(unescape(encodeURIComponent(file.data)));
+  return `data:${mime};base64,${data}`;
+}
+
 function resolveImages(
   doc: Document,
   baseDir: string,
@@ -375,10 +380,27 @@ function resolveImages(
       img.removeAttribute("src");
       return;
     }
-    const mime = mimeByPath.get(resolved) || mimeFromExt(resolved);
-    const data = file.encoding === "base64" ? file.data : btoa(unescape(encodeURIComponent(file.data)));
-    img.setAttribute("src", `data:${mime};base64,${data}`);
+    img.setAttribute("src", fileToDataUri(file, mimeByPath.get(resolved) || mimeFromExt(resolved)));
   });
+}
+
+function findCover(
+  opf: Document,
+  manifest: Map<string, ManifestItem>,
+  byPath: Map<string, RawFile>,
+): Cover {
+  let item = Array.from(manifest.values()).find((m) => m.properties.split(/\s+/).includes("cover-image"));
+  if (!item) {
+    const metaCover = Array.from(opf.getElementsByTagName("*")).find(
+      (el) => el.localName === "meta" && el.getAttribute("name") === "cover",
+    );
+    const id = metaCover?.getAttribute("content");
+    if (id) item = manifest.get(id);
+  }
+  if (!item) return createCover();
+  const file = byPath.get(normalize(item.href));
+  if (!file) return createCover();
+  return { ...createCover(), kind: "image", image: fileToDataUri(file, item.mediaType || mimeFromExt(item.href)) };
 }
 
 function buildChapter(
@@ -455,7 +477,7 @@ export function filesToBook(files: RawFile[], fallbackName = "Imported book"): B
     metadata,
     theme: "quiet-press",
     settings: { trim: "6x9", bleed: true },
-    cover: createCover(),
+    cover: findCover(opf, manifest, byPath),
     chapters,
   };
 }
