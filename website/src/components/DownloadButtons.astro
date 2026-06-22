@@ -22,7 +22,6 @@ const { large = false } = Astro.props;
   </a>
 
   <div class="dl__os">
-    <span class="dl__also">Also for</span>
     {
       platforms.map((p) => (
         <a
@@ -32,7 +31,7 @@ const { large = false } = Astro.props;
           rel="noopener"
           download
           aria-label={`Download for ${p.label}`}
-          title={p.label}
+          title={`Download for ${p.label}`}
         >
           <img class="dl__logo" src={`/logos/${p.logo}`} alt={p.label} />
         </a>
@@ -45,38 +44,36 @@ const { large = false } = Astro.props;
   .dl {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    align-items: flex-start;
+    align-items: center;
+    gap: 16px;
   }
   .dl__os {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .dl__also {
-    font-size: 0.82rem;
-    color: var(--ink-faint);
-    font-weight: 500;
+    justify-content: center;
+    gap: 12px;
   }
   .dl__chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background: #ffffff;
     border: 1px solid var(--line-strong);
     border-radius: var(--r-md);
-    transition: box-shadow 0.18s var(--ease), transform 0.18s var(--ease);
+    box-shadow: var(--shadow-page);
+    transition:
+      box-shadow 0.18s var(--ease),
+      transform 0.18s var(--ease);
   }
   .dl__chip:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-pop);
   }
   .dl__logo {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
   }
 </style>

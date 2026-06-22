@@ -19,6 +19,12 @@ import Logo from "./Logo.astro";
     </nav>
 
     <div class="nav__actions">
+      <a class="btn nav__cta" href="#download">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        Download
+      </a>
       <button class="iconlink" id="theme-toggle" aria-label="Toggle theme" type="button">
         <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
           <circle cx="12" cy="12" r="4"></circle>
@@ -88,6 +94,14 @@ import Logo from "./Logo.astro";
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+  .nav__cta {
+    padding: 0.5em 1.05em;
+    font-size: 0.9rem;
+  }
+  .nav__cta svg {
+    width: 1em;
+    height: 1em;
   }
   .iconlink {
     display: inline-flex;

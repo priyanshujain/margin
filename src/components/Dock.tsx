@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { generateHTML } from "@tiptap/core";
 import { COVER_ID, useBook } from "../store/useBook";
-import { type TrimSize, bodyNumber, chapterKind } from "../model/book";
+import { type Chapter, type TrimSize, bodyNumber, chapterKind } from "../model/book";
 import { editorExtensions } from "../editor/extensions";
 import { chapterToPdfInputs, coverToPdfInputs } from "../export/typst";
 import { compilePdf, isDesktop } from "../ipc";
+import { DEVICES, type Device, findDevice } from "../devices";
+import { usePreviewMode } from "../store/usePreviewMode";
 import { PdfPreview } from "./PdfPreview";
 import { CoverArt } from "./CoverArt";
+import { DeviceFrame } from "./DeviceFrame";
 
 const TRIMS: { value: TrimSize; label: string }[] = [
   { value: "6x9", label: "6 × 9 in" },
@@ -15,26 +18,77 @@ const TRIMS: { value: TrimSize; label: string }[] = [
   { value: "a5", label: "A5" },
 ];
 
-function TrimSelect() {
+function PreviewSelect() {
   const trim = useBook((s) => s.book?.settings.trim ?? "6x9");
   const setSettings = useBook((s) => s.setSettings);
+  const mode = usePreviewMode((s) => s.mode);
+  const setMode = usePreviewMode((s) => s.setMode);
+  const value = mode === "print" ? trim : mode;
   return (
     <select
       className="trim-select"
-      value={trim}
-      onChange={(e) => setSettings({ trim: e.target.value as TrimSize })}
-      title="Trim size"
+      value={value}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (findDevice(v)) {
+          setMode(v as Device["id"]);
+        } else {
+          setSettings({ trim: v as TrimSize });
+          setMode("print");
+        }
+      }}
+      title="Preview format"
     >
-      {TRIMS.map((t) => (
-        <option key={t.value} value={t.value}>
-          {t.label}
-        </option>
-      ))}
+      <optgroup label="Print">
+        {TRIMS.map((t) => (
+          <option key={t.value} value={t.value}>
+            {t.label}
+          </option>
+        ))}
+      </optgroup>
+      <optgroup label="Devices">
+        {DEVICES.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.label}
+          </option>
+        ))}
+      </optgroup>
     </select>
   );
 }
 
+function DockHead({ meta }: { meta?: ReactNode }) {
+  return (
+    <div className="dock-head">
+      <span className="label">Preview</span>
+      <div className="dock-tools">
+        {meta}
+        <PreviewSelect />
+      </div>
+    </div>
+  );
+}
+
+function chapterEyebrow(chapter: Chapter, chapters: Chapter[], idx: number): string {
+  const kind = chapterKind(chapter);
+  return kind === "body" ? `Chapter ${bodyNumber(chapters, idx) ?? ""}` : kind === "front" ? "Front matter" : "Back matter";
+}
+
+function useActiveChapter() {
+  const book = useBook((s) => s.book);
+  const activeChapterId = useBook((s) => s.activeChapterId);
+  const chapters = book?.chapters ?? [];
+  const idx = chapters.findIndex((c) => c.id === activeChapterId);
+  const chapter = chapters[idx] ?? chapters[0];
+  const html = useMemo(() => (chapter ? generateHTML(chapter.content, editorExtensions) : ""), [chapter]);
+  const eyebrow = chapter ? chapterEyebrow(chapter, chapters, idx) : "";
+  return { book, coverActive: activeChapterId === COVER_ID, chapters, idx, chapter, html, eyebrow };
+}
+
 export function Dock() {
+  const mode = usePreviewMode((s) => s.mode);
+  const device = findDevice(mode);
+  if (device) return <DeviceDock device={device} />;
   return isDesktop ? <PdfDock /> : <HtmlDock />;
 }
 
@@ -67,13 +121,7 @@ function PdfDock() {
 
   return (
     <section className="dock">
-      <div className="dock-head">
-        <span className="label">Preview</span>
-        <div className="dock-tools">
-          {busy && <span className="meta">updating…</span>}
-          <TrimSelect />
-        </div>
-      </div>
+      <DockHead meta={busy ? <span className="meta">updating…</span> : null} />
       {error ? (
         <pre className="dock-error">{error}</pre>
       ) : pdf ? (
@@ -86,26 +134,14 @@ function PdfDock() {
 }
 
 function HtmlDock() {
-  const book = useBook((s) => s.book);
-  const activeChapterId = useBook((s) => s.activeChapterId);
-  const coverActive = activeChapterId === COVER_ID;
-  const chapters = book?.chapters ?? [];
-  const idx = chapters.findIndex((c) => c.id === activeChapterId);
-  const chapter = chapters[idx] ?? chapters[0];
-  const html = useMemo(() => (chapter ? generateHTML(chapter.content, editorExtensions) : ""), [chapter]);
+  const { book, coverActive, chapters, idx, chapter, html, eyebrow } = useActiveChapter();
 
   if (!book) return null;
 
   if (coverActive) {
     return (
       <section className="dock">
-        <div className="dock-head">
-          <span className="label">Preview</span>
-          <div className="dock-tools">
-            <span className="meta">Cover</span>
-            <TrimSelect />
-          </div>
-        </div>
+        <DockHead meta={<span className="meta">Cover</span>} />
         <div className="cover-stage">
           <CoverArt book={book} />
         </div>
@@ -115,21 +151,15 @@ function HtmlDock() {
 
   if (!chapter) return null;
 
-  const kind = chapterKind(chapter);
-  const eyebrow =
-    kind === "body" ? `Chapter ${bodyNumber(chapters, idx) ?? ""}` : kind === "front" ? "Front matter" : "Back matter";
-
   return (
     <section className="dock">
-      <div className="dock-head">
-        <span className="label">Preview</span>
-        <div className="dock-tools">
+      <DockHead
+        meta={
           <span className="meta">
             {idx + 1} of {chapters.length}
           </span>
-          <TrimSelect />
-        </div>
-      </div>
+        }
+      />
       <div className="page">
         <div className="p-opener">
           <div className="p-num">{eyebrow}</div>
@@ -138,6 +168,48 @@ function HtmlDock() {
         <div className="page-body" dangerouslySetInnerHTML={{ __html: html }} />
         <div className="folio">{idx * 8 + 7}</div>
       </div>
+    </section>
+  );
+}
+
+function DeviceDock({ device }: { device: Device }) {
+  const { book, coverActive, chapters, idx, chapter, html, eyebrow } = useActiveChapter();
+
+  if (!book) return null;
+
+  if (coverActive) {
+    return (
+      <section className="dock">
+        <DockHead meta={<span className="meta">Cover</span>} />
+        <DeviceFrame device={device} cover={book} />
+      </section>
+    );
+  }
+
+  if (!chapter) {
+    return (
+      <section className="dock">
+        <DockHead />
+        <div className="dock-empty">No chapter selected.</div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="dock">
+      <DockHead
+        meta={
+          <span className="meta">
+            {idx + 1} of {chapters.length}
+          </span>
+        }
+      />
+      <DeviceFrame
+        device={device}
+        eyebrow={eyebrow}
+        title={chapter.noTitle ? undefined : chapter.title || "Untitled"}
+        html={html}
+      />
     </section>
   );
 }

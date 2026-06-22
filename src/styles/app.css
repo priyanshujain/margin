@@ -1992,3 +1992,194 @@ body.resizing {
   background: var(--accent-wash);
   color: var(--ink);
 }
+
+.device-stage {
+  max-width: 420px;
+  margin: 0 auto;
+  padding-block: 6px;
+  container-type: inline-size;
+}
+
+.device-frame {
+  --dv-scale: calc(100cqi / 380);
+  width: 100%;
+  padding: calc(var(--dv-bezel-w) * var(--dv-scale));
+  background: var(--dv-bezel);
+  border-radius: calc(var(--dv-radius) * var(--dv-scale));
+  box-shadow: var(--shadow-page);
+}
+
+.device-screen {
+  aspect-ratio: var(--dv-aspect);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--dv-bg);
+  color: var(--dv-ink);
+  border-radius: calc(max(0px, (var(--dv-radius) - var(--dv-bezel-w)) * var(--dv-scale)));
+}
+
+.device-statusbar {
+  flex: none;
+  height: calc(30 * var(--dv-scale));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 calc(18 * var(--dv-scale));
+  font-family: var(--font-ui);
+  font-size: calc(11 * var(--dv-scale));
+  font-weight: 600;
+  color: var(--dv-ink);
+}
+
+.device-clock {
+  letter-spacing: 0.01em;
+}
+
+.device-batt {
+  position: relative;
+  flex: none;
+  width: calc(22 * var(--dv-scale));
+  height: calc(11 * var(--dv-scale));
+  border: calc(1.4 * var(--dv-scale)) solid var(--dv-ink);
+  border-radius: calc(3 * var(--dv-scale));
+  opacity: 0.7;
+}
+
+.device-batt::before {
+  content: "";
+  position: absolute;
+  top: calc(1.5 * var(--dv-scale));
+  bottom: calc(1.5 * var(--dv-scale));
+  left: calc(1.5 * var(--dv-scale));
+  width: 55%;
+  background: var(--dv-ink);
+  border-radius: 1px;
+}
+
+.device-batt::after {
+  content: "";
+  position: absolute;
+  right: calc(-3 * var(--dv-scale));
+  top: 30%;
+  height: 40%;
+  width: calc(2 * var(--dv-scale));
+  border-radius: 1px;
+  background: var(--dv-ink);
+}
+
+.device-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: calc(var(--dv-my) * var(--dv-scale)) calc(var(--dv-mx) * var(--dv-scale));
+  font-family: var(--font-book);
+  font-size: calc(var(--dv-fs) * var(--dv-scale));
+  line-height: var(--dv-lh);
+}
+
+.device-frame[data-kind="eink"] .device-content::-webkit-scrollbar {
+  display: none;
+}
+
+.device-opener {
+  text-align: center;
+  margin-bottom: calc(20 * var(--dv-scale));
+}
+
+.device-eyebrow {
+  font-family: var(--font-ui);
+  font-size: calc(10 * var(--dv-scale));
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  margin-bottom: calc(8 * var(--dv-scale));
+}
+
+.device-title {
+  font-family: var(--font-book);
+  font-weight: 500;
+  font-size: calc(24 * var(--dv-scale));
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.device-body p {
+  font-family: var(--font-book);
+  hyphens: auto;
+  margin: 0 0 0.8em;
+  color: var(--dv-ink);
+}
+
+.device-body p[data-indent="true"] {
+  text-indent: 1.2em;
+}
+
+.device-frame[data-kind="eink"] .device-body p {
+  text-align: justify;
+}
+
+.device-frame[data-kind="phone"] .device-body p,
+.device-frame[data-kind="tablet"] .device-body p {
+  text-align: left;
+}
+
+.device-body h1,
+.device-body h2,
+.device-body h3 {
+  font-family: var(--font-book);
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 1.2em 0 0.5em;
+}
+
+.device-body blockquote {
+  margin: 0 0 0.8em;
+  padding-left: 1em;
+  border-left: 2px solid currentColor;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+.device-body hr {
+  border: none;
+  border-top: 1px solid currentColor;
+  width: calc(40 * var(--dv-scale));
+  margin: calc(16 * var(--dv-scale)) auto;
+  opacity: 0.3;
+}
+
+.device-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.8em auto;
+}
+
+.device-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(10 * var(--dv-scale));
+  padding: calc(8 * var(--dv-scale)) calc(var(--dv-mx) * var(--dv-scale));
+  font-family: var(--font-ui);
+  font-size: calc(11 * var(--dv-scale));
+  color: var(--dv-ink);
+  opacity: 0.55;
+}
+
+.device-foot-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.device-content .cover-art {
+  width: 100%;
+  margin: auto;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}

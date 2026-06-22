@@ -36,6 +36,18 @@ const { repo, releasesUrl } = site;
     if (label) label.textContent = "Download for " + LABELS[os];
   });
 
+  document.querySelectorAll(".dl__alt [data-download-os]").forEach((el) => {
+    if (el.dataset.downloadOs === os) el.remove();
+  });
+
+  document.querySelectorAll("[data-osrow]").forEach((row) => {
+    const primary = row.querySelector(`[data-download-os="${os}"]`);
+    if (primary) {
+      primary.classList.add("is-detected");
+      row.prepend(primary);
+    }
+  });
+
   (async () => {
     try {
       const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {

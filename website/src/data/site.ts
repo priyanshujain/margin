@@ -16,7 +16,7 @@ export const site = {
     left: 12,
   },
 
-  supportEmail: "hello@margin.studio",
+  supportEmail: "pj@73ai.org",
 
   // Repo that hosts the release files. Used only to resolve the right download
   // per OS at runtime. It is never shown to the reader.
