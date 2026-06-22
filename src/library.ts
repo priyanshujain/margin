@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isDesktop } from "./ipc";
-import { type Book, createBook, starterBook } from "./model/book";
+import { type Book, SCHEMA_VERSION, createBook, schemaVersion, starterBook } from "./model/book";
 
 export interface BookSummary {
   id: string;
@@ -16,11 +16,16 @@ export async function listBooks(): Promise<BookSummary[]> {
 
 export async function loadBook(id: string): Promise<Book> {
   const contents = await invoke<string>("load_book", { id });
+  let book: Book;
   try {
-    return JSON.parse(contents) as Book;
+    book = JSON.parse(contents) as Book;
   } catch {
     throw new Error("the book file is corrupt or unreadable");
   }
+  if (schemaVersion(book.schema) > SCHEMA_VERSION) {
+    throw new Error("this book was made with a newer version of Margin; update the app to open it");
+  }
+  return book;
 }
 
 export async function saveBook(book: Book): Promise<void> {

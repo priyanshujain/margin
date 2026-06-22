@@ -10,11 +10,14 @@ interface EditorProps {
   content: JSONContent;
   onChange: (content: JSONContent) => void;
   onReady: (editor: TiptapEditor | null) => void;
+  onContentError: (error: Error) => void;
 }
 
-export function Editor({ bookId, chapterId, content, onChange, onReady }: EditorProps) {
+export function Editor({ bookId, chapterId, content, onChange, onReady, onContentError }: EditorProps) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onContentErrorRef = useRef(onContentError);
+  onContentErrorRef.current = onContentError;
 
   const latest = useRef<ChapterPosition | null>(null);
 
@@ -22,7 +25,9 @@ export function Editor({ bookId, chapterId, content, onChange, onReady }: Editor
     extensions: editorExtensions,
     content,
     immediatelyRender: false,
+    enableContentCheck: true,
     editorProps: { attributes: { class: "prose" } },
+    onContentError: ({ error }) => onContentErrorRef.current(error),
     onUpdate: ({ editor }) => onChangeRef.current(editor.getJSON()),
   });
 

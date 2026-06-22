@@ -274,6 +274,9 @@ export function EditorView() {
                   content={chapter.content}
                   onChange={(content) => setChapterContent(chapter.id, content)}
                   onReady={setEditor}
+                  onContentError={() =>
+                    setNotice("This chapter contains content Margin couldn't fully read; editing may drop the unrecognized parts.")
+                  }
                 />
               </article>
               <FloatingToolbar editor={editor} />

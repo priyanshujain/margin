@@ -115,6 +115,14 @@ export interface Book {
   chapters: Chapter[];
 }
 
+export const SCHEMA_VERSION = 1;
+
+export function schemaVersion(schema: unknown): number {
+  if (typeof schema !== "string") return 0;
+  const match = /^margin\/(\d+)$/.exec(schema);
+  return match ? Number(match[1]) : 0;
+}
+
 function paragraph(text: string): JSONContent {
   return { type: "paragraph", content: [{ type: "text", text }] };
 }
