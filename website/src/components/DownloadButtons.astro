@@ -1,10 +1,12 @@
 ---
 import { site, platforms } from "../data/site";
+import { getRelease } from "../data/release";
 
 interface Props {
   large?: boolean;
 }
 const { large = false } = Astro.props;
+const release = await getRelease();
 ---
 
 <div class="dl">
@@ -26,7 +28,7 @@ const { large = false } = Astro.props;
       platforms.map((p) => (
         <a
           class="dl__chip"
-          href={site.releasesUrl}
+          href={release.urls[p.id]}
           data-download-os={p.id}
           rel="noopener"
           download
@@ -57,6 +59,7 @@ const { large = false } = Astro.props;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: none;
     width: 44px;
     height: 44px;
     background: #ffffff;

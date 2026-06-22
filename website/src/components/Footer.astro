@@ -1,14 +1,17 @@
 ---
 import { site } from "../data/site";
+import { getRelease } from "../data/release";
 import Logo from "./Logo.astro";
+
+const release = await getRelease();
 
 const cols = [
   {
     title: "Get Margin",
     links: [
-      { label: "Download for macOS", href: site.releasesUrl, os: "mac" },
-      { label: "Download for Windows", href: site.releasesUrl, os: "windows" },
-      { label: "Download for Linux", href: site.releasesUrl, os: "linux" },
+      { label: "Download for macOS", href: release.urls.mac, os: "mac" },
+      { label: "Download for Windows", href: release.urls.windows, os: "windows" },
+      { label: "Download for Linux", href: release.urls.linux, os: "linux" },
     ],
   },
   {

@@ -39,8 +39,8 @@ export type Platform = {
 
 export const platforms: Platform[] = [
   { id: "mac", label: "macOS", logo: "macos.svg", match: [".dmg"] },
-  { id: "windows", label: "Windows", logo: "windows.svg", match: [".msi", ".exe"] },
-  { id: "linux", label: "Linux", logo: "linux.svg", match: [".AppImage", ".deb", ".rpm"] },
+  { id: "windows", label: "Windows", logo: "windows.svg", match: [".exe", ".msi"] },
+  { id: "linux", label: "Linux", logo: "linux.svg", match: [".deb", ".AppImage", ".rpm"] },
 ];
 
 // Full-color store logos, served from /public/logos. Shown on white tiles so

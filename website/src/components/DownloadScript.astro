@@ -1,14 +1,13 @@
 ---
-import { site } from "../data/site";
+import { site, platforms } from "../data/site";
+import { getRelease } from "../data/release";
+
 const { repo, releasesUrl } = site;
+const { urls, version } = await getRelease();
+const matches = Object.fromEntries(platforms.map((p) => [p.id, p.match]));
 ---
 
-<script define:vars={{ repo, releasesUrl }}>
-  const SUFFIXES = {
-    mac: [".dmg"],
-    windows: [".msi", ".exe"],
-    linux: [".AppImage", ".deb", ".rpm"],
-  };
+<script define:vars={{ repo, releasesUrl, urls, version, matches }}>
   const LABELS = { mac: "macOS", windows: "Windows", linux: "Linux" };
 
   function detectOS() {
@@ -21,32 +20,31 @@ const { repo, releasesUrl } = site;
   }
 
   function pickAsset(assets, os) {
-    for (const sfx of SUFFIXES[os] || []) {
+    for (const sfx of matches[os] || []) {
       const hit = assets.find((a) => a.name.toLowerCase().endsWith(sfx.toLowerCase()));
       if (hit) return hit.browser_download_url;
     }
     return null;
   }
 
-  const os = detectOS();
+  function apply(map, ver) {
+    const os = detectOS();
+    document.querySelectorAll("[data-download]").forEach((el) => {
+      const label = el.querySelector("[data-dl-label]");
+      if (label) label.textContent = "Download for " + LABELS[os];
+      if (map[os]) el.href = map[os];
+    });
+    document.querySelectorAll("[data-download-os]").forEach((el) => {
+      const url = map[el.dataset.downloadOs];
+      if (url) el.href = url;
+    });
+    document.querySelectorAll(".dl__os [data-download-os]").forEach((el) => {
+      if (el.dataset.downloadOs === os) el.remove();
+    });
+    if (ver) document.querySelectorAll("[data-version]").forEach((el) => (el.textContent = ver));
+  }
 
-  document.querySelectorAll("[data-download]").forEach((el) => {
-    el.dataset.detectedOs = os;
-    const label = el.querySelector("[data-dl-label]");
-    if (label) label.textContent = "Download for " + LABELS[os];
-  });
-
-  document.querySelectorAll(".dl__alt [data-download-os]").forEach((el) => {
-    if (el.dataset.downloadOs === os) el.remove();
-  });
-
-  document.querySelectorAll("[data-osrow]").forEach((row) => {
-    const primary = row.querySelector(`[data-download-os="${os}"]`);
-    if (primary) {
-      primary.classList.add("is-detected");
-      row.prepend(primary);
-    }
-  });
+  apply(urls, version);
 
   (async () => {
     try {
@@ -56,23 +54,11 @@ const { repo, releasesUrl } = site;
       if (!res.ok) return;
       const data = await res.json();
       const assets = data.assets || [];
-      const version = data.tag_name || "";
-
-      document.querySelectorAll("[data-download]").forEach((el) => {
-        const url = pickAsset(assets, el.dataset.detectedOs || os);
-        if (url) el.href = url;
-      });
-      document.querySelectorAll("[data-download-os]").forEach((el) => {
-        const url = pickAsset(assets, el.dataset.downloadOs);
-        if (url) el.href = url;
-      });
-      if (version) {
-        document.querySelectorAll("[data-version]").forEach((el) => {
-          el.textContent = version;
-        });
-      }
+      const fresh = {};
+      for (const os of Object.keys(matches)) fresh[os] = pickAsset(assets, os) || urls[os] || releasesUrl;
+      apply(fresh, data.tag_name || version);
     } catch (e) {
-      /* keep the releases-page fallback links */
+      /* keep the build-time links */
     }
   })();
 </script>
