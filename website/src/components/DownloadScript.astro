@@ -1,0 +1,66 @@
+---
+import { site } from "../data/site";
+const { repo, releasesUrl } = site;
+---
+
+<script define:vars={{ repo, releasesUrl }}>
+  const SUFFIXES = {
+    mac: [".dmg"],
+    windows: [".msi", ".exe"],
+    linux: [".AppImage", ".deb", ".rpm"],
+  };
+  const LABELS = { mac: "macOS", windows: "Windows", linux: "Linux" };
+
+  function detectOS() {
+    const ua = navigator.userAgent;
+    const plat = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "").toLowerCase();
+    if (/mac|iphone|ipad|ipod/i.test(ua) || plat.includes("mac")) return "mac";
+    if (/win/i.test(ua) || plat.includes("win")) return "windows";
+    if (/linux|x11|cros/i.test(ua) || plat.includes("linux")) return "linux";
+    return "mac";
+  }
+
+  function pickAsset(assets, os) {
+    for (const sfx of SUFFIXES[os] || []) {
+      const hit = assets.find((a) => a.name.toLowerCase().endsWith(sfx.toLowerCase()));
+      if (hit) return hit.browser_download_url;
+    }
+    return null;
+  }
+
+  const os = detectOS();
+
+  document.querySelectorAll("[data-download]").forEach((el) => {
+    el.dataset.detectedOs = os;
+    const label = el.querySelector("[data-dl-label]");
+    if (label) label.textContent = "Download for " + LABELS[os];
+  });
+
+  (async () => {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+        headers: { Accept: "application/vnd.github+json" },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const assets = data.assets || [];
+      const version = data.tag_name || "";
+
+      document.querySelectorAll("[data-download]").forEach((el) => {
+        const url = pickAsset(assets, el.dataset.detectedOs || os);
+        if (url) el.href = url;
+      });
+      document.querySelectorAll("[data-download-os]").forEach((el) => {
+        const url = pickAsset(assets, el.dataset.downloadOs);
+        if (url) el.href = url;
+      });
+      if (version) {
+        document.querySelectorAll("[data-version]").forEach((el) => {
+          el.textContent = version;
+        });
+      }
+    } catch (e) {
+      /* keep the releases-page fallback links */
+    }
+  })();
+</script>

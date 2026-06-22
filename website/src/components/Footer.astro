@@ -1,0 +1,154 @@
+---
+import { site } from "../data/site";
+import Logo from "./Logo.astro";
+
+const cols = [
+  {
+    title: "Get Margin",
+    links: [
+      { label: "Download for macOS", href: site.releasesUrl, os: "mac" },
+      { label: "Download for Windows", href: site.releasesUrl, os: "windows" },
+      { label: "Download for Linux", href: site.releasesUrl, os: "linux" },
+    ],
+  },
+  {
+    title: "Product",
+    links: [
+      { label: "Features", href: "#features" },
+      { label: "Publishing", href: "#publish" },
+      { label: "Compare", href: "#compare" },
+      { label: "Pricing", href: "#pricing" },
+    ],
+  },
+  {
+    title: "Help",
+    links: [
+      { label: "Questions", href: "#faq" },
+      { label: "Email us", href: `mailto:${site.supportEmail}` },
+    ],
+  },
+];
+---
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__brand">
+      <a class="brand" href="/">
+        <Logo size={30} />
+        <span>{site.name}</span>
+      </a>
+      <p>The offline writing studio for authors. Write your book and publish it anywhere.</p>
+    </div>
+
+    <div class="footer__cols">
+      {
+        cols.map((col) => (
+          <nav class="footer__col">
+            <p class="footer__title">{col.title}</p>
+            <ul>
+              {col.links.map((l) => {
+                const isAnchor = l.href.startsWith("#") || l.href.startsWith("mailto:");
+                return (
+                  <li>
+                    <a
+                      href={l.href}
+                      data-download-os={(l as { os?: string }).os}
+                      target={isAnchor ? undefined : "_blank"}
+                      rel={isAnchor ? undefined : "noopener"}
+                    >
+                      {l.label}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        ))
+      }
+    </div>
+  </div>
+
+  <div class="container footer__base">
+    <span>© {site.name}. Built with <span class="heart">♥</span> in NYC</span>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background: var(--sidebar);
+    border-top: 1px solid var(--line);
+    padding-top: clamp(48px, 6vw, 72px);
+    padding-bottom: 28px;
+  }
+  .footer__inner {
+    display: grid;
+    grid-template-columns: 1.3fr 2fr;
+    gap: 40px;
+    padding-bottom: 40px;
+  }
+  .footer__brand .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 680;
+    font-size: 1.12rem;
+  }
+  .footer__brand img {
+    border-radius: 7px;
+  }
+  .footer__brand p {
+    margin-top: 12px;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    max-width: 34ch;
+  }
+  .footer__cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .footer__title {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 650;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+  .footer__col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .footer__col a {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+  }
+  .footer__col a:hover {
+    color: var(--ink);
+  }
+  .footer__base {
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+  }
+  .heart {
+    color: var(--danger);
+  }
+  @media (max-width: 760px) {
+    .footer__inner {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+  }
+  @media (max-width: 480px) {
+    .footer__cols {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>

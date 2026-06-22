@@ -1,0 +1,169 @@
+---
+import { compare, site } from "../data/site";
+
+const keyFor: Record<string, "margin" | "vellum" | "atticus" | "lacuna"> = {
+  Margin: "margin",
+  Vellum: "vellum",
+  Atticus: "atticus",
+  Lacuna: "lacuna",
+};
+
+function cell(value: boolean | "partial") {
+  if (value === true) return { cls: "yes", label: "Yes" };
+  if (value === "partial") return { cls: "partial", label: "Varies" };
+  return { cls: "no", label: "No" };
+}
+---
+
+<section class="section compare" id="compare">
+  <div class="container">
+    <header class="block-head block-head--center">
+      <p class="eyebrow">How Margin compares</p>
+      <h2>A better way to make a book.</h2>
+      <p class="lede">
+        Atticus, Vellum, and Lacuna are capable tools. Here's where Margin is simply different:
+        offline, on every platform, and yours from $0.
+      </p>
+    </header>
+
+    <div class="table-wrap card">
+      <table>
+        <thead>
+          <tr>
+            <th class="th-feature"></th>
+            {
+              compare.cols.map((c) => (
+                <th class:list={["th-col", { "th-col--us": c === "Margin" }]}>{c}</th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            compare.rows.map((row) => (
+              <tr>
+                <td class="td-feature">{row.feature}</td>
+                {
+                  compare.cols.map((c) => {
+                    const v = row[keyFor[c]];
+                    const m = cell(v);
+                    const isUs = c === "Margin";
+                    return (
+                      <td class:list={["td-val", { "td-val--us": isUs }]}>
+                        <span class:list={["mark", m.cls]} title={m.label}>
+                          {m.cls === "yes" ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                          ) : (
+                            <span class="bar" aria-hidden="true"></span>
+                          )}
+                          <span class="sr">{m.label}</span>
+                        </span>
+                      </td>
+                    );
+                  })
+                }
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="compare__foot">
+      Vellum is Mac-only. Lacuna runs on Mac and Windows. Atticus is cloud-based and asks you to
+      sign in. {site.name} runs offline on all three platforms, with no account at all.
+    </p>
+  </div>
+</section>
+
+<style>
+  .block-head--center {
+    margin-inline: auto;
+    text-align: center;
+  }
+  .block-head--center .lede {
+    margin-inline: auto;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    padding: 6px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 640px;
+  }
+  th,
+  td {
+    padding: 15px 18px;
+    text-align: center;
+  }
+  .th-feature,
+  .td-feature {
+    text-align: left;
+    width: 42%;
+  }
+  thead th {
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+    font-weight: 680;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--line);
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+  .th-col--us {
+    color: var(--ink);
+    background: var(--accent-wash);
+    border-radius: var(--r-md) var(--r-md) 0 0;
+  }
+  .td-feature {
+    font-weight: 550;
+    color: var(--ink);
+    font-size: 0.95rem;
+  }
+  tbody tr + tr td {
+    border-top: 1px solid var(--line);
+  }
+  .td-val--us {
+    background: var(--accent-wash);
+  }
+  tbody tr:last-child .td-val--us {
+    border-radius: 0 0 var(--r-md) var(--r-md);
+  }
+  .mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+  }
+  .mark.yes {
+    background: color-mix(in srgb, var(--good) 16%, transparent);
+    color: var(--good);
+  }
+  .mark.yes svg {
+    width: 15px;
+    height: 15px;
+  }
+  .bar {
+    width: 12px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--line-strong);
+  }
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .compare__foot {
+    margin-top: 18px;
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    max-width: 70ch;
+  }
+</style>

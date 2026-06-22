@@ -1,0 +1,52 @@
+---
+import DownloadButtons from "./DownloadButtons.astro";
+import OfferBadge from "./OfferBadge.astro";
+---
+
+<section class="section cta">
+  <div class="container cta__inner">
+    <h2>Start your book today.</h2>
+    <p class="lede">
+      Download Margin, open a blank page, and write the first line. When it's done, export it and
+      publish. All of it on your own machine, all of it yours.
+    </p>
+    <div class="cta__btns">
+      <DownloadButtons large />
+    </div>
+    <div class="cta__offer">
+      <OfferBadge />
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta {
+    background:
+      radial-gradient(120% 120% at 50% 120%, var(--paper) 0%, transparent 62%),
+      var(--shell);
+  }
+  .cta__inner {
+    max-width: 640px;
+    margin-inline: auto;
+    text-align: center;
+  }
+  .cta .lede {
+    margin: 18px auto 0;
+  }
+  .cta__btns {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+  }
+  .cta__btns :global(.dl) {
+    align-items: center;
+  }
+  .cta__btns :global(.dl__os) {
+    justify-content: center;
+  }
+  .cta__offer {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+</style>

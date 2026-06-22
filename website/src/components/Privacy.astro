@@ -1,0 +1,150 @@
+---
+---
+
+<section class="section privacy" id="privacy">
+  <div class="container privacy__grid">
+    <div class="privacy__copy">
+      <p class="eyebrow">Yours, not ours</p>
+      <h2>Your words belong to you.</h2>
+      <p class="lede">
+        Margin keeps your book where it belongs: with you. We never hold a copy on our servers,
+        and nothing you write is sent away to be read. Want a backup? Margin can save one to your
+        own Google Drive, in your account and under your control. Wherever your book lives, it is
+        yours.
+      </p>
+      <ul class="privacy__points">
+        <li>No copies kept by us, ever</li>
+        <li>Optional backup to your own Google Drive</li>
+        <li>Works the same with or without internet</li>
+      </ul>
+    </div>
+
+    <div class="own">
+      <div class="own__card own__card--device">
+        <span class="own__tag">On your device</span>
+        <ul>
+          <li>Your manuscript</li>
+          <li>Spelling &amp; grammar</li>
+          <li>Print &amp; ebook export</li>
+          <li>Fonts &amp; book setup</li>
+        </ul>
+        <p class="own__foot">Everything Margin does, it does right here.</p>
+      </div>
+      <div class="own__card own__card--drive">
+        <span class="own__tag">
+          <img class="own__drive" src="/logos/google-drive.svg" alt="" width="16" height="16" />
+          Your Google Drive
+        </span>
+        <p class="own__drivecopy">
+          A private backup in your own account, switched on only if you want it.
+        </p>
+        <p class="own__foot">Your copy. Your account. Your control.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .privacy__grid {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: clamp(32px, 5vw, 72px);
+    align-items: center;
+  }
+  .privacy__points {
+    margin: 26px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .privacy__points li {
+    position: relative;
+    padding-left: 30px;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .privacy__points li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background: var(--accent-wash);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b6458' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 12px;
+  }
+
+  .own {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .own__card {
+    border-radius: var(--r-lg);
+    padding: 22px 20px;
+    border: 1px solid var(--line);
+    min-height: 240px;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    box-shadow: var(--shadow-page);
+  }
+  .own__card--drive {
+    background: transparent;
+    box-shadow: none;
+    border-style: dashed;
+  }
+  .own__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 650;
+    color: var(--ink-faint);
+  }
+  .own__tag :global(.brand-icon) {
+    width: 15px;
+    height: 15px;
+    color: var(--ink-soft);
+  }
+  .own__card--device ul {
+    list-style: none;
+    margin: 16px 0 auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    font-weight: 550;
+  }
+  .own__card--device li {
+    padding: 8px 12px;
+    background: var(--accent-wash);
+    border-radius: var(--r-sm);
+    font-size: 0.92rem;
+  }
+  .own__drivecopy {
+    margin: 18px 0 auto;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+  .own__foot {
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    margin-top: 14px;
+  }
+
+  @media (max-width: 860px) {
+    .privacy__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

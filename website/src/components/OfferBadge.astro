@@ -1,0 +1,67 @@
+---
+import { site } from "../data/site";
+const { cap, left } = site.launch;
+---
+
+<span class="offer">
+  <span class="offer__dot"></span>
+  <span class="offer__price"><s>{site.price}</s> $0</span>
+  <span class="offer__txt">for the first {cap} writers</span>
+  <span class="offer__sep">·</span>
+  <span class="offer__left">only {left} left</span>
+</span>
+
+<style>
+  .offer {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--good) 12%, var(--paper));
+    border: 1px solid color-mix(in srgb, var(--good) 32%, transparent);
+    box-shadow: var(--shadow-page);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .offer__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--good);
+    animation: offer-pulse 2s var(--ease) infinite;
+  }
+  @keyframes offer-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 55%, transparent);
+    }
+    70% {
+      box-shadow: 0 0 0 7px transparent;
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .offer__dot {
+      animation: none;
+    }
+  }
+  .offer__price s {
+    color: var(--ink-faint);
+    margin-right: 4px;
+  }
+  .offer__price {
+    color: var(--good);
+    font-weight: 800;
+  }
+  .offer__sep {
+    color: var(--ink-faint);
+  }
+  .offer__left {
+    color: var(--good);
+    font-weight: 700;
+  }
+</style>

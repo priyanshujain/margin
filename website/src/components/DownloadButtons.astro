@@ -1,0 +1,82 @@
+---
+import { site, platforms } from "../data/site";
+
+interface Props {
+  large?: boolean;
+}
+const { large = false } = Astro.props;
+---
+
+<div class="dl">
+  <a
+    class:list={["btn", { "btn--lg": large }]}
+    href={site.releasesUrl}
+    data-download
+    rel="noopener"
+    download
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+      <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+    <span data-dl-label>Download {site.name}</span>
+  </a>
+
+  <div class="dl__os">
+    <span class="dl__also">Also for</span>
+    {
+      platforms.map((p) => (
+        <a
+          class="dl__chip"
+          href={site.releasesUrl}
+          data-download-os={p.id}
+          rel="noopener"
+          download
+          aria-label={`Download for ${p.label}`}
+          title={p.label}
+        >
+          <img class="dl__logo" src={`/logos/${p.logo}`} alt={p.label} />
+        </a>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .dl {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .dl__os {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .dl__also {
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+  .dl__chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #ffffff;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-md);
+    transition: box-shadow 0.18s var(--ease), transform 0.18s var(--ease);
+  }
+  .dl__chip:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-pop);
+  }
+  .dl__logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+</style>

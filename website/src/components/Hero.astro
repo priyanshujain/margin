@@ -1,0 +1,73 @@
+---
+import AppWindow from "./AppWindow.astro";
+import DownloadButtons from "./DownloadButtons.astro";
+import OfferBadge from "./OfferBadge.astro";
+---
+
+<section class="hero">
+  <div class="container hero__head">
+    <h1>
+      Write your book.<br />
+      <span class="book-accent">Own</span> every word.
+    </h1>
+    <p class="lede hero__lede">
+      Margin is a calm, offline writing studio for authors. Write your book, format it
+      beautifully, and send it to every store and to print, all from your own machine. No
+      subscription, no account. Buy once, own it forever.
+    </p>
+
+    <div class="hero__cta">
+      <DownloadButtons large />
+    </div>
+    <div class="hero__offer">
+      <OfferBadge />
+    </div>
+  </div>
+
+  <div class="container hero__art">
+    <AppWindow />
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding-top: clamp(48px, 7vw, 92px);
+    padding-bottom: clamp(40px, 6vw, 72px);
+    background:
+      radial-gradient(120% 90% at 50% -10%, var(--paper) 0%, transparent 60%),
+      var(--shell);
+  }
+  .hero__head {
+    text-align: center;
+    max-width: 760px;
+  }
+  h1 {
+    font-size: clamp(2.6rem, 1.6rem + 4.4vw, 4.5rem);
+    letter-spacing: -0.02em;
+    margin-bottom: 22px;
+  }
+  .hero__lede {
+    margin-inline: auto;
+    max-width: 56ch;
+  }
+  .hero__cta {
+    display: flex;
+    justify-content: center;
+    margin-top: 34px;
+  }
+  .hero__cta :global(.dl) {
+    align-items: center;
+  }
+  .hero__cta :global(.dl__os) {
+    justify-content: center;
+  }
+  .hero__offer {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+  }
+  .hero__art {
+    margin-top: clamp(44px, 6vw, 72px);
+    max-width: 1000px;
+  }
+</style>

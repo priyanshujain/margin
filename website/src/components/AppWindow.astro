@@ -1,0 +1,288 @@
+---
+// A faithful CSS mock-up of the Margin desktop app: chapter sidebar, the
+// writing surface set in Literata, and the live PDF preview dock. The editor
+// shows live proofing underlines; the PDF dock shows the clean typeset page.
+---
+
+<div class="win" role="img" aria-label="The Margin app: a chapter sidebar, a writing surface with live proofing, and a live PDF page preview.">
+  <div class="win__bar">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <span class="win__title">The Lighthouse Keeper</span>
+    <span class="win__menu">Export ▾</span>
+  </div>
+
+  <div class="win__body">
+    <aside class="side">
+      <p class="side__label">Manuscript</p>
+      <ul>
+        <li>Title Page</li>
+        <li>Dedication</li>
+        <li class="is-active">1 · The Cliff</li>
+        <li>2 · A Light at Sea</li>
+        <li>3 · Salt and Silence</li>
+        <li>4 · The Long Night</li>
+      </ul>
+      <p class="side__label">Book setup</p>
+      <ul class="side__meta">
+        <li>Trim · 5 × 8 in</li>
+        <li>Language · English</li>
+      </ul>
+    </aside>
+
+    <main class="page">
+      <div class="page__sheet">
+        <p class="chapno">Chapter One</p>
+        <h4 class="chaptitle">The Cliff</h4>
+        <p>
+          The lighthouse had stood on the headland for ninety years, and in all that time it had
+          never once gone dark. Mara intended to keep it that way.
+        </p>
+        <p>
+          She climbed the iron stair each evening at dusk, counting the
+          <span class="u-spell">hundered</span> and one steps out of habit, and watched the lamp
+          <span class="u-grammar">turns</span> its slow circle across the water.
+        </p>
+        <p>The sea, tonight, was the colour of pewter.</p>
+      </div>
+    </main>
+
+    <aside class="dock">
+      <p class="dock__label">Live PDF · pg 7</p>
+      <div class="dock__pdf">
+        <span class="rh">THE LIGHTHOUSE KEEPER</span>
+        <p class="pch">Chapter One</p>
+        <p class="pdt">The Cliff</p>
+        <p class="pp pp--first">
+          The lighthouse had stood on the headland for ninety years, and in all that time it had
+          never once gone dark. Mara intended to keep it that way.
+        </p>
+        <p class="pp">
+          She climbed the iron stair each evening at dusk, counting the hundred and one steps out
+          of habit, and watched the lamp turn its slow circle across the water.
+        </p>
+        <p class="pp">The sea, tonight, was the colour of pewter.</p>
+        <span class="pg">7</span>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<style>
+  .win {
+    width: 100%;
+    border-radius: var(--r-xl);
+    background: var(--shell);
+    border: 1px solid var(--line-strong);
+    box-shadow: var(--shadow-deep);
+    overflow: hidden;
+  }
+  .win__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding-inline: 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--sidebar);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+  .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+  .win__bar .dot:nth-child(1) {
+    background: #ff5f57;
+  }
+  .win__bar .dot:nth-child(2) {
+    background: #febc2e;
+  }
+  .win__bar .dot:nth-child(3) {
+    background: #28c840;
+  }
+  .win__title {
+    margin-inline: auto;
+    font-weight: 500;
+  }
+  .win__menu {
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .win__body {
+    display: grid;
+    grid-template-columns: 172px 1fr 196px;
+    min-height: 392px;
+  }
+
+  .side {
+    background: var(--sidebar);
+    border-right: 1px solid var(--line);
+    padding: 16px 12px;
+    font-size: 0.8rem;
+  }
+  .side__label {
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 650;
+    margin: 0 0 8px;
+  }
+  .side ul {
+    list-style: none;
+    margin: 0 0 18px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .side li {
+    padding: 5px 8px;
+    border-radius: var(--r-sm);
+    color: var(--ink-soft);
+  }
+  .side li.is-active {
+    background: var(--accent-wash);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .side__meta li {
+    color: var(--ink-faint);
+    font-size: 0.74rem;
+  }
+
+  .page {
+    display: flex;
+    justify-content: center;
+    padding: 26px 18px;
+    overflow: hidden;
+  }
+  .page__sheet {
+    width: 100%;
+    max-width: 360px;
+    font-family: var(--font-book);
+    font-size: 0.92rem;
+    line-height: 1.62;
+    color: var(--ink);
+  }
+  .page__sheet p {
+    margin: 0 0 0.7em;
+    text-indent: 1.1em;
+  }
+  .chapno {
+    text-indent: 0 !important;
+    text-align: center;
+    font-family: var(--font-ui);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 0.4em !important;
+  }
+  .chaptitle {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 560;
+    margin: 0 0 1.1em;
+  }
+  .u-spell {
+    text-decoration: wavy underline var(--danger);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+  }
+  .u-grammar {
+    text-decoration: wavy underline var(--good);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+  }
+
+  .dock {
+    background: var(--shell);
+    border-left: 1px solid var(--line);
+    padding: 16px 14px;
+  }
+  .dock__label {
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 650;
+    margin: 0 0 12px;
+  }
+  .dock__pdf {
+    position: relative;
+    aspect-ratio: 5 / 8;
+    background: #fcfbf7;
+    border-radius: 3px;
+    box-shadow: var(--shadow-page);
+    padding: 18px 16px 22px;
+    overflow: hidden;
+    color: #2a2622;
+  }
+  .dock__pdf .rh {
+    display: block;
+    font-family: var(--font-ui);
+    font-size: 4.4px;
+    letter-spacing: 0.16em;
+    color: #b3ab9c;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .dock__pdf .pch {
+    font-family: var(--font-ui);
+    font-size: 4px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #9b9484;
+    text-align: center;
+    margin: 0 0 4px;
+  }
+  .dock__pdf .pdt {
+    font-family: var(--font-book);
+    font-size: 9px;
+    font-weight: 560;
+    color: #23201b;
+    text-align: center;
+    margin: 0 0 11px;
+  }
+  .dock__pdf .pp {
+    font-family: var(--font-book);
+    font-size: 5.6px;
+    line-height: 1.62;
+    text-align: justify;
+    text-indent: 1.3em;
+    margin: 0 0 0.5em;
+    color: #2a2622;
+  }
+  .dock__pdf .pp--first {
+    text-indent: 0;
+  }
+  .dock__pdf .pg {
+    position: absolute;
+    bottom: 9px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: var(--font-book);
+    font-size: 5px;
+    color: #b3ab9c;
+  }
+
+  @media (max-width: 720px) {
+    .win__body {
+      grid-template-columns: 1fr 168px;
+    }
+    .side {
+      display: none;
+    }
+  }
+  @media (max-width: 480px) {
+    .win__body {
+      grid-template-columns: 1fr;
+    }
+    .dock {
+      display: none;
+    }
+  }
+</style>

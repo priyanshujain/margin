@@ -1,0 +1,123 @@
+---
+const features = [
+  {
+    title: "A writing surface that gets out of the way",
+    body: "A clean editor built for long-form prose. Headings, scenes, block quotes, and chapters: the structure of a book, with none of the clutter of a word processor.",
+    icon: "pen",
+  },
+  {
+    title: "Book setup in a single panel",
+    body: "Title, author, ISBN, trim size, and language live in one place. Click the title bar, fill it in once, and every export inherits it.",
+    icon: "book",
+  },
+  {
+    title: "Images, placed like a typesetter would",
+    body: "Drop in figures and choose how they sit on the page: inline, full width, full page, or floated. The page preview shows exactly where they land.",
+    icon: "image",
+  },
+  {
+    title: "A live page preview as you write",
+    body: "A real, paginated preview docks beside your text. Watch your words fall into a properly typeset book the moment you type them.",
+    icon: "preview",
+  },
+  {
+    title: "One source, every format",
+    body: "Your writing flows into the editor, the printed page, and the ebook from one place, all set in real book typography. Change something once and it updates everywhere.",
+    icon: "layers",
+  },
+  {
+    title: "Your book is one simple file",
+    body: "Your whole book is a single file you can copy, rename, email, or tuck into a folder. No libraries to manage, nothing locked away.",
+    icon: "file",
+  },
+];
+
+const paths: Record<string, string> = {
+  pen: "M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586",
+  book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z",
+  image: "M3 5h18v14H3zM3 16l5-5 4 4 4-4 5 5M9 9.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z",
+  preview: "M3 3h18v18H3zM3 9h18M9 9v12",
+  layers: "M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
+  file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h6",
+};
+---
+
+<section class="section features" id="features">
+  <div class="container">
+    <header class="block-head">
+      <p class="eyebrow">The exact tools, nothing more</p>
+      <h2>Everything you need to make a book.</h2>
+      <p class="lede">
+        Page-layout suites bury the few tools a book actually needs under a thousand you never
+        will. Margin keeps the handful that matter, and makes them effortless.
+      </p>
+    </header>
+
+    <div class="grid">
+      {
+        features.map((f) => (
+          <article class="card feat">
+            <span class="feat__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d={paths[f.icon]} />
+              </svg>
+            </span>
+            <h3>{f.title}</h3>
+            <p>{f.body}</p>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .block-head {
+    max-width: 640px;
+    margin-bottom: clamp(36px, 5vw, 56px);
+  }
+  .block-head .lede {
+    margin-top: 18px;
+    max-width: 58ch;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .feat {
+    padding: 26px 24px 28px;
+  }
+  .feat__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--r-md);
+    background: var(--accent-wash);
+    color: var(--ink);
+    margin-bottom: 18px;
+  }
+  .feat__icon svg {
+    width: 21px;
+    height: 21px;
+  }
+  .feat h3 {
+    margin-bottom: 9px;
+  }
+  .feat p {
+    color: var(--ink-soft);
+    font-size: 0.96rem;
+  }
+  @media (max-width: 880px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 560px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
