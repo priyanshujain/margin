@@ -263,6 +263,7 @@ export function EditorView() {
                   )}
                 </header>
                 <Editor
+                  key={chapter.id}
                   bookId={book.id}
                   chapterId={chapter.id}
                   content={chapter.content}
