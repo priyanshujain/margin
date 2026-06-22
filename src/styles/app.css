@@ -427,11 +427,16 @@ body.resizing {
 }
 
 .chapter-title {
+  font-family: var(--font-heading);
   font-weight: 500;
   font-size: 31px;
   line-height: 1.16;
   letter-spacing: -0.01em;
   margin: 15px 0 0;
+}
+
+.prose :is(h1, h2, h3) {
+  font-family: var(--font-heading);
 }
 
 .prose p {
@@ -565,9 +570,13 @@ body.resizing {
 }
 
 .page .p-title {
-  font-family: var(--font-book);
+  font-family: var(--font-heading);
   font-size: 12px;
   margin-top: 5px;
+}
+
+.page :is(h2, h3) {
+  font-family: var(--font-heading);
 }
 
 .page p {
@@ -620,7 +629,7 @@ body.resizing {
   border: 0;
   background: transparent;
   text-align: center;
-  font-family: var(--font-book);
+  font-family: var(--font-heading);
   font-weight: 500;
   font-size: 31px;
   line-height: 1.16;
@@ -1432,7 +1441,7 @@ body.resizing {
 }
 
 .cover-title {
-  font-family: var(--font-book);
+  font-family: var(--font-heading);
   font-weight: 500;
   font-size: 9.5cqw;
   line-height: 1.08;
@@ -2108,7 +2117,7 @@ body.resizing {
 }
 
 .device-title {
-  font-family: var(--font-book);
+  font-family: var(--font-heading);
   font-weight: 500;
   font-size: calc(24 * var(--dv-scale));
   line-height: 1.2;
@@ -2138,7 +2147,7 @@ body.resizing {
 .device-body h1,
 .device-body h2,
 .device-body h3 {
-  font-family: var(--font-book);
+  font-family: var(--font-heading);
   font-weight: 600;
   line-height: 1.25;
   margin: 1.2em 0 0.5em;

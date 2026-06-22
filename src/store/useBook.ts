@@ -14,6 +14,7 @@ import {
 } from "../model/book";
 import { loadActiveChapter, saveActiveChapter } from "../editor/positions";
 import { saveBook } from "../library";
+import { applyBookFonts, resetBookFonts } from "../book-style";
 
 export const COVER_ID = "__cover__";
 
@@ -60,10 +61,12 @@ export const useBook = create<BookState>((set, get) => ({
     const saved = loadActiveChapter(normalized.id);
     const valid = saved === COVER_ID || normalized.chapters.some((c) => c.id === saved);
     const activeChapterId = valid ? (saved as string) : normalized.chapters[0]?.id ?? "";
+    applyBookFonts(normalized.settings.fonts);
     set({ book: normalized, activeChapterId, dirty: false });
   },
   closeBook: () => {
     flushOutgoing(get().book, get().dirty);
+    resetBookFonts();
     set({ book: null, activeChapterId: "", dirty: false });
   },
   setActiveChapter: (id) => set({ activeChapterId: id }),
@@ -140,7 +143,12 @@ export const useBook = create<BookState>((set, get) => ({
   setMetadata: (patch) =>
     set((s) => (s.book ? { dirty: true, book: { ...s.book, metadata: { ...s.book.metadata, ...patch } } } : {})),
   setSettings: (patch) =>
-    set((s) => (s.book ? { dirty: true, book: { ...s.book, settings: { ...s.book.settings, ...patch } } } : {})),
+    set((s) => {
+      if (!s.book) return {};
+      const book = { ...s.book, settings: { ...s.book.settings, ...patch } };
+      if (patch.fonts) applyBookFonts(book.settings.fonts);
+      return { dirty: true, book };
+    }),
   setCover: (patch) =>
     set((s) => (s.book ? { dirty: true, book: { ...s.book, cover: { ...s.book.cover, ...patch } } } : {})),
   markSaved: () => set({ dirty: false }),

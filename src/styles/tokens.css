@@ -1,6 +1,7 @@
 :root {
   --font-ui: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-book: "Literata", Georgia, "Times New Roman", serif;
+  --font-heading: "Literata", Georgia, "Times New Roman", serif;
 
   --r-sm: 5px;
   --r-md: 8px;
