@@ -71,7 +71,6 @@ jobs:
     needs: prepare
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         include:
           - os: macos-latest
@@ -140,9 +139,19 @@ jobs:
     needs: [prepare, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - name: Publish release
+      - name: Verify manifest is complete, then publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
           TAG: ${{ needs.prepare.outputs.tag }}
-        run: gh release edit "$TAG" --draft=false --latest
+        run: |
+          gh release download "$TAG" --repo "$REPO" --pattern latest.json --output latest.json --clobber
+          echo "Platforms in latest.json:"
+          jq '.platforms | keys' latest.json
+          for key in darwin-aarch64 darwin-x86_64 linux-x86_64 windows-x86_64; do
+            if ! jq -e ".platforms[\"$key\"].url" latest.json > /dev/null; then
+              echo "::error::latest.json is missing platform '$key' — refusing to publish a partial update manifest. Re-run the release."
+              exit 1
+            fi
+          done
+          gh release edit "$TAG" --repo "$REPO" --draft=false --latest

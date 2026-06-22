@@ -58,11 +58,18 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let context = tauri::generate_context!();
+
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_process::init());
+
+    if context.config().plugins.0.contains_key("updater") {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder
         .manage(proofing::new_state())
         .menu(|handle| build_menu(handle))
         .on_menu_event(|app, event| {
@@ -87,6 +94,6 @@ pub fn run() {
             proofing::proof_text,
             proofing::remember_word
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running margin");
 }
