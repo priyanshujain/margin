@@ -195,6 +195,23 @@ function listItems(el: Element): JSONContent[] {
   return items;
 }
 
+function tableBlocks(el: Element): JSONContent[] {
+  const out: JSONContent[] = [];
+  Array.from(el.querySelectorAll("tr")).forEach((tr) => {
+    const content: JSONContent[] = [];
+    Array.from(tr.children)
+      .filter((c) => c.localName.toLowerCase() === "td" || c.localName.toLowerCase() === "th")
+      .forEach((cell) => {
+        const inline = inlineOf(cell);
+        if (!meaningful(inline)) return;
+        if (content.length) content.push({ type: "text", text: "  ·  " });
+        content.push(...inline);
+      });
+    if (meaningful(content)) out.push({ type: "paragraph", content });
+  });
+  return out;
+}
+
 function blockFromElement(el: Element): JSONContent[] {
   const tag = el.localName.toLowerCase();
   switch (tag) {
@@ -230,6 +247,8 @@ function blockFromElement(el: Element): JSONContent[] {
       return imgFigure(el);
     case "svg":
       return svgFigure(el);
+    case "table":
+      return tableBlocks(el);
     case "script":
     case "style":
       return [];
