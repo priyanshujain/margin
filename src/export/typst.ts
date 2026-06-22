@@ -10,27 +10,32 @@ const TRIM: Record<TrimSize, { w: string; h: string }> = {
 };
 
 const INLINE_SPECIAL = /[\\#$*_`<>@~[\]]/g;
+const LINE_SEPARATORS = /[\n\r\v\f\u2028\u2029]+/g;
 
 function esc(text: string): string {
-  return text.replace(INLINE_SPECIAL, (m) => "\\" + m);
+  return text.replace(LINE_SEPARATORS, " ").replace(INLINE_SPECIAL, (m) => "\\" + m);
 }
 
-function guardLineStart(line: string): string {
-  if (/^[=\-+/]/.test(line)) return "\\" + line;
-  if (/^\d+\./.test(line)) return line.replace(".", "\\.");
-  return line;
+function guardLineStart(text: string): string {
+  if (/^[=\-+/]/.test(text)) return "\\" + text;
+  if (/^\d+\./.test(text)) return text.replace(".", "\\.");
+  return text;
 }
 
 function str(value: string): string {
   return JSON.stringify(value);
 }
 
-function inline(node: JSONContent): string {
+function inline(node: JSONContent, atLineStart: boolean): string {
   if (node.type === "text") {
-    let text = esc(node.text ?? "");
     const marks = node.marks ?? [];
+    if (marks.some((m) => m.type === "code")) return `#raw(${str(node.text ?? "")})`;
+    let text = esc(node.text ?? "");
+    if (atLineStart) text = guardLineStart(text);
     if (marks.some((m) => m.type === "italic")) text = `#emph[${text}]`;
     if (marks.some((m) => m.type === "bold")) text = `#strong[${text}]`;
+    if (marks.some((m) => m.type === "strike")) text = `#strike[${text}]`;
+    if (marks.some((m) => m.type === "underline")) text = `#underline[${text}]`;
     const href = marks.find((m) => m.type === "link")?.attrs?.href;
     if (href) text = `#link(${str(href)})[${text}]`;
     return text;
@@ -39,15 +44,15 @@ function inline(node: JSONContent): string {
   return "";
 }
 
-function inlines(content: JSONContent[] = []): string {
-  return content.map(inline).join("");
+function inlines(content: JSONContent[] = [], atLineStart = false): string {
+  return content.map((node, i) => inline(node, atLineStart && i === 0)).join("");
 }
 
-function listItem(item: JSONContent): string {
-  return (item.content ?? [])
-    .filter((c) => c.type === "paragraph")
-    .map((p) => inlines(p.content))
-    .join(" ");
+function listItem(item: JSONContent, paths: Map<string, string>): string {
+  const parts = (item.content ?? [])
+    .map((child) => block(child, paths))
+    .filter((s) => s.length > 0);
+  return `[${parts.join("\n\n")}]`;
 }
 
 function figure(node: JSONContent, paths: Map<string, string>): string {
@@ -59,7 +64,7 @@ function figure(node: JSONContent, paths: Map<string, string>): string {
   }
   const placed = placement as FigurePlacement;
   const width = (isResizablePlacement(placed) ? node.attrs?.width : null) ?? FIGURE_WIDTH[placed] ?? 100;
-  const caption = node.attrs?.caption ? `, caption: [${esc(node.attrs.caption)}]` : "";
+  const caption = node.attrs?.caption ? `, caption: [${guardLineStart(esc(node.attrs.caption))}]` : "";
   const float = placement === "float-top" ? ", placement: top" : "";
   return `#figure(image(${str(path)}, width: ${width}%)${caption}${float})`;
 }
@@ -67,18 +72,18 @@ function figure(node: JSONContent, paths: Map<string, string>): string {
 function block(node: JSONContent, paths: Map<string, string>): string {
   switch (node.type) {
     case "paragraph": {
-      const body = guardLineStart(inlines(node.content));
+      const body = inlines(node.content, true);
       if (!body.trim()) return "~";
       return node.attrs?.indent ? `#h(1.3em)${body}` : body;
     }
     case "heading":
-      return `#heading(level: ${node.attrs?.level ?? 2})[${inlines(node.content)}]`;
+      return `#heading(level: ${node.attrs?.level ?? 2})[${inlines(node.content, true)}]`;
     case "blockquote":
       return `#blockquote[${(node.content ?? []).map((n) => block(n, paths)).join("\n\n")}]`;
     case "bulletList":
-      return (node.content ?? []).map((li) => `- ${listItem(li)}`).join("\n");
+      return `#list(${(node.content ?? []).map((li) => listItem(li, paths)).join(", ")})`;
     case "orderedList":
-      return (node.content ?? []).map((li) => `+ ${listItem(li)}`).join("\n");
+      return `#enum(${(node.content ?? []).map((li) => listItem(li, paths)).join(", ")})`;
     case "horizontalRule":
       return "#scenebreak";
     case "figure":
@@ -188,7 +193,7 @@ function preamble(book: Book): string {
 
 function imageExtension(dataUrl: string): string {
   const match = /^data:image\/([a-z0-9.+-]+)/i.exec(dataUrl);
-  const kind = (match?.[1] ?? "png").toLowerCase();
+  const kind = (match?.[1] ?? "png").toLowerCase().split("+")[0];
   return kind === "jpeg" ? "jpg" : kind;
 }
 
@@ -249,6 +254,34 @@ function collectImages(contents: JSONContent[]): { images: ImageInput[]; paths: 
 
 export function extractImages(book: Book): { images: ImageInput[]; paths: Map<string, string> } {
   return collectImages(book.chapters.map((chapter) => chapter.content));
+}
+
+const SCRIPT_RANGES: { label: string; test: RegExp }[] = [
+  { label: "CJK", test: /[぀-鿿가-힯豈-﫿]/u },
+  { label: "Arabic", test: /[؀-ۿݐ-ݿ]/u },
+  { label: "Hebrew", test: /[֐-׿]/u },
+  { label: "Devanagari", test: /[ऀ-ॿ]/u },
+  { label: "Thai", test: /[฀-๿]/u },
+  { label: "emoji", test: /[☀-➿]|[\u{1f000}-\u{1faff}]/u },
+];
+
+function collectText(book: Book): string {
+  const parts = [book.metadata.title, book.metadata.subtitle, book.metadata.author];
+  const visit = (node: JSONContent) => {
+    if (node.type === "text" && node.text) parts.push(node.text);
+    if (node.attrs?.caption) parts.push(String(node.attrs.caption));
+    (node.content ?? []).forEach(visit);
+  };
+  book.chapters.forEach((chapter) => {
+    parts.push(chapter.title);
+    visit(chapter.content);
+  });
+  return parts.join("\n");
+}
+
+export function unsupportedScripts(book: Book): string[] {
+  const text = collectText(book);
+  return SCRIPT_RANGES.filter((s) => s.test.test(text)).map((s) => s.label);
 }
 
 function cleanTitle(title: string): string {

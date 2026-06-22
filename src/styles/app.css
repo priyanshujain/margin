@@ -1209,6 +1209,16 @@ body.resizing {
   box-shadow: 0 4px 10px rgba(35, 32, 27, 0.1), 0 20px 38px rgba(35, 32, 27, 0.13);
 }
 
+.card-corrupt {
+  cursor: default;
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+.card-corrupt:hover {
+  transform: none;
+}
+
 .card-title {
   font-family: var(--font-book);
   font-size: 20px;

@@ -1,7 +1,8 @@
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use serde::Deserialize;
-use typst::diag::{Severity, SourceDiagnostic};
+use tauri::Emitter;
+use typst::diag::{Severity, SourceDiagnostic, Warned};
 use typst::layout::PagedDocument;
 use typst_as_lib::TypstEngine;
 
@@ -16,7 +17,7 @@ pub struct ImageInput {
     data: String,
 }
 
-fn compile(source: String, images: &[ImageInput]) -> Result<Vec<u8>, String> {
+fn compile(source: String, images: &[ImageInput]) -> Result<(Vec<u8>, String), String> {
     let mut binaries: Vec<(&str, Vec<u8>)> = Vec::with_capacity(images.len());
     for image in images {
         let bytes = STANDARD
@@ -31,14 +32,30 @@ fn compile(source: String, images: &[ImageInput]) -> Result<Vec<u8>, String> {
         .with_static_file_resolver(binaries)
         .build();
 
-    let document: PagedDocument = engine.compile().output.map_err(|e| format_diagnostics(&e))?;
-
-    typst_pdf::pdf(&document, &Default::default()).map_err(|d| format_source_diagnostics(&d))
+    let Warned { output, warnings } = engine.compile();
+    let document: PagedDocument = output.map_err(|e| format_diagnostics(&e))?;
+    let bytes =
+        typst_pdf::pdf(&document, &Default::default()).map_err(|d| format_source_diagnostics(&d))?;
+    let warning_text = if warnings.is_empty() {
+        String::new()
+    } else {
+        format_source_diagnostics(&warnings)
+    };
+    Ok((bytes, warning_text))
 }
 
 #[tauri::command(async)]
-pub fn compile_pdf(source: String, images: Vec<ImageInput>) -> Result<tauri::ipc::Response, String> {
-    compile(source, &images).map(tauri::ipc::Response::new)
+pub fn compile_pdf(
+    app: tauri::AppHandle,
+    source: String,
+    images: Vec<ImageInput>,
+    emit_warnings: bool,
+) -> Result<tauri::ipc::Response, String> {
+    let (bytes, warnings) = compile(source, &images)?;
+    if emit_warnings && !warnings.is_empty() {
+        app.emit("pdf-warnings", warnings).ok();
+    }
+    Ok(tauri::ipc::Response::new(bytes))
 }
 
 fn format_diagnostics(error: &typst_as_lib::TypstAsLibError) -> String {

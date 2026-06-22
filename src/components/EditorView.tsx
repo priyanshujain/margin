@@ -75,8 +75,13 @@ export function EditorView() {
 
   const saveNow = useCallback(() => {
     const current = useBook.getState().book;
-    if (current) saveBook(current).then(markSaved).catch((e) => setNotice(`Save failed: ${e}`));
-  }, [markSaved]);
+    if (!current) return;
+    saveBook(current)
+      .then(() => {
+        if (useBook.getState().book === current) markSaved();
+      })
+      .catch((e) => setNotice(`Save failed: ${e}`));
+  }, [markSaved, setNotice]);
 
   useEffect(() => {
     if (!book || !dirty || !isDesktop) return;
@@ -263,11 +268,15 @@ export function EditorView() {
                   )}
                 </header>
                 <Editor
+                  key={chapter.id}
                   bookId={book.id}
                   chapterId={chapter.id}
                   content={chapter.content}
                   onChange={(content) => setChapterContent(chapter.id, content)}
                   onReady={setEditor}
+                  onContentError={() =>
+                    setNotice("This chapter contains content Margin couldn't fully read; editing may drop the unrecognized parts.")
+                  }
                 />
               </article>
               <FloatingToolbar editor={editor} />

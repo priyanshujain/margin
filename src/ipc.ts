@@ -7,7 +7,11 @@ export interface ImageInput {
   data: string;
 }
 
-export async function compilePdf(source: string, images: ImageInput[] = []): Promise<Uint8Array> {
-  const buffer = await invoke<ArrayBuffer>("compile_pdf", { source, images });
+export async function compilePdf(
+  source: string,
+  images: ImageInput[] = [],
+  emitWarnings = false,
+): Promise<Uint8Array> {
+  const buffer = await invoke<ArrayBuffer>("compile_pdf", { source, images, emitWarnings });
   return new Uint8Array(buffer);
 }

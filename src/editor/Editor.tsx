@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import { editorExtensions } from "./extensions";
-import { loadPosition, savePosition } from "./positions";
+import { loadPosition, savePosition, type ChapterPosition } from "./positions";
 
 interface EditorProps {
   bookId: string;
@@ -10,39 +10,36 @@ interface EditorProps {
   content: JSONContent;
   onChange: (content: JSONContent) => void;
   onReady: (editor: TiptapEditor | null) => void;
+  onContentError: (error: Error) => void;
 }
 
-export function Editor({ bookId, chapterId, content, onChange, onReady }: EditorProps) {
+export function Editor({ bookId, chapterId, content, onChange, onReady, onContentError }: EditorProps) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onContentErrorRef = useRef(onContentError);
+  onContentErrorRef.current = onContentError;
 
-  const openChapter = useRef(chapterId);
+  const latest = useRef<ChapterPosition | null>(null);
 
   const editor = useEditor({
     extensions: editorExtensions,
     content,
     immediatelyRender: false,
+    enableContentCheck: true,
     editorProps: { attributes: { class: "prose" } },
+    onContentError: ({ error }) => onContentErrorRef.current(error),
     onUpdate: ({ editor }) => onChangeRef.current(editor.getJSON()),
   });
 
   useEffect(() => {
     onReady(editor);
+    return () => onReady(null);
   }, [editor, onReady]);
 
   useEffect(() => {
     if (!editor) return;
     let active = true;
     const scroller = editor.view.dom.closest(".editor-pane") as HTMLElement | null;
-
-    const previous = openChapter.current;
-    if (previous !== chapterId) {
-      const { from, to } = editor.state.selection;
-      savePosition(bookId, previous, { from, to, scroll: scroller?.scrollTop ?? 0 });
-    }
-    openChapter.current = chapterId;
-
-    editor.commands.setContent(content, { emitUpdate: false });
 
     const saved = loadPosition(bookId, chapterId);
     const size = editor.state.doc.content.size;
@@ -63,18 +60,20 @@ export function Editor({ bookId, chapterId, content, onChange, onReady }: Editor
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterId, editor, bookId]);
+  }, [editor]);
 
   useEffect(() => {
     if (!editor) return;
     const scroller = editor.view.dom.closest(".editor-pane") as HTMLElement | null;
     let timer: ReturnType<typeof setTimeout>;
+    const capture = () => {
+      const { from, to } = editor.state.selection;
+      latest.current = { from, to, scroll: scroller?.scrollTop ?? 0 };
+    };
     const persist = () => {
+      capture();
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        const { from, to } = editor.state.selection;
-        savePosition(bookId, openChapter.current, { from, to, scroll: scroller?.scrollTop ?? 0 });
-      }, 400);
+      timer = setTimeout(() => savePosition(bookId, chapterId, latest.current!), 400);
     };
     editor.on("selectionUpdate", persist);
     scroller?.addEventListener("scroll", persist, { passive: true });
@@ -82,8 +81,9 @@ export function Editor({ bookId, chapterId, content, onChange, onReady }: Editor
       clearTimeout(timer);
       editor.off("selectionUpdate", persist);
       scroller?.removeEventListener("scroll", persist);
+      if (latest.current) savePosition(bookId, chapterId, latest.current);
     };
-  }, [editor, bookId]);
+  }, [editor, bookId, chapterId]);
 
   return <EditorContent editor={editor} className="editor-host" />;
 }

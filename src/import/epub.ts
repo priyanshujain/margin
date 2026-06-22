@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { JSONContent } from "@tiptap/core";
-import { type Book, type BookMetadata, type Chapter, createCover } from "../model/book";
+import { type Book, type BookMetadata, type Chapter, type Cover, createCover } from "../model/book";
 
 export interface RawFile {
   path: string;
@@ -9,7 +9,7 @@ export interface RawFile {
   encoding: "utf8" | "base64";
 }
 
-type Mark = { type: string };
+type Mark = { type: string; attrs?: Record<string, unknown> };
 
 const BLOCK_TAGS = new Set([
   "p", "div", "section", "article", "main", "header", "footer", "aside",
@@ -81,8 +81,8 @@ function hasMark(marks: Mark[], type: string): boolean {
   return marks.some((m) => m.type === type);
 }
 
-function addMark(marks: Mark[], type: string): Mark[] {
-  return hasMark(marks, type) ? marks : [...marks, { type }];
+function addMark(marks: Mark[], type: string, attrs?: Record<string, unknown>): Mark[] {
+  return hasMark(marks, type) ? marks : [...marks, attrs ? { type, attrs } : { type }];
 }
 
 function collectInline(node: Node, marks: Mark[], out: JSONContent[]): void {
@@ -102,6 +102,15 @@ function collectInline(node: Node, marks: Mark[], out: JSONContent[]): void {
       collectInline(el, addMark(marks, "bold"), out);
     } else if (tag === "em" || tag === "i") {
       collectInline(el, addMark(marks, "italic"), out);
+    } else if (tag === "u") {
+      collectInline(el, addMark(marks, "underline"), out);
+    } else if (tag === "s" || tag === "strike" || tag === "del") {
+      collectInline(el, addMark(marks, "strike"), out);
+    } else if (tag === "code") {
+      collectInline(el, addMark(marks, "code"), out);
+    } else if (tag === "a") {
+      const href = el.getAttribute("href");
+      collectInline(el, href ? addMark(marks, "link", { href }) : marks, out);
     } else if (!BLOCK_TAGS.has(tag)) {
       collectInline(el, marks, out);
     }
@@ -137,13 +146,23 @@ function meaningful(inline: JSONContent[]): boolean {
 
 function imgFigure(img: Element, caption = ""): JSONContent[] {
   const src = img.getAttribute("src");
-  if (!src || !src.startsWith("data:")) return [];
-  return [
-    {
-      type: "figure",
-      attrs: { src, alt: img.getAttribute("alt") ?? "", caption, placement: "full-width" },
-    },
-  ];
+  if (src && src.startsWith("data:")) {
+    return [
+      {
+        type: "figure",
+        attrs: { src, alt: img.getAttribute("alt") ?? "", caption, placement: "full-width" },
+      },
+    ];
+  }
+  const alt = (img.getAttribute("alt") ?? "").trim();
+  return alt ? [{ type: "paragraph", content: [{ type: "text", text: alt }] }] : [];
+}
+
+function svgFigure(el: Element): JSONContent[] {
+  const markup = el.outerHTML;
+  if (!markup) return [];
+  const src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(markup)))}`;
+  return [{ type: "figure", attrs: { src, alt: "", caption: "", placement: "full-width" } }];
 }
 
 function figureFrom(el: Element): JSONContent[] {
@@ -165,18 +184,35 @@ function hasBlockChild(el: Element): boolean {
   return Array.from(el.children).some((c) => BLOCK_TAGS.has(c.localName.toLowerCase()));
 }
 
-function listItems(el: Element): JSONContent[] {
+function listItems(el: Element, depth: number): JSONContent[] {
   const items: JSONContent[] = [];
   Array.from(el.children)
     .filter((c) => c.localName.toLowerCase() === "li")
     .forEach((li) => {
-      const content = blocksFrom(li);
+      const content = blocksFrom(li, depth + 1);
       items.push({ type: "listItem", content: content.length ? content : [{ type: "paragraph" }] });
     });
   return items;
 }
 
-function blockFromElement(el: Element): JSONContent[] {
+function tableBlocks(el: Element): JSONContent[] {
+  const out: JSONContent[] = [];
+  Array.from(el.querySelectorAll("tr")).forEach((tr) => {
+    const content: JSONContent[] = [];
+    Array.from(tr.children)
+      .filter((c) => c.localName.toLowerCase() === "td" || c.localName.toLowerCase() === "th")
+      .forEach((cell) => {
+        const inline = inlineOf(cell);
+        if (!meaningful(inline)) return;
+        if (content.length) content.push({ type: "text", text: "  ·  " });
+        content.push(...inline);
+      });
+    if (meaningful(content)) out.push({ type: "paragraph", content });
+  });
+  return out;
+}
+
+function blockFromElement(el: Element, depth: number): JSONContent[] {
   const tag = el.localName.toLowerCase();
   switch (tag) {
     case "p":
@@ -192,15 +228,15 @@ function blockFromElement(el: Element): JSONContent[] {
       return meaningful(content) ? [{ type: "heading", attrs: { level }, content }] : [];
     }
     case "blockquote": {
-      const inner = blocksFrom(el);
+      const inner = blocksFrom(el, depth + 1);
       return [{ type: "blockquote", content: inner.length ? inner : [{ type: "paragraph" }] }];
     }
     case "ul": {
-      const items = listItems(el);
+      const items = listItems(el, depth);
       return items.length ? [{ type: "bulletList", content: items }] : [];
     }
     case "ol": {
-      const items = listItems(el);
+      const items = listItems(el, depth);
       return items.length ? [{ type: "orderedList", content: items }] : [];
     }
     case "hr":
@@ -209,22 +245,27 @@ function blockFromElement(el: Element): JSONContent[] {
       return figureFrom(el);
     case "img":
       return imgFigure(el);
+    case "svg":
+      return svgFigure(el);
+    case "table":
+      return tableBlocks(el);
     case "script":
     case "style":
       return [];
     default:
-      return hasBlockChild(el) ? blocksFrom(el) : paragraphAndFigures(el);
+      return hasBlockChild(el) ? blocksFrom(el, depth + 1) : paragraphAndFigures(el);
   }
 }
 
-function blocksFrom(parent: Node): JSONContent[] {
+function blocksFrom(parent: Node, depth = 0): JSONContent[] {
+  if (depth > 64) return [];
   const out: JSONContent[] = [];
   parent.childNodes.forEach((child) => {
     if (child.nodeType === 3) {
       const text = (child.nodeValue ?? "").replace(/\s+/g, " ").trim();
       if (text !== "") out.push({ type: "paragraph", content: [{ type: "text", text }] });
     } else if (child.nodeType === 1) {
-      out.push(...blockFromElement(child as Element));
+      out.push(...blockFromElement(child as Element, depth));
     }
   });
   return out;
@@ -232,6 +273,41 @@ function blocksFrom(parent: Node): JSONContent[] {
 
 function headingText(node: JSONContent): string {
   return (node.content ?? []).map((n) => n.text ?? "").join("").trim();
+}
+
+function isbnChecksum(s: string): boolean {
+  if (s.length === 10) {
+    let sum = 0;
+    for (let i = 0; i < 10; i++) {
+      const v = s[i] === "X" ? 10 : Number(s[i]);
+      if (Number.isNaN(v) || (s[i] === "X" && i !== 9)) return false;
+      sum += v * (10 - i);
+    }
+    return sum % 11 === 0;
+  }
+  if (s.length === 13 && /^\d{13}$/.test(s)) {
+    let sum = 0;
+    for (let i = 0; i < 13; i++) sum += Number(s[i]) * (i % 2 === 0 ? 1 : 3);
+    return sum % 10 === 0;
+  }
+  return false;
+}
+
+function findIsbn(opf: Document): string {
+  const ids = Array.from(opf.getElementsByTagName("*")).filter((el) => el.localName === "identifier");
+  const ranked = ids
+    .map((el) => ({
+      text: el.textContent ?? "",
+      tagged:
+        /isbn/i.test(el.getAttribute("opf:scheme") || el.getAttribute("scheme") || "") ||
+        /urn:isbn:/i.test(el.textContent ?? ""),
+    }))
+    .sort((a, b) => Number(b.tagged) - Number(a.tagged));
+  for (const { text } of ranked) {
+    const cleaned = text.replace(/[^0-9Xx]/g, "").toUpperCase();
+    if (isbnChecksum(cleaned)) return cleaned;
+  }
+  return "";
 }
 
 interface ManifestItem {
@@ -317,6 +393,11 @@ function readNavTitles(
   return titles;
 }
 
+function fileToDataUri(file: RawFile, mime: string): string {
+  const data = file.encoding === "base64" ? file.data : btoa(unescape(encodeURIComponent(file.data)));
+  return `data:${mime};base64,${data}`;
+}
+
 function resolveImages(
   doc: Document,
   baseDir: string,
@@ -335,10 +416,27 @@ function resolveImages(
       img.removeAttribute("src");
       return;
     }
-    const mime = mimeByPath.get(resolved) || mimeFromExt(resolved);
-    const data = file.encoding === "base64" ? file.data : btoa(unescape(encodeURIComponent(file.data)));
-    img.setAttribute("src", `data:${mime};base64,${data}`);
+    img.setAttribute("src", fileToDataUri(file, mimeByPath.get(resolved) || mimeFromExt(resolved)));
   });
+}
+
+function findCover(
+  opf: Document,
+  manifest: Map<string, ManifestItem>,
+  byPath: Map<string, RawFile>,
+): Cover {
+  let item = Array.from(manifest.values()).find((m) => m.properties.split(/\s+/).includes("cover-image"));
+  if (!item) {
+    const metaCover = Array.from(opf.getElementsByTagName("*")).find(
+      (el) => el.localName === "meta" && el.getAttribute("name") === "cover",
+    );
+    const id = metaCover?.getAttribute("content");
+    if (id) item = manifest.get(id);
+  }
+  if (!item) return createCover();
+  const file = byPath.get(normalize(item.href));
+  if (!file) return createCover();
+  return { ...createCover(), kind: "image", image: fileToDataUri(file, item.mediaType || mimeFromExt(item.href)) };
 }
 
 function buildChapter(
@@ -394,18 +492,21 @@ export function filesToBook(files: RawFile[], fallbackName = "Imported book"): B
   spine.forEach((item, i) => {
     const file = byPath.get(normalize(item.href));
     if (!file) return;
-    chapters.push(
-      buildChapter(file, dirOf(item.href), navTitles.get(item.href), i, byPath, manifest),
-    );
+    try {
+      chapters.push(
+        buildChapter(file, dirOf(item.href), navTitles.get(item.href), i, byPath, manifest),
+      );
+    } catch {
+      return;
+    }
   });
   if (!chapters.length) throw new Error("Not a valid EPUB: no readable chapters found.");
 
-  const identifier = localText(opf, "identifier");
   const metadata: BookMetadata = {
     title: localText(opf, "title") || fallbackName,
     subtitle: "",
     author: localText(opf, "creator"),
-    isbn: /\d{9,13}/.test(identifier) ? identifier.replace(/[^0-9Xx]/g, "") : "",
+    isbn: findIsbn(opf),
     language: localText(opf, "language") || "en",
   };
 
@@ -415,7 +516,7 @@ export function filesToBook(files: RawFile[], fallbackName = "Imported book"): B
     metadata,
     theme: "quiet-press",
     settings: { trim: "6x9", bleed: true },
-    cover: createCover(),
+    cover: findCover(opf, manifest, byPath),
     chapters,
   };
 }

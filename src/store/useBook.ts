@@ -12,6 +12,8 @@ import {
   createPage,
   normalizeBook,
 } from "../model/book";
+import { loadActiveChapter, saveActiveChapter } from "../editor/positions";
+import { saveBook } from "../library";
 
 export const COVER_ID = "__cover__";
 
@@ -40,7 +42,11 @@ interface BookState {
   markSaved: () => void;
 }
 
-export const useBook = create<BookState>((set) => ({
+function flushOutgoing(book: Book | null, dirty: boolean): void {
+  if (book && dirty) saveBook(book).catch(() => {});
+}
+
+export const useBook = create<BookState>((set, get) => ({
   book: null,
   activeChapterId: "",
   dirty: false,
@@ -49,10 +55,17 @@ export const useBook = create<BookState>((set) => ({
   setExporting: (label) => set({ exporting: label }),
   setNotice: (message) => set({ notice: message }),
   openBook: (book) => {
+    flushOutgoing(get().book, get().dirty);
     const normalized = normalizeBook(book);
-    set({ book: normalized, activeChapterId: normalized.chapters[0]?.id ?? "", dirty: false });
+    const saved = loadActiveChapter(normalized.id);
+    const valid = saved === COVER_ID || normalized.chapters.some((c) => c.id === saved);
+    const activeChapterId = valid ? (saved as string) : normalized.chapters[0]?.id ?? "";
+    set({ book: normalized, activeChapterId, dirty: false });
   },
-  closeBook: () => set({ book: null, activeChapterId: "", dirty: false }),
+  closeBook: () => {
+    flushOutgoing(get().book, get().dirty);
+    set({ book: null, activeChapterId: "", dirty: false });
+  },
   setActiveChapter: (id) => set({ activeChapterId: id }),
   setChapterContent: (id, content) =>
     set((s) =>
@@ -132,3 +145,11 @@ export const useBook = create<BookState>((set) => ({
     set((s) => (s.book ? { dirty: true, book: { ...s.book, cover: { ...s.book.cover, ...patch } } } : {})),
   markSaved: () => set({ dirty: false }),
 }));
+
+let lastActive = "";
+useBook.subscribe((s) => {
+  if (s.book && s.activeChapterId && s.activeChapterId !== lastActive) {
+    lastActive = s.activeChapterId;
+    saveActiveChapter(s.book.id, s.activeChapterId);
+  }
+});

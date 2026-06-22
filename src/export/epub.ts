@@ -25,7 +25,7 @@ function slug(text: string): string {
 
 function imageExtension(dataUrl: string): string {
   const match = /^data:image\/([a-z0-9.+-]+)/i.exec(dataUrl);
-  const kind = (match?.[1] ?? "png").toLowerCase();
+  const kind = (match?.[1] ?? "png").toLowerCase().split("+")[0];
   return kind === "jpeg" ? "jpg" : kind;
 }
 
@@ -42,8 +42,11 @@ function inline(node: JSONContent): string {
   if (node.type === "text") {
     let text = esc(node.text ?? "");
     const marks = node.marks ?? [];
+    if (marks.some((m) => m.type === "code")) text = `<code>${text}</code>`;
     if (marks.some((m) => m.type === "bold")) text = `<strong>${text}</strong>`;
     if (marks.some((m) => m.type === "italic")) text = `<em>${text}</em>`;
+    if (marks.some((m) => m.type === "strike")) text = `<s>${text}</s>`;
+    if (marks.some((m) => m.type === "underline")) text = `<u>${text}</u>`;
     const href = marks.find((m) => m.type === "link")?.attrs?.href;
     if (href) text = `<a href="${attr(href)}">${text}</a>`;
     return text;
@@ -56,11 +59,11 @@ function inlines(content: JSONContent[] = []): string {
   return content.map(inline).join("");
 }
 
-function listItem(item: JSONContent): string {
+function listItem(item: JSONContent, paths: Map<string, string>): string {
   const inner = (item.content ?? [])
-    .filter((c) => c.type === "paragraph")
-    .map((p) => inlines(p.content))
-    .join(" ");
+    .map((child) => block(child, paths))
+    .filter((s) => s.length > 0)
+    .join("");
   return `<li>${inner}</li>`;
 }
 
@@ -92,9 +95,9 @@ function block(node: JSONContent, paths: Map<string, string>): string {
     case "blockquote":
       return `<blockquote>${(node.content ?? []).map((n) => block(n, paths)).join("")}</blockquote>`;
     case "bulletList":
-      return `<ul>${(node.content ?? []).map(listItem).join("")}</ul>`;
+      return `<ul>${(node.content ?? []).map((li) => listItem(li, paths)).join("")}</ul>`;
     case "orderedList":
-      return `<ol>${(node.content ?? []).map(listItem).join("")}</ol>`;
+      return `<ol>${(node.content ?? []).map((li) => listItem(li, paths)).join("")}</ol>`;
     case "horizontalRule":
       return `<hr class="scene-break"/>`;
     case "figure":
@@ -404,6 +407,11 @@ h2, h3 {
 .chapter-opener h1 {
   font-size: 1.7em;
   margin: 0;
+}
+
+code {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
 }
 
 blockquote {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { type BookSummary, deleteBook, exampleBook, listBooks, loadBook, newBook, saveBook } from "../library";
+import { type BookSummary, createAndOpenBook, deleteBook, exampleBook, listBooks, loadBook, saveBook } from "../library";
 import type { Book } from "../model/book";
 import { importEpub } from "../import/epub";
+import { clearPositions } from "../editor/positions";
 import { isDesktop } from "../ipc";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
@@ -38,6 +39,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   const removeBook = async () => {
     if (!pendingDelete) return;
     await deleteBook(pendingDelete.id);
+    clearPositions(pendingDelete.id);
     setPendingDelete(null);
     refresh();
   };
@@ -64,7 +66,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
     <div className="library">
       <header className="library-head" data-tauri-drag-region />
       <div className="shelf">
-        <button className="card card-action" onClick={() => onOpen(newBook())}>
+        <button className="card card-action" onClick={() => createAndOpenBook(onOpen, setNotice)}>
           <Icon d="M12 5v14M5 12h14" size={20} />
           <span>New book</span>
         </button>
@@ -78,13 +80,25 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
             <span className="card-badge">Example</span>
           </button>
         )}
-        {books.map((b) => (
-          <div key={b.id} className="card card-book" onClick={() => loadBook(b.id).then(onOpen)}>
-            <span className="card-title">{b.title || "Untitled"}</span>
-            {b.author && <span className="card-author">{b.author}</span>}
-            <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
-          </div>
-        ))}
+        {books.map((b) =>
+          b.corrupt ? (
+            <div key={b.id} className="card card-book card-corrupt">
+              <span className="card-title">{b.title}</span>
+              <span className="card-author">Couldn't be read; a .bak backup may sit beside it.</span>
+              <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
+            </div>
+          ) : (
+            <div
+              key={b.id}
+              className="card card-book"
+              onClick={() => loadBook(b.id).then(onOpen).catch((e) => setNotice(`Could not open book: ${e}`))}
+            >
+              <span className="card-title">{b.title || "Untitled"}</span>
+              {b.author && <span className="card-author">{b.author}</span>}
+              <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
+            </div>
+          ),
+        )}
       </div>
       {notice && (
         <div className="toast" onClick={() => setNotice(null)}>
