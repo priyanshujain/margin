@@ -12,10 +12,11 @@ export function PdfPreview({ data }: { data: Uint8Array }) {
     const container = ref.current;
     if (!container) return;
     let cancelled = false;
+    const loadingTask = pdfjs.getDocument({ data: data.slice() });
 
     (async () => {
       try {
-        const doc = await pdfjs.getDocument({ data: data.slice() }).promise;
+        const doc = await loadingTask.promise;
         if (cancelled) return;
         const width = container.clientWidth;
         const dpr = window.devicePixelRatio || 1;
@@ -47,6 +48,7 @@ export function PdfPreview({ data }: { data: Uint8Array }) {
 
     return () => {
       cancelled = true;
+      loadingTask.destroy();
     };
   }, [data]);
 
