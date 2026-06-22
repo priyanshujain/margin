@@ -146,13 +146,23 @@ function meaningful(inline: JSONContent[]): boolean {
 
 function imgFigure(img: Element, caption = ""): JSONContent[] {
   const src = img.getAttribute("src");
-  if (!src || !src.startsWith("data:")) return [];
-  return [
-    {
-      type: "figure",
-      attrs: { src, alt: img.getAttribute("alt") ?? "", caption, placement: "full-width" },
-    },
-  ];
+  if (src && src.startsWith("data:")) {
+    return [
+      {
+        type: "figure",
+        attrs: { src, alt: img.getAttribute("alt") ?? "", caption, placement: "full-width" },
+      },
+    ];
+  }
+  const alt = (img.getAttribute("alt") ?? "").trim();
+  return alt ? [{ type: "paragraph", content: [{ type: "text", text: alt }] }] : [];
+}
+
+function svgFigure(el: Element): JSONContent[] {
+  const markup = el.outerHTML;
+  if (!markup) return [];
+  const src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(markup)))}`;
+  return [{ type: "figure", attrs: { src, alt: "", caption: "", placement: "full-width" } }];
 }
 
 function figureFrom(el: Element): JSONContent[] {
@@ -218,6 +228,8 @@ function blockFromElement(el: Element): JSONContent[] {
       return figureFrom(el);
     case "img":
       return imgFigure(el);
+    case "svg":
+      return svgFigure(el);
     case "script":
     case "style":
       return [];
