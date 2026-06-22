@@ -75,8 +75,13 @@ export function EditorView() {
 
   const saveNow = useCallback(() => {
     const current = useBook.getState().book;
-    if (current) saveBook(current).then(markSaved).catch((e) => setNotice(`Save failed: ${e}`));
-  }, [markSaved]);
+    if (!current) return;
+    saveBook(current)
+      .then(() => {
+        if (useBook.getState().book === current) markSaved();
+      })
+      .catch((e) => setNotice(`Save failed: ${e}`));
+  }, [markSaved, setNotice]);
 
   useEffect(() => {
     if (!book || !dirty || !isDesktop) return;
