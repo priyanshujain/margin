@@ -140,11 +140,19 @@ export function createCover(): Cover {
   return { kind: "default", image: "", bg: COVER_PALETTES[0].bg, ink: COVER_PALETTES[0].ink };
 }
 
+const DEFAULT_METADATA: BookMetadata = { title: "Untitled", subtitle: "", author: "", isbn: "", language: "en" };
+const DEFAULT_SETTINGS: BookSettings = { trim: "6x9", bleed: true };
+
 export function normalizeBook(book: Book): Book {
+  const chapters = (Array.isArray(book.chapters) ? book.chapters : []).filter(Boolean);
   return {
     ...book,
+    metadata: { ...DEFAULT_METADATA, ...book.metadata },
+    settings: { ...DEFAULT_SETTINGS, ...book.settings },
     cover: book.cover ? { ...createCover(), ...book.cover } : createCover(),
-    chapters: book.chapters.map((c) => (c.updatedAt ? c : { ...c, updatedAt: Date.now() })),
+    chapters: (chapters.length ? chapters : [createChapter()]).map((c) =>
+      c.updatedAt ? c : { ...c, updatedAt: Date.now() },
+    ),
   };
 }
 
@@ -152,9 +160,9 @@ export function createBook(): Book {
   return {
     schema: "margin/1",
     id: crypto.randomUUID(),
-    metadata: { title: "Untitled", subtitle: "", author: "", isbn: "", language: "en" },
+    metadata: { ...DEFAULT_METADATA },
     theme: "quiet-press",
-    settings: { trim: "6x9", bleed: true },
+    settings: { ...DEFAULT_SETTINGS },
     cover: createCover(),
     chapters: [createChapter("Chapter One")],
   };

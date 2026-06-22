@@ -15,7 +15,11 @@ export async function listBooks(): Promise<BookSummary[]> {
 
 export async function loadBook(id: string): Promise<Book> {
   const contents = await invoke<string>("load_book", { id });
-  return JSON.parse(contents) as Book;
+  try {
+    return JSON.parse(contents) as Book;
+  } catch {
+    throw new Error("the book file is corrupt or unreadable");
+  }
 }
 
 export async function saveBook(book: Book): Promise<void> {

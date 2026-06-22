@@ -79,7 +79,11 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
           </button>
         )}
         {books.map((b) => (
-          <div key={b.id} className="card card-book" onClick={() => loadBook(b.id).then(onOpen)}>
+          <div
+            key={b.id}
+            className="card card-book"
+            onClick={() => loadBook(b.id).then(onOpen).catch((e) => setNotice(`Could not open book: ${e}`))}
+          >
             <span className="card-title">{b.title || "Untitled"}</span>
             {b.author && <span className="card-author">{b.author}</span>}
             <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
