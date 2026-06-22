@@ -274,6 +274,41 @@ function headingText(node: JSONContent): string {
   return (node.content ?? []).map((n) => n.text ?? "").join("").trim();
 }
 
+function isbnChecksum(s: string): boolean {
+  if (s.length === 10) {
+    let sum = 0;
+    for (let i = 0; i < 10; i++) {
+      const v = s[i] === "X" ? 10 : Number(s[i]);
+      if (Number.isNaN(v) || (s[i] === "X" && i !== 9)) return false;
+      sum += v * (10 - i);
+    }
+    return sum % 11 === 0;
+  }
+  if (s.length === 13 && /^\d{13}$/.test(s)) {
+    let sum = 0;
+    for (let i = 0; i < 13; i++) sum += Number(s[i]) * (i % 2 === 0 ? 1 : 3);
+    return sum % 10 === 0;
+  }
+  return false;
+}
+
+function findIsbn(opf: Document): string {
+  const ids = Array.from(opf.getElementsByTagName("*")).filter((el) => el.localName === "identifier");
+  const ranked = ids
+    .map((el) => ({
+      text: el.textContent ?? "",
+      tagged:
+        /isbn/i.test(el.getAttribute("opf:scheme") || el.getAttribute("scheme") || "") ||
+        /urn:isbn:/i.test(el.textContent ?? ""),
+    }))
+    .sort((a, b) => Number(b.tagged) - Number(a.tagged));
+  for (const { text } of ranked) {
+    const cleaned = text.replace(/[^0-9Xx]/g, "").toUpperCase();
+    if (isbnChecksum(cleaned)) return cleaned;
+  }
+  return "";
+}
+
 interface ManifestItem {
   href: string;
   mediaType: string;
@@ -462,12 +497,11 @@ export function filesToBook(files: RawFile[], fallbackName = "Imported book"): B
   });
   if (!chapters.length) throw new Error("Not a valid EPUB: no readable chapters found.");
 
-  const identifier = localText(opf, "identifier");
   const metadata: BookMetadata = {
     title: localText(opf, "title") || fallbackName,
     subtitle: "",
     author: localText(opf, "creator"),
-    isbn: /\d{9,13}/.test(identifier) ? identifier.replace(/[^0-9Xx]/g, "") : "",
+    isbn: findIsbn(opf),
     language: localText(opf, "language") || "en",
   };
 
