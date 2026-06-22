@@ -17,16 +17,16 @@ const cols = [
   {
     title: "Product",
     links: [
-      { label: "Features", href: "#features" },
-      { label: "Publishing", href: "#publish" },
-      { label: "Compare", href: "#compare" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "Features", href: "/#features" },
+      { label: "Publishing", href: "/#publish" },
+      { label: "Compare", href: "/#compare" },
+      { label: "Pricing", href: "/#pricing" },
     ],
   },
   {
     title: "Help",
     links: [
-      { label: "Questions", href: "#faq" },
+      { label: "Questions", href: "/#faq" },
       { label: "Email us", href: `mailto:${site.supportEmail}` },
     ],
   },
@@ -50,14 +50,14 @@ const cols = [
             <p class="footer__title">{col.title}</p>
             <ul>
               {col.links.map((l) => {
-                const isAnchor = l.href.startsWith("#") || l.href.startsWith("mailto:");
+                const isExternal = l.href.startsWith("http");
                 return (
                   <li>
                     <a
                       href={l.href}
                       data-download-os={(l as { os?: string }).os}
-                      target={isAnchor ? undefined : "_blank"}
-                      rel={isAnchor ? undefined : "noopener"}
+                      target={isExternal ? "_blank" : undefined}
+                      rel={isExternal ? "noopener" : undefined}
                     >
                       {l.label}
                     </a>
@@ -73,6 +73,10 @@ const cols = [
 
   <div class="container footer__base">
     <span>© {site.name}. Built with <span class="heart">♥</span> in NYC</span>
+    <nav class="footer__legal" aria-label="Legal">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
   </div>
 </footer>
 
@@ -136,9 +140,22 @@ const cols = [
   .footer__base {
     padding-top: 22px;
     border-top: 1px solid var(--line);
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     font-size: 0.82rem;
     color: var(--ink-faint);
+  }
+  .footer__legal {
+    display: flex;
+    gap: 18px;
+  }
+  .footer__legal a {
+    color: var(--ink-faint);
+  }
+  .footer__legal a:hover {
+    color: var(--ink);
   }
   .heart {
     color: var(--danger);
@@ -152,6 +169,11 @@ const cols = [
   @media (max-width: 480px) {
     .footer__cols {
       grid-template-columns: 1fr 1fr;
+    }
+    .footer__base {
+      flex-direction: column;
+      gap: 12px;
+      text-align: center;
     }
   }
 </style>

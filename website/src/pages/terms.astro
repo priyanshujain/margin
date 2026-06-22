@@ -1,0 +1,92 @@
+---
+import Legal from "../layouts/Legal.astro";
+import { site } from "../data/site";
+---
+
+<Legal
+  title="Terms of Use"
+  updated="June 22, 2026"
+  description={`The terms for using ${site.name}: a one-time purchase, your content stays yours, used as is.`}
+>
+  <h2>Acceptance</h2>
+  <p>
+    These terms cover your use of Margin, the offline writing app, and this website. By downloading,
+    buying, or using Margin, you agree to them. If you do not agree, please do not use the app.
+  </p>
+
+  <h2>Your license to use Margin</h2>
+  <p>
+    Margin is a one-time purchase. When you buy it, you get a personal, non-exclusive license to
+    install and use the app on the devices you own. You keep using the version you bought, and
+    updates are included at no extra cost. You may not resell, rent, or redistribute the app, or
+    attempt to defeat its purchase, and you may not reverse engineer it except where the law
+    expressly allows.
+  </p>
+
+  <h2>Your content is yours</h2>
+  <p>
+    Everything you write in Margin belongs to you. Your book is a file on your own computer. We claim
+    no ownership of it, take no license to it, and never receive a copy. You are responsible for your
+    own work, including keeping your own backups and making sure you have the right to publish what
+    you write.
+  </p>
+
+  <h2>Acceptable use</h2>
+  <p>
+    Use Margin lawfully. Do not use it to create or distribute material that is illegal, or that
+    infringes someone else's rights. What you choose to write and publish is your responsibility, not
+    ours.
+  </p>
+
+  <h2>Third-party services</h2>
+  <p>
+    Margin can connect to services you choose, such as your own Google Drive for backups, and you
+    download and publish through platforms like GitHub and the ebook and print stores. Your use of
+    those services is governed by their own terms and policies, which we do not control.
+  </p>
+
+  <h2>Updates and availability</h2>
+  <p>
+    We work to keep Margin reliable and to improve it over time, but we may change, pause, or
+    discontinue parts of the app or this website. Because Margin runs on your own machine, the copy
+    you have installed keeps working even if a feature that depends on an outside service changes.
+  </p>
+
+  <h2>The app is provided as is</h2>
+  <p>
+    Margin is provided "as is" and "as available," without warranties of any kind, whether express or
+    implied, including fitness for a particular purpose and non-infringement. We do not warrant that
+    the app will be error-free or uninterrupted, or that it will meet every need. You are responsible
+    for backing up your own work.
+  </p>
+
+  <h2>Limitation of liability</h2>
+  <p>
+    To the fullest extent permitted by law, Margin and its maker will not be liable for any indirect,
+    incidental, or consequential damages, or for any loss of data or content, arising from your use
+    of the app. Our total liability for any claim is limited to the amount you paid for Margin.
+  </p>
+
+  <h2>Refunds</h2>
+  <p>
+    If Margin is not working for you, write to us. We would rather make it right or refund your
+    purchase than have you stuck with a tool you cannot use.
+  </p>
+
+  <h2>Changes to these terms</h2>
+  <p>
+    We may update these terms from time to time. When we do, we will change the date at the top of
+    this page. Continuing to use Margin after a change means you accept the updated terms.
+  </p>
+
+  <h2>Governing law</h2>
+  <p>
+    These terms are governed by the laws of the State of New York, United States, without regard to
+    its conflict of laws rules.
+  </p>
+
+  <h2>Contact</h2>
+  <p>
+    Questions about these terms? Write to <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>.
+  </p>
+</Legal>

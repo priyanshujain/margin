@@ -1,0 +1,100 @@
+---
+import Base from "./Base.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import { site } from "../data/site";
+
+interface Props {
+  title: string;
+  updated: string;
+  description?: string;
+}
+
+const { title, updated, description } = Astro.props;
+---
+
+<Base title={`${title} · ${site.name}`} description={description}>
+  <Nav />
+  <main class="legal">
+    <div class="container legal__inner">
+      <header class="legal__head">
+        <p class="eyebrow">Legal</p>
+        <h1>{title}</h1>
+        <p class="legal__updated">Last updated {updated}</p>
+      </header>
+      <div class="legal__prose">
+        <slot />
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .legal {
+    padding-block: clamp(48px, 7vw, 96px);
+  }
+  .legal__inner {
+    max-width: 760px;
+  }
+  .legal__head {
+    padding-bottom: clamp(28px, 4vw, 44px);
+    margin-bottom: clamp(28px, 4vw, 44px);
+    border-bottom: 1px solid var(--line);
+  }
+  .legal__head h1 {
+    font-family: var(--font-book);
+    font-weight: 560;
+    letter-spacing: -0.012em;
+    line-height: 1.08;
+    font-size: clamp(2.1rem, 1.4rem + 2.8vw, 3.2rem);
+  }
+  .legal__updated {
+    margin-top: 16px;
+    color: var(--ink-faint);
+    font-size: 0.92rem;
+  }
+
+  .legal__prose {
+    color: var(--ink-soft);
+    font-size: 1.04rem;
+    line-height: 1.7;
+  }
+  .legal__prose :global(h2) {
+    font-size: clamp(1.3rem, 1.05rem + 0.9vw, 1.6rem);
+    color: var(--ink);
+    margin: 44px 0 14px;
+  }
+  .legal__prose :global(h2:first-child) {
+    margin-top: 0;
+  }
+  .legal__prose :global(p) {
+    margin: 0 0 16px;
+  }
+  .legal__prose :global(ul) {
+    margin: 0 0 16px;
+    padding-left: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .legal__prose :global(li) {
+    padding-left: 4px;
+  }
+  .legal__prose :global(li::marker) {
+    color: var(--ink-faint);
+  }
+  .legal__prose :global(strong) {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .legal__prose :global(a) {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--line-strong);
+  }
+  .legal__prose :global(a:hover) {
+    text-decoration-color: var(--ink);
+  }
+</style>
