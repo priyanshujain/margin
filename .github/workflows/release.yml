@@ -53,8 +53,20 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add src-tauri/tauri.conf.json package.json src-tauri/Cargo.toml
           git commit -m "chore(release): $TAG"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD; then
+              break
+            fi
+            if [ "$attempt" = "5" ]; then
+              echo "::error::main kept advancing; could not push release bump after 5 attempts."
+              exit 1
+            fi
+            echo "main advanced during release; rebasing and retrying ($attempt)…"
+            sleep 3
+          done
           git tag "$TAG"
-          git push origin HEAD
           git push origin "$TAG"
 
       - name: Create draft release
