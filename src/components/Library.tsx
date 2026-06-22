@@ -78,17 +78,25 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
             <span className="card-badge">Example</span>
           </button>
         )}
-        {books.map((b) => (
-          <div
-            key={b.id}
-            className="card card-book"
-            onClick={() => loadBook(b.id).then(onOpen).catch((e) => setNotice(`Could not open book: ${e}`))}
-          >
-            <span className="card-title">{b.title || "Untitled"}</span>
-            {b.author && <span className="card-author">{b.author}</span>}
-            <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
-          </div>
-        ))}
+        {books.map((b) =>
+          b.corrupt ? (
+            <div key={b.id} className="card card-book card-corrupt">
+              <span className="card-title">{b.title}</span>
+              <span className="card-author">Couldn't be read; a .bak backup may sit beside it.</span>
+              <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
+            </div>
+          ) : (
+            <div
+              key={b.id}
+              className="card card-book"
+              onClick={() => loadBook(b.id).then(onOpen).catch((e) => setNotice(`Could not open book: ${e}`))}
+            >
+              <span className="card-title">{b.title || "Untitled"}</span>
+              {b.author && <span className="card-author">{b.author}</span>}
+              <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
+            </div>
+          ),
+        )}
       </div>
       {notice && (
         <div className="toast" onClick={() => setNotice(null)}>

@@ -7,6 +7,16 @@ pub struct BookSummary {
     id: String,
     title: String,
     author: String,
+    corrupt: bool,
+}
+
+fn corrupt_summary(stem: &str) -> BookSummary {
+    BookSummary {
+        id: stem.to_string(),
+        title: "Unreadable book".to_string(),
+        author: String::new(),
+        corrupt: true,
+    }
 }
 
 fn library_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -31,16 +41,24 @@ pub fn list_books(app: tauri::AppHandle) -> Result<Vec<BookSummary>, String> {
         if path.extension().and_then(|e| e.to_str()) != Some("margin") {
             continue;
         }
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
-            Err(_) => continue,
+            Err(_) => {
+                books.push(corrupt_summary(stem));
+                continue;
+            }
         };
         let value: serde_json::Value = match serde_json::from_str(&contents) {
             Ok(value) => value,
-            Err(_) => continue,
+            Err(_) => {
+                books.push(corrupt_summary(stem));
+                continue;
+            }
         };
         let id = value.get("id").and_then(|v| v.as_str()).unwrap_or("");
         if id.is_empty() {
+            books.push(corrupt_summary(stem));
             continue;
         }
         let metadata = value.get("metadata");
@@ -58,6 +76,7 @@ pub fn list_books(app: tauri::AppHandle) -> Result<Vec<BookSummary>, String> {
             id: id.to_string(),
             title,
             author,
+            corrupt: false,
         });
     }
     Ok(books)

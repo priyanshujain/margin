@@ -6,6 +6,7 @@ export interface BookSummary {
   id: string;
   title: string;
   author: string;
+  corrupt?: boolean;
 }
 
 export async function listBooks(): Promise<BookSummary[]> {
