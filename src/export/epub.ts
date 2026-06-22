@@ -1,6 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { invoke } from "@tauri-apps/api/core";
 import { type Book, type FigurePlacement, TRIM_DIMS, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement } from "../model/book";
+import { fontStack, fontsUsed } from "../model/fonts";
 
 export interface EpubFile {
   path: string;
@@ -36,6 +37,56 @@ function mediaType(path: string): string {
   if (path.endsWith(".webp")) return "image/webp";
   if (path.endsWith(".svg")) return "image/svg+xml";
   return "application/octet-stream";
+}
+
+interface FontAssets {
+  files: EpubFile[];
+  faces: string;
+  manifest: string[];
+}
+
+function base64FromBuffer(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function fetchFontBase64(file: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/fonts/${file}`);
+    if (!res.ok) return null;
+    return base64FromBuffer(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+async function loadFontAssets(book: Book): Promise<FontAssets> {
+  const used = fontsUsed(book.settings.fonts).bundled;
+  const files: EpubFile[] = [];
+  const faces: string[] = [];
+  const manifest: string[] = [];
+  let n = 0;
+  for (const font of used) {
+    const variants = [{ file: font.regular, style: "normal" }];
+    if (font.italic) variants.push({ file: font.italic, style: "italic" });
+    for (const variant of variants) {
+      const data = await fetchFontBase64(variant.file);
+      if (!data) continue;
+      const href = `fonts/${variant.file}`;
+      const id = `font-${++n}`;
+      files.push({ path: `OEBPS/${href}`, data, encoding: "base64" });
+      manifest.push(`<item id="${id}" href="${attr(href)}" media-type="font/ttf"/>`);
+      faces.push(
+        `@font-face {\n  font-family: "${font.family}";\n  font-style: ${variant.style};\n  font-weight: ${font.weight};\n  src: url("${href}");\n}`,
+      );
+    }
+  }
+  return { files, faces: faces.join("\n\n"), manifest };
 }
 
 function inline(node: JSONContent): string {
@@ -240,6 +291,7 @@ function contentOpf(
   chapterIds: string[],
   assetPaths: string[],
   cover: { href: string; mediaType: string },
+  fontManifest: string[],
 ): string {
   const meta = book.metadata;
   const manifest: string[] = [
@@ -247,8 +299,7 @@ function contentOpf(
     `<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
     `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
     `<item id="css" href="style.css" media-type="text/css"/>`,
-    `<item id="font-regular" href="fonts/Literata-VF.ttf" media-type="font/ttf"/>`,
-    `<item id="font-italic" href="fonts/Literata-Italic-VF.ttf" media-type="font/ttf"/>`,
+    ...fontManifest,
   ];
   chapterIds.forEach((_, i) => {
     manifest.push(
@@ -334,23 +385,9 @@ function chapterXhtml(book: Book, index: number, paths: Map<string, string>): st
 </html>`;
 }
 
-function styleCss(): string {
-  return `@font-face {
-  font-family: "Literata";
-  font-style: normal;
-  font-weight: 300 700;
-  src: url("fonts/Literata-VF.ttf");
-}
-
-@font-face {
-  font-family: "Literata";
-  font-style: italic;
-  font-weight: 300 700;
-  src: url("fonts/Literata-Italic-VF.ttf");
-}
-
-html {
-  font-family: "Literata", Georgia, serif;
+function styleCss(book: Book, faces: string): string {
+  return `${faces ? faces + "\n\n" : ""}html {
+  font-family: ${fontStack(book.settings.fonts.body)};
 }
 
 .cover {
@@ -383,6 +420,7 @@ p[data-indent="true"] {
 }
 
 h1, h2, h3 {
+  font-family: ${fontStack(book.settings.fonts.heading)};
   hyphens: none;
   line-height: 1.25;
   font-weight: 500;
@@ -477,7 +515,7 @@ figure.placement-float-top {
 `;
 }
 
-export function bookToEpub(book: Book): EpubFile[] {
+export function bookToEpub(book: Book, fontAssets: FontAssets): EpubFile[] {
   const { assets, paths } = extractFigures(book);
   const cover = buildCover(book);
   const chapterIds = book.chapters.map((c) => c.id);
@@ -488,12 +526,12 @@ export function bookToEpub(book: Book): EpubFile[] {
     { path: "META-INF/container.xml", data: containerXml(), encoding: "utf8" },
     {
       path: "OEBPS/content.opf",
-      data: contentOpf(book, chapterIds, assetPaths, cover),
+      data: contentOpf(book, chapterIds, assetPaths, cover, fontAssets.manifest),
       encoding: "utf8",
     },
     { path: "OEBPS/cover.xhtml", data: coverXhtml(book, cover.href), encoding: "utf8" },
     { path: "OEBPS/nav.xhtml", data: navXhtml(book), encoding: "utf8" },
-    { path: "OEBPS/style.css", data: styleCss(), encoding: "utf8" },
+    { path: "OEBPS/style.css", data: styleCss(book, fontAssets.faces), encoding: "utf8" },
     cover.asset,
   ];
 
@@ -505,12 +543,13 @@ export function bookToEpub(book: Book): EpubFile[] {
     });
   });
 
-  files.push(...assets);
+  files.push(...assets, ...fontAssets.files);
   return files;
 }
 
 export async function buildEpub(book: Book): Promise<Uint8Array> {
-  const files = bookToEpub(book);
+  const fontAssets = await loadFontAssets(book);
+  const files = bookToEpub(book, fontAssets);
   const buf = await invoke<ArrayBuffer>("package_epub", { files });
   return new Uint8Array(buf);
 }

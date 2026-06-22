@@ -5,9 +5,6 @@ use std::io::{Read, Write};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-static LITERATA: &[u8] = include_bytes!("../../public/fonts/Literata-VF.ttf");
-static LITERATA_ITALIC: &[u8] = include_bytes!("../../public/fonts/Literata-Italic-VF.ttf");
-
 #[derive(Deserialize, Serialize)]
 pub struct EpubFile {
     path: String,
@@ -46,14 +43,6 @@ fn build(files: &[EpubFile]) -> Result<Vec<u8>, String> {
         };
         zip.start_file(&file.path, deflated).map_err(|e| e.to_string())?;
         zip.write_all(&bytes).map_err(|e| e.to_string())?;
-    }
-
-    for (path, bytes) in [
-        ("OEBPS/fonts/Literata-VF.ttf", LITERATA),
-        ("OEBPS/fonts/Literata-Italic-VF.ttf", LITERATA_ITALIC),
-    ] {
-        zip.start_file(path, deflated).map_err(|e| e.to_string())?;
-        zip.write_all(bytes).map_err(|e| e.to_string())?;
     }
 
     Ok(zip.finish().map_err(|e| e.to_string())?.into_inner())
