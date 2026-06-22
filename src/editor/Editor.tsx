@@ -2,25 +2,20 @@ import { useEffect, useRef } from "react";
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import { editorExtensions } from "./extensions";
+import { loadPosition, savePosition } from "./positions";
 
 interface EditorProps {
+  bookId: string;
   chapterId: string;
   content: JSONContent;
   onChange: (content: JSONContent) => void;
   onReady: (editor: TiptapEditor | null) => void;
 }
 
-interface ChapterPosition {
-  from: number;
-  to: number;
-  scroll: number;
-}
-
-export function Editor({ chapterId, content, onChange, onReady }: EditorProps) {
+export function Editor({ bookId, chapterId, content, onChange, onReady }: EditorProps) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
-  const positions = useRef(new Map<string, ChapterPosition>());
   const openChapter = useRef(chapterId);
 
   const editor = useEditor({
@@ -37,36 +32,58 @@ export function Editor({ chapterId, content, onChange, onReady }: EditorProps) {
 
   useEffect(() => {
     if (!editor) return;
+    let active = true;
     const scroller = editor.view.dom.closest(".editor-pane") as HTMLElement | null;
 
     const previous = openChapter.current;
-    const switching = previous !== chapterId;
-    if (switching) {
+    if (previous !== chapterId) {
       const { from, to } = editor.state.selection;
-      positions.current.set(previous, { from, to, scroll: scroller?.scrollTop ?? 0 });
+      savePosition(bookId, previous, { from, to, scroll: scroller?.scrollTop ?? 0 });
     }
     openChapter.current = chapterId;
 
     editor.commands.setContent(content, { emitUpdate: false });
 
-    const saved = positions.current.get(chapterId);
+    const saved = loadPosition(bookId, chapterId);
     const size = editor.state.doc.content.size;
     const selection = saved ? { from: Math.min(saved.from, size), to: Math.min(saved.to, size) } : 0;
-    if (switching) {
-      editor.chain().setTextSelection(selection).focus(undefined, { scrollIntoView: false }).run();
-    } else {
-      editor.commands.setTextSelection(selection);
-    }
+    editor.chain().setTextSelection(selection).focus(undefined, { scrollIntoView: false }).run();
 
     if (scroller) {
       const top = saved?.scroll ?? 0;
-      scroller.scrollTop = top;
-      requestAnimationFrame(() => {
-        scroller.scrollTop = top;
-      });
+      const restore = () => {
+        if (active) scroller.scrollTop = top;
+      };
+      restore();
+      requestAnimationFrame(restore);
+      document.fonts?.ready.then(restore).catch(() => {});
     }
+
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterId, editor]);
+  }, [chapterId, editor, bookId]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const scroller = editor.view.dom.closest(".editor-pane") as HTMLElement | null;
+    let timer: ReturnType<typeof setTimeout>;
+    const persist = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const { from, to } = editor.state.selection;
+        savePosition(bookId, openChapter.current, { from, to, scroll: scroller?.scrollTop ?? 0 });
+      }, 400);
+    };
+    editor.on("selectionUpdate", persist);
+    scroller?.addEventListener("scroll", persist, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      editor.off("selectionUpdate", persist);
+      scroller?.removeEventListener("scroll", persist);
+    };
+  }, [editor, bookId]);
 
   return <EditorContent editor={editor} className="editor-host" />;
 }

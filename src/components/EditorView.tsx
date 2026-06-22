@@ -263,6 +263,7 @@ export function EditorView() {
                   )}
                 </header>
                 <Editor
+                  bookId={book.id}
                   chapterId={chapter.id}
                   content={chapter.content}
                   onChange={(content) => setChapterContent(chapter.id, content)}
