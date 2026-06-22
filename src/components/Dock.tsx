@@ -107,8 +107,8 @@ function PdfDock() {
     clearTimeout(timer.current);
     setBusy(true);
     timer.current = setTimeout(() => {
-      const { source, images } = coverActive ? coverToPdfInputs(book) : chapterToPdfInputs(book, idx);
-      compilePdf(source, images)
+      const { source, images, fonts } = coverActive ? coverToPdfInputs(book) : chapterToPdfInputs(book, idx);
+      compilePdf(source, images, false, fonts)
         .then((bytes) => {
           setPdf(bytes);
           setError(null);

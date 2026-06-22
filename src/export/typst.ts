@@ -1,6 +1,17 @@
 import type { JSONContent } from "@tiptap/core";
 import { type Book, type FigurePlacement, type TrimSize, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement } from "../model/book";
+import { fontFamilyName, fontsUsed } from "../model/fonts";
 import type { ImageInput } from "../ipc";
+
+export interface PdfFonts {
+  bundled: string[];
+  system: string[];
+}
+
+function pdfFonts(book: Book): PdfFonts {
+  const used = fontsUsed(book.settings.fonts);
+  return { bundled: used.bundled.map((f) => f.id), system: used.system };
+}
 
 const TRIM: Record<TrimSize, { w: string; h: string }> = {
   "6x9": { w: "6in", h: "9in" },
@@ -104,6 +115,8 @@ function preamble(book: Book): string {
   const trim = TRIM[book.settings.trim];
   const meta = book.metadata;
   const bleed = book.settings.bleed ? "0.125in" : "0in";
+  const body = fontFamilyName(book.settings.fonts.body);
+  const heading = fontFamilyName(book.settings.fonts.heading);
   return `#set document(title: ${str(meta.title || "Untitled")}, author: ${str(meta.author)})
 #set page(
   width: ${trim.w} + ${bleed},
@@ -111,9 +124,9 @@ function preamble(book: Book): string {
   margin: (inside: 0.875in, outside: 0.625in + ${bleed}, top: 0.8in + ${bleed}, bottom: 0.8in + ${bleed}),
   binding: left,
 )
-#set text(font: "Literata", size: 11pt, lang: ${str(meta.language || "en")}, hyphenate: true)
+#set text(font: ${str(body)}, size: 11pt, lang: ${str(meta.language || "en")}, hyphenate: true)
 #set par(justify: true, leading: 0.72em, spacing: 0.72em)
-#show heading: set text(font: "Literata", weight: "medium")
+#show heading: set text(font: ${str(heading)}, weight: "medium")
 #show heading.where(level: 1): set text(size: 22pt)
 #show heading.where(level: 2): set block(above: 1.4em, below: 0.6em)
 #show heading.where(level: 3): set block(above: 1.2em, below: 0.5em)
@@ -125,10 +138,10 @@ function preamble(book: Book): string {
 #let titlepage(title, subtitle, author) = {
   v(2.4in)
   align(center)[
-    #text(font: "Literata", size: 30pt, weight: "medium")[#title]
+    #text(font: ${str(heading)}, size: 30pt, weight: "medium")[#title]
     #if subtitle != "" {
       v(0.6em)
-      text(font: "Literata", size: 15pt, style: "italic", fill: rgb("#6b6458"))[#subtitle]
+      text(font: ${str(body)}, size: 15pt, style: "italic", fill: rgb("#6b6458"))[#subtitle]
     }
     #if author != "" {
       v(1.7em)
@@ -164,7 +177,7 @@ function preamble(book: Book): string {
   set par(justify: false, first-line-indent: 0pt)
   block(below: 2em)[
     #show heading: set block(above: 0pt, below: 0pt)
-    #heading(level: 1, numbering: none, outlined: false, bookmarked: true)[#text(font: "Literata", size: 24pt, weight: "medium")[Contents]]
+    #heading(level: 1, numbering: none, outlined: false, bookmarked: true)[#text(font: ${str(heading)}, size: 24pt, weight: "medium")[Contents]]
   ]
   context {
     let items = query(<chap>).filter(it => it.value.toc != false)
@@ -200,13 +213,15 @@ function imageExtension(dataUrl: string): string {
 function coverBlock(book: Book, coverPath?: string): string {
   const c = book.cover;
   const meta = book.metadata;
+  const body = fontFamilyName(book.settings.fonts.body);
+  const heading = fontFamilyName(book.settings.fonts.heading);
 
   if (c.kind === "image" && coverPath) {
     return `#page(margin: 0pt, numbering: none)[#image(${str(coverPath)}, width: 100%, height: 100%, fit: "cover")]`;
   }
 
   const subtitle = meta.subtitle
-    ? `#v(0.55em)\n  #text(font: "Literata", size: 14pt, style: "italic")[${esc(meta.subtitle)}]`
+    ? `#v(0.55em)\n  #text(font: ${str(body)}, size: 14pt, style: "italic")[${esc(meta.subtitle)}]`
     : "";
   const author = meta.author
     ? `#v(1fr)\n  #text(font: "Hanken Grotesk", size: 11pt, weight: "semibold", tracking: 0.24em)[#upper[${esc(meta.author)}]]\n  #v(0.55in)`
@@ -216,7 +231,7 @@ function coverBlock(book: Book, coverPath?: string): string {
   #set align(center)
   #set text(fill: rgb(${str(c.ink)}))
   #v(1fr)
-  #text(font: "Literata", size: 30pt, weight: "medium")[${esc(meta.title || "Untitled")}]
+  #text(font: ${str(heading)}, size: 30pt, weight: "medium")[${esc(meta.title || "Untitled")}]
   #v(0.5em)
   #line(length: 16%, stroke: 0.6pt + rgb(${str(c.ink)}))
   ${subtitle}
@@ -334,16 +349,16 @@ export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), 
   return `${preamble(book)}\n\n${cover}\n\n${front}\n\n${body}\n`;
 }
 
-export function bookToPdfInputs(book: Book): { source: string; images: ImageInput[] } {
+export function bookToPdfInputs(book: Book): { source: string; images: ImageInput[]; fonts: PdfFonts } {
   const { images, paths } = extractImages(book);
   const coverPath = pushCoverImage(book, images);
-  return { source: bookToTypst(book, paths, coverPath), images };
+  return { source: bookToTypst(book, paths, coverPath), images, fonts: pdfFonts(book) };
 }
 
-export function coverToPdfInputs(book: Book): { source: string; images: ImageInput[] } {
+export function coverToPdfInputs(book: Book): { source: string; images: ImageInput[]; fonts: PdfFonts } {
   const images: ImageInput[] = [];
   const coverPath = pushCoverImage(book, images);
-  return { source: `${preamble(book)}\n\n${coverBlock(book, coverPath)}\n`, images };
+  return { source: `${preamble(book)}\n\n${coverBlock(book, coverPath)}\n`, images, fonts: pdfFonts(book) };
 }
 
 function chapterToTypst(book: Book, index: number, paths: Map<string, string>): string {
@@ -358,8 +373,8 @@ ${chapterBody(book.chapters[index].content, paths)}
 `;
 }
 
-export function chapterToPdfInputs(book: Book, index: number): { source: string; images: ImageInput[] } {
+export function chapterToPdfInputs(book: Book, index: number): { source: string; images: ImageInput[]; fonts: PdfFonts } {
   const chapter = book.chapters[index];
   const { images, paths } = collectImages([chapter.content]);
-  return { source: chapterToTypst(book, index, paths), images };
+  return { source: chapterToTypst(book, index, paths), images, fonts: pdfFonts(book) };
 }

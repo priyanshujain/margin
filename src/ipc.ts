@@ -7,12 +7,24 @@ export interface ImageInput {
   data: string;
 }
 
+export interface PdfFonts {
+  bundled: string[];
+  system: string[];
+}
+
 export async function compilePdf(
   source: string,
   images: ImageInput[] = [],
   emitWarnings = false,
+  fonts: PdfFonts = { bundled: [], system: [] },
 ): Promise<Uint8Array> {
-  const buffer = await invoke<ArrayBuffer>("compile_pdf", { source, images, emitWarnings });
+  const buffer = await invoke<ArrayBuffer>("compile_pdf", {
+    source,
+    images,
+    emitWarnings,
+    bundledFonts: fonts.bundled,
+    systemFonts: fonts.system,
+  });
   return new Uint8Array(buffer);
 }
 

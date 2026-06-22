@@ -8,8 +8,8 @@ const PDF = [{ name: "PDF", extensions: ["pdf"] }];
 const EPUB = [{ name: "EPUB", extensions: ["epub"] }];
 
 export async function exportPdf(book: Book): Promise<void> {
-  const { source, images } = bookToPdfInputs(book);
-  const bytes = await compilePdf(source, images, true);
+  const { source, images, fonts } = bookToPdfInputs(book);
+  const bytes = await compilePdf(source, images, true, fonts);
   await saveBytes(bytes, `${book.metadata.title || "Untitled"}.pdf`, PDF);
 }
 
