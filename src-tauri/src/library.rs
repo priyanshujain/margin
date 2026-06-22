@@ -72,7 +72,7 @@ pub fn load_book(app: tauri::AppHandle, id: String) -> Result<String, String> {
 #[tauri::command]
 pub fn save_book(app: tauri::AppHandle, id: String, contents: String) -> Result<(), String> {
     let path = library_dir(&app)?.join(format!("{id}.margin"));
-    fs::write(&path, contents).map_err(|e| e.to_string())
+    crate::project::atomic_write(&path, contents.as_bytes(), true)
 }
 
 #[tauri::command]
