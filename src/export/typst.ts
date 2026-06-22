@@ -256,6 +256,34 @@ export function extractImages(book: Book): { images: ImageInput[]; paths: Map<st
   return collectImages(book.chapters.map((chapter) => chapter.content));
 }
 
+const SCRIPT_RANGES: { label: string; test: RegExp }[] = [
+  { label: "CJK", test: /[぀-鿿가-힯豈-﫿]/u },
+  { label: "Arabic", test: /[؀-ۿݐ-ݿ]/u },
+  { label: "Hebrew", test: /[֐-׿]/u },
+  { label: "Devanagari", test: /[ऀ-ॿ]/u },
+  { label: "Thai", test: /[฀-๿]/u },
+  { label: "emoji", test: /[☀-➿]|[\u{1f000}-\u{1faff}]/u },
+];
+
+function collectText(book: Book): string {
+  const parts = [book.metadata.title, book.metadata.subtitle, book.metadata.author];
+  const visit = (node: JSONContent) => {
+    if (node.type === "text" && node.text) parts.push(node.text);
+    if (node.attrs?.caption) parts.push(String(node.attrs.caption));
+    (node.content ?? []).forEach(visit);
+  };
+  book.chapters.forEach((chapter) => {
+    parts.push(chapter.title);
+    visit(chapter.content);
+  });
+  return parts.join("\n");
+}
+
+export function unsupportedScripts(book: Book): string[] {
+  const text = collectText(book);
+  return SCRIPT_RANGES.filter((s) => s.test.test(text)).map((s) => s.label);
+}
+
 function cleanTitle(title: string): string {
   return (title || "")
     .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ")

@@ -23,8 +23,12 @@ function App() {
       else if (event.payload === "export-epub") runExport("epub");
       else if (event.payload === "check-updates") checkForUpdates(false);
     });
+    const unlistenWarn = listen<string>("pdf-warnings", (event) => {
+      useBook.getState().setNotice(`PDF exported with warnings:\n${event.payload}`);
+    });
     return () => {
       unlisten.then((stop) => stop());
+      unlistenWarn.then((stop) => stop());
     };
   }, []);
 
