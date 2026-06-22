@@ -16,6 +16,14 @@ function readAll(): Store {
   }
 }
 
+function write(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    return;
+  }
+}
+
 export function loadPosition(bookId: string, chapterId: string): ChapterPosition | null {
   return readAll()[bookId]?.[chapterId] ?? null;
 }
@@ -23,7 +31,7 @@ export function loadPosition(bookId: string, chapterId: string): ChapterPosition
 export function savePosition(bookId: string, chapterId: string, position: ChapterPosition): void {
   const all = readAll();
   (all[bookId] ||= {})[chapterId] = position;
-  localStorage.setItem(KEY, JSON.stringify(all));
+  write(KEY, all);
 }
 
 const ACTIVE_KEY = "margin-active-chapter";
@@ -43,5 +51,14 @@ export function loadActiveChapter(bookId: string): string | null {
 export function saveActiveChapter(bookId: string, chapterId: string): void {
   const all = readActive();
   all[bookId] = chapterId;
-  localStorage.setItem(ACTIVE_KEY, JSON.stringify(all));
+  write(ACTIVE_KEY, all);
+}
+
+export function clearPositions(bookId: string): void {
+  const positions = readAll();
+  const active = readActive();
+  delete positions[bookId];
+  delete active[bookId];
+  write(KEY, positions);
+  write(ACTIVE_KEY, active);
 }
