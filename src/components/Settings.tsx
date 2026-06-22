@@ -6,6 +6,7 @@ import {
   type BookFonts,
   type FontRef,
   BUNDLED_FONTS,
+  DEFAULT_FONTS,
   FONT_PAIRINGS,
   decodeRef,
   encodeRef,
@@ -80,7 +81,7 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
     isbn: book?.metadata.isbn ?? "",
     language: book?.metadata.language ?? "en",
     bleed: book?.settings.bleed ?? true,
-    fonts: book?.settings.fonts ?? FONT_PAIRINGS[0],
+    fonts: book?.settings.fonts ?? DEFAULT_FONTS,
   }));
   const [system, setSystem] = useState<string[]>(() => systemFontCache ?? []);
   const [advanced, setAdvanced] = useState(() => pairingFor(draft.fonts) === null);
