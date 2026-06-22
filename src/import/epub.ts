@@ -184,12 +184,12 @@ function hasBlockChild(el: Element): boolean {
   return Array.from(el.children).some((c) => BLOCK_TAGS.has(c.localName.toLowerCase()));
 }
 
-function listItems(el: Element): JSONContent[] {
+function listItems(el: Element, depth: number): JSONContent[] {
   const items: JSONContent[] = [];
   Array.from(el.children)
     .filter((c) => c.localName.toLowerCase() === "li")
     .forEach((li) => {
-      const content = blocksFrom(li);
+      const content = blocksFrom(li, depth + 1);
       items.push({ type: "listItem", content: content.length ? content : [{ type: "paragraph" }] });
     });
   return items;
@@ -212,7 +212,7 @@ function tableBlocks(el: Element): JSONContent[] {
   return out;
 }
 
-function blockFromElement(el: Element): JSONContent[] {
+function blockFromElement(el: Element, depth: number): JSONContent[] {
   const tag = el.localName.toLowerCase();
   switch (tag) {
     case "p":
@@ -228,15 +228,15 @@ function blockFromElement(el: Element): JSONContent[] {
       return meaningful(content) ? [{ type: "heading", attrs: { level }, content }] : [];
     }
     case "blockquote": {
-      const inner = blocksFrom(el);
+      const inner = blocksFrom(el, depth + 1);
       return [{ type: "blockquote", content: inner.length ? inner : [{ type: "paragraph" }] }];
     }
     case "ul": {
-      const items = listItems(el);
+      const items = listItems(el, depth);
       return items.length ? [{ type: "bulletList", content: items }] : [];
     }
     case "ol": {
-      const items = listItems(el);
+      const items = listItems(el, depth);
       return items.length ? [{ type: "orderedList", content: items }] : [];
     }
     case "hr":
@@ -253,18 +253,19 @@ function blockFromElement(el: Element): JSONContent[] {
     case "style":
       return [];
     default:
-      return hasBlockChild(el) ? blocksFrom(el) : paragraphAndFigures(el);
+      return hasBlockChild(el) ? blocksFrom(el, depth + 1) : paragraphAndFigures(el);
   }
 }
 
-function blocksFrom(parent: Node): JSONContent[] {
+function blocksFrom(parent: Node, depth = 0): JSONContent[] {
+  if (depth > 64) return [];
   const out: JSONContent[] = [];
   parent.childNodes.forEach((child) => {
     if (child.nodeType === 3) {
       const text = (child.nodeValue ?? "").replace(/\s+/g, " ").trim();
       if (text !== "") out.push({ type: "paragraph", content: [{ type: "text", text }] });
     } else if (child.nodeType === 1) {
-      out.push(...blockFromElement(child as Element));
+      out.push(...blockFromElement(child as Element, depth));
     }
   });
   return out;
@@ -491,9 +492,13 @@ export function filesToBook(files: RawFile[], fallbackName = "Imported book"): B
   spine.forEach((item, i) => {
     const file = byPath.get(normalize(item.href));
     if (!file) return;
-    chapters.push(
-      buildChapter(file, dirOf(item.href), navTitles.get(item.href), i, byPath, manifest),
-    );
+    try {
+      chapters.push(
+        buildChapter(file, dirOf(item.href), navTitles.get(item.href), i, byPath, manifest),
+      );
+    } catch {
+      return;
+    }
   });
   if (!chapters.length) throw new Error("Not a valid EPUB: no readable chapters found.");
 
