@@ -25,3 +25,23 @@ export function savePosition(bookId: string, chapterId: string, position: Chapte
   (all[bookId] ||= {})[chapterId] = position;
   localStorage.setItem(KEY, JSON.stringify(all));
 }
+
+const ACTIVE_KEY = "margin-active-chapter";
+
+function readActive(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(ACTIVE_KEY) || "{}") as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+export function loadActiveChapter(bookId: string): string | null {
+  return readActive()[bookId] ?? null;
+}
+
+export function saveActiveChapter(bookId: string, chapterId: string): void {
+  const all = readActive();
+  all[bookId] = chapterId;
+  localStorage.setItem(ACTIVE_KEY, JSON.stringify(all));
+}
