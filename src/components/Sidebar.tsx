@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { COVER_ID, useBook } from "../store/useBook";
-import { type Chapter, type ChapterKind, bodyNumber, chapterKind } from "../model/book";
+import { type Chapter, type ChapterKind, bodyNumber, chapterKind, partNumber, partRoman } from "../model/book";
 import { AddPageMenu } from "./AddPageMenu";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
@@ -10,6 +10,8 @@ interface Row {
   chapter: Chapter;
   index: number;
   num: number | null;
+  part: number | null;
+  indent: boolean;
 }
 
 interface DropTarget {
@@ -43,6 +45,7 @@ export function Sidebar() {
   const setActiveChapter = useBook((s) => s.setActiveChapter);
   const addChapter = useBook((s) => s.addChapter);
   const addPage = useBook((s) => s.addPage);
+  const addPart = useBook((s) => s.addPart);
   const duplicateChapter = useBook((s) => s.duplicateChapter);
   const deleteChapter = useBook((s) => s.deleteChapter);
   const moveChapter = useBook((s) => s.moveChapter);
@@ -51,6 +54,7 @@ export function Sidebar() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const dropRef = useRef<DropTarget | null>(null);
@@ -62,15 +66,23 @@ export function Sidebar() {
     return () => clearInterval(timer);
   }, []);
 
-  const rows: Row[] = chapters.map((chapter, index) => ({ chapter, index, num: bodyNumber(chapters, index) }));
+  const rows: Row[] = chapters.map((chapter, index) => ({
+    chapter,
+    index,
+    num: bodyNumber(chapters, index),
+    part: partNumber(chapters, index),
+    indent: chapterKind(chapter) === "body" && chapters.slice(0, index).some((c) => chapterKind(c) === "part"),
+  }));
+  const inBody = (r: Row) => chapterKind(r.chapter) === "body" || chapterKind(r.chapter) === "part";
   const groups: { kind: ChapterKind; label: string; rows: Row[] }[] = [
     { kind: "front", label: "Front matter", rows: rows.filter((r) => chapterKind(r.chapter) === "front") },
-    { kind: "body", label: "Chapters", rows: rows.filter((r) => chapterKind(r.chapter) === "body") },
+    { kind: "body", label: "Chapters", rows: rows.filter(inBody) },
     { kind: "back", label: "Back matter", rows: rows.filter((r) => chapterKind(r.chapter) === "back") },
   ];
   const groupEnd: Record<ChapterKind, number> = {
     front: groups[0].rows.length,
     body: groups[0].rows.length + groups[1].rows.length,
+    part: groups[0].rows.length + groups[1].rows.length,
     back: rows.length,
   };
 
@@ -125,7 +137,7 @@ export function Sidebar() {
   };
 
   const onRowPointerDown = (e: React.PointerEvent, index: number) => {
-    if (e.button !== 0 || (e.target as HTMLElement).closest(".row-menu-btn")) return;
+    if (e.button !== 0 || chapters[index]?.id === menuOpenId || (e.target as HTMLElement).closest(".row-menu-btn")) return;
     suppressClick.current = false;
     gesture.current = { from: index, x: e.clientX, y: e.clientY, active: false };
     window.addEventListener("pointermove", onPointerMove);
@@ -154,7 +166,7 @@ export function Sidebar() {
         <Icon d="M5 4h11l3 3v13H5zM16 4v4h3" size={15} />
         <span className="title">Cover</span>
       </button>
-      <AddPageMenu onAdd={addPage} />
+      <AddPageMenu onAdd={addPage} onAddPart={addPart} />
 
       <div className="nav-scroll">
         {groups.map((group) =>
@@ -162,12 +174,22 @@ export function Sidebar() {
             <div key={group.kind} className="nav-section" data-kind={group.kind}>
               <div className="nav-label">{group.label}</div>
               <ul className="chapters">
-                {group.rows.map((row, i) => (
+                {group.rows.map((row, i) => {
+                  const isPart = chapterKind(row.chapter) === "part";
+                  const partLabel = `Part ${partRoman(row.part ?? 0)}`;
+                  const rowLabel = isPart
+                    ? row.chapter.title
+                      ? `${partLabel}: ${row.chapter.title}`
+                      : partLabel
+                    : row.chapter.title || "Untitled";
+                  return (
                   <li
                     key={row.chapter.id}
                     className="chapter"
                     data-idx={row.index}
                     data-kind={group.kind}
+                    data-part={isPart}
+                    data-indent={row.indent}
                     data-active={row.chapter.id === activeChapterId}
                     data-dragging={dragIndex === row.index}
                     data-drop-before={dropTarget?.kind === group.kind && dropTarget.index === row.index}
@@ -178,29 +200,36 @@ export function Sidebar() {
                     <span className="grip" title="Drag to reorder">
                       <Icon d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" size={14} />
                     </span>
-                    <span className="num">{row.num ?? ""}</span>
+                    {!isPart && <span className="num">{row.num ?? ""}</span>}
                     <span className="text">
-                      <span
-                        className="title"
-                        onMouseEnter={(e) => {
-                          const el = e.currentTarget;
-                          if (el.scrollWidth > el.clientWidth) el.title = row.chapter.title || "Untitled";
-                          else el.removeAttribute("title");
-                        }}
-                      >
-                        {row.chapter.title || "Untitled"}
-                      </span>
+                      {isPart && <span className="part-eyebrow">Part {partRoman(row.part ?? 0)}</span>}
+                      {(!isPart || row.chapter.title) && (
+                        <span
+                          className="title"
+                          onMouseEnter={(e) => {
+                            const el = e.currentTarget;
+                            if (el.scrollWidth > el.clientWidth) el.title = row.chapter.title || "Untitled";
+                            else el.removeAttribute("title");
+                          }}
+                        >
+                          {row.chapter.title || "Untitled"}
+                        </span>
+                      )}
                       {row.chapter.id === activeChapterId && (
                         <span className="meta">Edited {formatEdited(row.chapter.updatedAt, now)}</span>
                       )}
                     </span>
                     <RowMenu
                       label="Page options"
+                      onOpenChange={(open) =>
+                        setMenuOpenId((cur) => (open ? row.chapter.id : cur === row.chapter.id ? null : cur))
+                      }
                       onDuplicate={() => duplicateChapter(row.chapter.id)}
-                      onDelete={() => setPendingDelete({ id: row.chapter.id, title: row.chapter.title || "Untitled" })}
+                      onDelete={() => setPendingDelete({ id: row.chapter.id, title: rowLabel })}
                     />
                   </li>
-                ))}
+                  );
+                })}
                 {!group.rows.length && (
                   <li className="chapter-drop" data-on={dropTarget?.kind === group.kind}>
                     Drop here

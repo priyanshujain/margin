@@ -6,11 +6,16 @@ interface RowMenuProps {
   label: string;
   onDuplicate?: () => void;
   onDelete: () => void;
+  onOpenChange?: (open: boolean) => void;
   className?: string;
 }
 
-export function RowMenu({ label, onDuplicate, onDelete, className = "" }: RowMenuProps) {
+export function RowMenu({ label, onDuplicate, onDelete, onOpenChange, className = "" }: RowMenuProps) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open]);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);

@@ -18,7 +18,7 @@ import { useProofing } from "../store/useProofing";
 import { useTheme } from "../store/useTheme";
 import { useWidth } from "../store/useWidth";
 import { WIDTH_OPTIONS } from "../width";
-import { bodyNumber, chapterKind } from "../model/book";
+import { bodyNumber, chapterKind, partNumber, partRoman } from "../model/book";
 import { saveBook } from "../library";
 import { isDesktop } from "../ipc";
 import { issueSignature, rememberWord, runProof } from "../proofing";
@@ -156,7 +156,13 @@ export function EditorView() {
   const realIdx = book.chapters.findIndex((c) => c.id === chapter?.id);
   const kind = chapter ? chapterKind(chapter) : "body";
   const eyebrow =
-    kind === "body" ? `Chapter ${bodyNumber(book.chapters, realIdx) ?? ""}` : kind === "front" ? "Front matter" : "Back matter";
+    kind === "body"
+      ? `Chapter ${bodyNumber(book.chapters, realIdx) ?? ""}`
+      : kind === "part"
+        ? `Part ${partRoman(partNumber(book.chapters, realIdx) ?? 0)}`
+        : kind === "front"
+          ? "Front matter"
+          : "Back matter";
 
   return (
     <div className="app">
@@ -255,7 +261,9 @@ export function EditorView() {
                   <input
                     className="chapter-title-input"
                     value={chapter.noTitle ? "" : chapter.title}
-                    placeholder={chapter.noTitle ? "No title" : kind === "body" ? "Chapter title" : "Page title"}
+                    placeholder={
+                      chapter.noTitle ? "No title" : kind === "body" ? "Chapter title" : kind === "part" ? "Part title (optional)" : "Page title"
+                    }
                     spellCheck={false}
                     disabled={chapter.noTitle}
                     onChange={(e) => setChapterTitle(chapter.id, e.target.value)}

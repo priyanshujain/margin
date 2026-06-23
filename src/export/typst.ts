@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import { type Book, type FigurePlacement, type TrimSize, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement } from "../model/book";
+import { type Book, type FigurePlacement, type TrimSize, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement, partNumber, partRoman } from "../model/book";
 import { fontFamilyName, fontsUsed } from "../model/fonts";
 import type { ImageInput } from "../ipc";
 
@@ -166,6 +166,20 @@ function preamble(book: Book): string {
   v(1.5em)
 }
 
+#let openpart(info) = {
+  pagebreak(to: "odd", weak: true)
+  [#metadata(info) <chap>]
+  v(3.1in)
+  align(center)[
+    #text(font: "Hanken Grotesk", size: 10pt, weight: "semibold", tracking: 0.34em)[#upper("Part " + info.numeral)]
+    #if not info.notitle and info.title != "" {
+      v(0.85em)
+      heading(level: 1, numbering: none, outlined: info.toc)[#info.title]
+    }
+  ]
+  v(1.5em)
+}
+
 #let pageof(loc) = {
   let pat = loc.page-numbering()
   if pat == none { pat = "1" }
@@ -186,6 +200,7 @@ function preamble(book: Book): string {
       let info = it.value
       let pg = pageof(it.location())
       let body = info.kind == "body"
+      let part = info.kind == "part"
       let gap = if prev != none and prev != info.kind { 1.7em } else { 0.95em }
       prev = info.kind
       block(width: 100%, above: gap, below: 0.95em, {
@@ -195,7 +210,9 @@ function preamble(book: Book): string {
           column-gutter: (0.65em, 1em),
           align: (right + top, left + top, right + top),
           if body { info.num } else { [] },
-          if body { info.title } else { emph(info.title) },
+          if part {
+            strong(if info.title != "" { "Part " + info.numeral + ": " + info.title } else { "Part " + info.numeral })
+          } else if body { info.title } else { emph(info.title) },
           pg,
         )]
       })
@@ -312,16 +329,23 @@ function normTitle(title: string): string {
 
 function inToc(book: Book, index: number): boolean {
   const chapter = book.chapters[index];
-  if (chapter.noTitle && chapterKind(chapter) !== "body") return false;
+  const kind = chapterKind(chapter);
+  if (kind === "part") return true;
+  if (chapter.noTitle && kind !== "body") return false;
   const title = cleanTitle(chapter.title) || "Untitled";
-  return !(chapterKind(chapter) === "front" && normTitle(title) === normTitle(book.metadata.title));
+  return !(kind === "front" && normTitle(title) === normTitle(book.metadata.title));
 }
 
 function openerCall(book: Book, index: number): string {
   const chapter = book.chapters[index];
   const kind = chapterKind(chapter);
-  const num = kind === "body" ? String(bodyNumber(book.chapters, index)) : "";
   const notitle = !!chapter.noTitle;
+  if (kind === "part") {
+    const numeral = partRoman(partNumber(book.chapters, index) ?? 0);
+    const title = notitle ? "" : cleanTitle(chapter.title);
+    return `#openpart((kind: "part", numeral: ${str(numeral)}, title: ${str(title)}, notitle: ${notitle}, toc: ${inToc(book, index)}))`;
+  }
+  const num = kind === "body" ? String(bodyNumber(book.chapters, index)) : "";
   const title = notitle ? "" : cleanTitle(chapter.title) || "Untitled";
   return `#openchapter((kind: ${str(kind)}, num: ${str(num)}, title: ${str(title)}, notitle: ${notitle}, toc: ${inToc(book, index)}))`;
 }
@@ -335,13 +359,13 @@ export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), 
 #set page(numbering: "i")
 #counter(page).update(1)`;
 
-  const firstBody = book.chapters.findIndex((c) => chapterKind(c) === "body");
+  const firstMain = book.chapters.findIndex((c) => chapterKind(c) === "body" || chapterKind(c) === "part");
   const firstToc = book.chapters.findIndex((_, i) => inToc(book, i));
 
   const body = book.chapters
     .map((chapter, i) => {
       const toc = i === firstToc ? `#contents()\n\n` : "";
-      const reset = i === firstBody ? `#set page(numbering: "1")\n#counter(page).update(1)\n` : "";
+      const reset = i === firstMain ? `#set page(numbering: "1")\n#counter(page).update(1)\n` : "";
       return `${toc}${reset}${openerCall(book, i)}\n\n${chapterBody(chapter.content, paths)}`;
     })
     .join("\n\n");

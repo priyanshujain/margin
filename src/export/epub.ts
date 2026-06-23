@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { invoke } from "@tauri-apps/api/core";
-import { type Book, type FigurePlacement, TRIM_DIMS, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement } from "../model/book";
+import { type Book, type FigurePlacement, TRIM_DIMS, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement, partNumber, partRoman } from "../model/book";
 import { fontStack, fontsUsed } from "../model/fonts";
 
 export interface EpubFile {
@@ -338,9 +338,12 @@ function contentOpf(
 function navXhtml(book: Book): string {
   const items = book.chapters
     .map((chapter, i) => {
-      if (chapter.noTitle && chapterKind(chapter) !== "body") return "";
-      const fallback = chapterKind(chapter) === "body" ? `Chapter ${bodyNumber(book.chapters, i)}` : "Untitled";
-      const label = chapter.noTitle ? fallback : chapter.title || fallback;
+      const kind = chapterKind(chapter);
+      if (chapter.noTitle && kind !== "body" && kind !== "part") return "";
+      const partLabel = `Part ${partRoman(partNumber(book.chapters, i) ?? 0)}`;
+      const fallback = kind === "body" ? `Chapter ${bodyNumber(book.chapters, i)}` : kind === "part" ? partLabel : "Untitled";
+      const base = chapter.noTitle ? fallback : chapter.title || fallback;
+      const label = kind === "part" && !chapter.noTitle && chapter.title ? `${partLabel}: ${chapter.title}` : base;
       return `      <li><a href="chapter-${i + 1}.xhtml">${esc(label)}</a></li>`;
     })
     .filter(Boolean)
@@ -366,16 +369,20 @@ function chapterXhtml(book: Book, index: number, paths: Map<string, string>): st
   const chapter = book.chapters[index];
   const kind = chapterKind(chapter);
   const num = bodyNumber(book.chapters, index);
-  const title = chapter.title || (kind === "body" ? `Chapter ${num}` : "Untitled");
-  const eyebrow = kind === "body" ? `<p class="eyebrow">Chapter ${num}</p>` : "";
-  const heading = chapter.noTitle ? "" : `<h1>${esc(title)}</h1>`;
+  const partLabel = `Part ${partRoman(partNumber(book.chapters, index) ?? 0)}`;
+  const eyebrow =
+    kind === "body" ? `<p class="eyebrow">Chapter ${num}</p>` : kind === "part" ? `<p class="eyebrow">${esc(partLabel)}</p>` : "";
+  const headingText = kind === "part" ? chapter.title : chapter.title || (kind === "body" ? `Chapter ${num}` : "Untitled");
+  const heading = chapter.noTitle || (kind === "part" && !chapter.title) ? "" : `<h1>${esc(headingText)}</h1>`;
+  const docTitle = chapter.title || (kind === "part" ? partLabel : kind === "body" ? `Chapter ${num}` : "Untitled");
+  const epubType = kind === "body" ? "chapter" : kind === "part" ? "part" : kind === "front" ? "frontmatter" : "backmatter";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
   <head>
-    <title>${esc(title)}</title>
+    <title>${esc(docTitle)}</title>
     <link rel="stylesheet" type="text/css" href="style.css"/>
   </head>
-  <body epub:type="${kind === "body" ? "chapter" : kind === "front" ? "frontmatter" : "backmatter"}">
+  <body epub:type="${epubType}">
     <header class="chapter-opener">
       ${eyebrow}
       ${heading}
@@ -433,6 +440,18 @@ h2, h3 {
 .chapter-opener {
   text-align: center;
   margin: 3em 0 2.2em;
+}
+
+body[epub:type="part"] {
+  page-break-before: always;
+}
+
+body[epub:type="part"] .chapter-opener {
+  margin-top: 32vh;
+}
+
+body[epub:type="part"] .eyebrow {
+  font-size: 0.82em;
 }
 
 .eyebrow {

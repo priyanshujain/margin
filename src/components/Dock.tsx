@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { generateHTML } from "@tiptap/core";
 import { COVER_ID, useBook } from "../store/useBook";
-import { type Chapter, type TrimSize, bodyNumber, chapterKind } from "../model/book";
+import { type Chapter, type TrimSize, bodyNumber, chapterKind, partNumber, partRoman } from "../model/book";
 import { editorExtensions } from "../editor/extensions";
 import { chapterToPdfInputs, coverToPdfInputs } from "../export/typst";
 import { compilePdf, isDesktop } from "../ipc";
@@ -71,7 +71,15 @@ function DockHead({ meta }: { meta?: ReactNode }) {
 
 function chapterEyebrow(chapter: Chapter, chapters: Chapter[], idx: number): string {
   const kind = chapterKind(chapter);
-  return kind === "body" ? `Chapter ${bodyNumber(chapters, idx) ?? ""}` : kind === "front" ? "Front matter" : "Back matter";
+  if (kind === "body") return `Chapter ${bodyNumber(chapters, idx) ?? ""}`;
+  if (kind === "part") return `Part ${partRoman(partNumber(chapters, idx) ?? 0)}`;
+  return kind === "front" ? "Front matter" : "Back matter";
+}
+
+function previewTitle(chapter: Chapter): string | undefined {
+  if (chapter.noTitle) return undefined;
+  if (chapterKind(chapter) === "part") return chapter.title || undefined;
+  return chapter.title || "Untitled";
 }
 
 function useActiveChapter() {
@@ -163,7 +171,7 @@ function HtmlDock() {
       <div className="page">
         <div className="p-opener">
           <div className="p-num">{eyebrow}</div>
-          {!chapter.noTitle && <div className="p-title">{chapter.title || "Untitled"}</div>}
+          {previewTitle(chapter) !== undefined && <div className="p-title">{previewTitle(chapter)}</div>}
         </div>
         <div className="page-body" dangerouslySetInnerHTML={{ __html: html }} />
         <div className="folio">{idx * 8 + 7}</div>
@@ -207,7 +215,7 @@ function DeviceDock({ device }: { device: Device }) {
       <DeviceFrame
         device={device}
         eyebrow={eyebrow}
-        title={chapter.noTitle ? undefined : chapter.title || "Untitled"}
+        title={previewTitle(chapter)}
         html={html}
       />
     </section>

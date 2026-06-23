@@ -4,6 +4,7 @@ import { Icon } from "./Icon";
 
 interface AddPageMenuProps {
   onAdd: (group: "front" | "back", title: string) => void;
+  onAddPart: () => void;
 }
 
 const GROUPS: { key: "front" | "back"; label: string }[] = [
@@ -11,7 +12,7 @@ const GROUPS: { key: "front" | "back"; label: string }[] = [
   { key: "back", label: "Back matter" },
 ];
 
-export function AddPageMenu({ onAdd }: AddPageMenuProps) {
+export function AddPageMenu({ onAdd, onAddPart }: AddPageMenuProps) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -42,6 +43,11 @@ export function AddPageMenu({ onAdd }: AddPageMenuProps) {
     onAdd(group, label);
   };
 
+  const pickPart = () => {
+    setOpen(false);
+    onAddPart();
+  };
+
   return (
     <>
       <button ref={btnRef} className="add-page" data-open={open} onClick={toggle}>
@@ -54,6 +60,12 @@ export function AddPageMenu({ onAdd }: AddPageMenuProps) {
           style={{ top: coords.top, left: coords.left }}
           onMouseDown={(e) => e.stopPropagation()}
         >
+          <div className="add-page-group">
+            <div className="add-page-label">Body</div>
+            <button className="add-page-item" onClick={pickPart}>
+              Part divider
+            </button>
+          </div>
           {GROUPS.map((g) => (
             <div key={g.key} className="add-page-group">
               <div className="add-page-label">{g.label}</div>

@@ -10,6 +10,7 @@ import {
   cloneChapter,
   createChapter,
   createPage,
+  createPart,
   normalizeBook,
 } from "../model/book";
 import { loadActiveChapter, saveActiveChapter } from "../editor/positions";
@@ -34,6 +35,7 @@ interface BookState {
   setChapterNoTitle: (id: string, noTitle: boolean) => void;
   addChapter: () => void;
   addPage: (group: "front" | "back", title: string) => void;
+  addPart: () => void;
   duplicateChapter: (id: string) => void;
   deleteChapter: (id: string) => void;
   moveChapter: (from: number, to: number, toKind?: ChapterKind) => void;
@@ -107,6 +109,18 @@ export const useBook = create<BookState>((set, get) => ({
       chapters.splice(insertAt, 0, page);
       return { activeChapterId: page.id, dirty: true, book: { ...s.book, chapters } };
     }),
+  addPart: () =>
+    set((s) => {
+      if (!s.book) return {};
+      const part = createPart();
+      const chapters = [...s.book.chapters];
+      const bodyEnd = chapters.length - chapters.filter((c) => chapterKind(c) === "back").length;
+      const activeIdx = chapters.findIndex((c) => c.id === s.activeChapterId);
+      const activeKind = activeIdx >= 0 ? chapterKind(chapters[activeIdx]) : null;
+      const insertAt = activeKind === "body" || activeKind === "part" ? activeIdx + 1 : bodyEnd;
+      chapters.splice(insertAt, 0, part);
+      return { activeChapterId: part.id, dirty: true, book: { ...s.book, chapters } };
+    }),
   duplicateChapter: (id) =>
     set((s) => {
       if (!s.book) return {};
@@ -133,7 +147,7 @@ export const useBook = create<BookState>((set, get) => ({
       const chapters = [...s.book.chapters];
       if (from < 0 || from >= chapters.length) return {};
       const target = chapters[from];
-      const nextKind = toKind ?? chapterKind(target);
+      const nextKind = chapterKind(target) === "part" ? "part" : toKind ?? chapterKind(target);
       const dest = Math.max(0, Math.min(from < to ? to - 1 : to, chapters.length - 1));
       if (from === dest && chapterKind(target) === nextKind) return {};
       const [moved] = chapters.splice(from, 1);

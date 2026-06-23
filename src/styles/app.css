@@ -233,6 +233,37 @@ body.resizing {
   font-variant-numeric: tabular-nums;
 }
 
+.chapter[data-part="true"] {
+  margin-top: 7px;
+  align-items: center;
+}
+
+.chapter[data-part="true"] .text {
+  gap: 1px;
+}
+
+.chapter .part-eyebrow {
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.chapter[data-part="true"][data-active="true"] .part-eyebrow {
+  color: var(--accent);
+}
+
+.chapter[data-part="true"] .title {
+  font-size: var(--t-2);
+  color: var(--ink-soft);
+}
+
+.chapter[data-indent="true"] {
+  padding-left: 26px;
+}
+
 .chapter[data-active="true"] .num {
   color: var(--accent);
 }

@@ -64,7 +64,7 @@ export function trimRatio(trim: TrimSize): number {
   return w / h;
 }
 
-export type ChapterKind = "front" | "body" | "back";
+export type ChapterKind = "front" | "body" | "part" | "back";
 
 export interface Chapter {
   id: string;
@@ -107,6 +107,31 @@ export function bodyNumber(chapters: Chapter[], index: number): number | null {
   return n;
 }
 
+export function partNumber(chapters: Chapter[], index: number): number | null {
+  if (index < 0 || index >= chapters.length || chapterKind(chapters[index]) !== "part") return null;
+  let n = 0;
+  for (let i = 0; i <= index; i++) if (chapterKind(chapters[i]) === "part") n++;
+  return n;
+}
+
+const ROMAN: [number, string][] = [
+  [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"],
+  [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+];
+
+export function partRoman(n: number): string {
+  if (n < 1) return String(n);
+  let num = n;
+  let out = "";
+  for (const [value, sym] of ROMAN) {
+    while (num >= value) {
+      out += sym;
+      num -= value;
+    }
+  }
+  return out;
+}
+
 export interface Book {
   schema: "margin/1";
   id: string;
@@ -139,6 +164,10 @@ export function createChapter(title = "Untitled chapter"): Chapter {
 
 export function createPage(group: "front" | "back", title: string): Chapter {
   return { id: crypto.randomUUID(), title, content: emptyDoc(), kind: group, updatedAt: Date.now() };
+}
+
+export function createPart(title = ""): Chapter {
+  return { id: crypto.randomUUID(), title, content: emptyDoc(), kind: "part", updatedAt: Date.now() };
 }
 
 export function cloneChapter(chapter: Chapter): Chapter {
