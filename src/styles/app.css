@@ -654,6 +654,7 @@ body.resizing {
 }
 
 .chapter-title-input {
+  display: block;
   width: 100%;
   margin: 15px 0 0;
   padding: 0;
@@ -666,6 +667,9 @@ body.resizing {
   line-height: 1.16;
   letter-spacing: -0.01em;
   color: var(--ink);
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: break-word;
 }
 
 .chapter-title-input:focus {

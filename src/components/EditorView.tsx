@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { Sidebar } from "./Sidebar";
 import { Dock } from "./Dock";
@@ -258,15 +258,13 @@ export function EditorView() {
               <article className="sheet">
                 <header className="chapter-opener">
                   <div className="chapter-num">{eyebrow}</div>
-                  <input
-                    className="chapter-title-input"
+                  <ChapterTitleInput
                     value={chapter.noTitle ? "" : chapter.title}
                     placeholder={
                       chapter.noTitle ? "No title" : kind === "body" ? "Chapter title" : kind === "part" ? "Part title (optional)" : "Page title"
                     }
-                    spellCheck={false}
-                    disabled={chapter.noTitle}
-                    onChange={(e) => setChapterTitle(chapter.id, e.target.value)}
+                    disabled={!!chapter.noTitle}
+                    onChange={(value) => setChapterTitle(chapter.id, value)}
                   />
                   {(chapter.noTitle || !chapter.title.trim()) && (
                     <label className="no-title-check">
@@ -334,5 +332,40 @@ export function EditorView() {
         </div>
       )}
     </div>
+  );
+}
+
+function ChapterTitleInput({
+  value,
+  placeholder,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value, disabled]);
+
+  return (
+    <textarea
+      ref={ref}
+      className="chapter-title-input"
+      rows={1}
+      value={value}
+      placeholder={placeholder}
+      spellCheck={false}
+      disabled={disabled}
+      onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+      onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
