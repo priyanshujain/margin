@@ -14,6 +14,7 @@ import { FloatingToolbar } from "../editor/FloatingToolbar";
 import type { ProofCoords, ProofIssue, ProofingStorage } from "../editor/proofing";
 import { COVER_ID, useBook } from "../store/useBook";
 import { useBackup } from "../store/useBackup";
+import { useExportPreview } from "../store/useExportPreview";
 import { useProofing } from "../store/useProofing";
 import { useTheme } from "../store/useTheme";
 import { useWidth } from "../store/useWidth";
@@ -21,6 +22,7 @@ import { WIDTH_OPTIONS } from "../width";
 import { bodyNumber, chapterKind, partNumber, partRoman } from "../model/book";
 import { saveBook } from "../library";
 import { isDesktop } from "../ipc";
+import { useCompact } from "../useMedia";
 import { issueSignature, rememberWord, runProof } from "../proofing";
 import { runExport } from "../export/run";
 
@@ -40,10 +42,13 @@ export function EditorView() {
   const width = useWidth((s) => s.width);
   const setWidth = useWidth((s) => s.setWidth);
 
+  const isCompact = useCompact();
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
-  const [dock, setDock] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(!isCompact);
+  const [dock, setDock] = useState(!isCompact);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [widthOpen, setWidthOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [findExpanded, setFindExpanded] = useState(false);
@@ -57,6 +62,21 @@ export function EditorView() {
 
   const coverActive = activeChapterId === COVER_ID;
   const proofingAvailable = isDesktop && book?.metadata.language === "en";
+
+  const toggleSidebar = () =>
+    setSidebarOpen((open) => {
+      if (!open && isCompact) setDock(false);
+      return !open;
+    });
+  const toggleDock = () =>
+    setDock((open) => {
+      if (!open && isCompact) setSidebarOpen(false);
+      return !open;
+    });
+  const closeDrawers = () => {
+    setSidebarOpen(false);
+    setDock(false);
+  };
 
   const openFind = useCallback((expanded: boolean) => {
     setFindExpanded(expanded);
@@ -113,6 +133,11 @@ export function EditorView() {
   }, [notice]);
 
   useEffect(() => {
+    setSidebarOpen(!isCompact);
+    setDock(!isCompact);
+  }, [isCompact]);
+
+  useEffect(() => {
     if (!editor) return;
     const storage = (editor.storage as unknown as Record<string, ProofingStorage>).proofing;
     storage.onClickIssue = (issue, coords) => setProofPopover({ issue, coords });
@@ -147,7 +172,8 @@ export function EditorView() {
 
   const handleExport = (format: "pdf" | "epub") => {
     setExportOpen(false);
-    runExport(format);
+    if (format === "pdf" && isDesktop) useExportPreview.getState().openPreview();
+    else runExport(format);
   };
 
   if (!book) return null;
@@ -165,18 +191,23 @@ export function EditorView() {
           : "Back matter";
 
   return (
-    <div className="app">
+    <div className="app" data-compact={isCompact} data-sidebar={sidebarOpen} data-dock={dock}>
       <header className="titlebar" data-tauri-drag-region>
+        <div className="lead">
+          <button className="icon-btn" data-on={sidebarOpen} onClick={toggleSidebar} title="Toggle chapters" aria-label="Toggle chapters">
+            <Icon d="M3 4.5h18v15H3zM9 4.5v15" />
+          </button>
+        </div>
         <button className="doc-title" onClick={() => setSettingsOpen(true)} title="Book setup">
           {book.metadata.title || "Untitled"}
           {dirty && <span className="dirty-dot" />}
         </button>
         <div className="actions">
-          {isDesktop && <BackupButton />}
+          {isDesktop && !isCompact && <BackupButton />}
           <button className="icon-btn" data-on={findOpen} onClick={() => (findOpen ? setFindOpen(false) : openFind(false))} title="Find (⌘F)">
             <Icon d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4" />
           </button>
-          {proofingAvailable && !coverActive && (
+          {!isCompact && proofingAvailable && !coverActive && (
             <>
               <button className="icon-btn" data-on={spelling} onClick={toggleSpelling} title="Check spelling">
                 <Icon d="M4 17l4-10 4 10M5.4 13.4h5.2M15 17l2.5 2.5L22 14" />
@@ -186,57 +217,120 @@ export function EditorView() {
               </button>
             </>
           )}
-          <div className="menu-wrap">
-            <button className="icon-btn" data-on={widthOpen} onClick={() => setWidthOpen((v) => !v)} title="Editor width">
-              <Icon d="M3 5v14M21 5v14M7 12h10M7 12l3-3M7 12l3 3M17 12l-3-3M17 12l-3 3" />
+          {!isCompact && (
+            <div className="menu-wrap">
+              <button className="icon-btn" data-on={widthOpen} onClick={() => setWidthOpen((v) => !v)} title="Editor width">
+                <Icon d="M3 5v14M21 5v14M7 12h10M7 12l3-3M7 12l3 3M17 12l-3-3M17 12l-3 3" />
+              </button>
+              {widthOpen && (
+                <>
+                  <div className="menu-backdrop" onClick={() => setWidthOpen(false)} />
+                  <div className="menu">
+                    {WIDTH_OPTIONS.map((w) => (
+                      <button
+                        key={w.id}
+                        data-on={width === w.id}
+                        onClick={() => {
+                          setWidth(w.id);
+                          setWidthOpen(false);
+                        }}
+                      >
+                        {w.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {!isCompact && (
+            <div className="menu-wrap">
+              <button className="icon-btn" data-on={exportOpen} onClick={() => setExportOpen((v) => !v)} title="Export">
+                <Icon d="M5 13v6h14v-6M12 16V3M8 7l4-4 4 4" />
+              </button>
+              {exportOpen && (
+                <>
+                  <div className="menu-backdrop" onClick={() => setExportOpen(false)} />
+                  <div className="menu">
+                    <button onClick={() => handleExport("pdf")}>Export PDF…</button>
+                    <button onClick={() => handleExport("epub")}>Export EPUB…</button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {!isCompact && (
+            <button className="icon-btn" onClick={toggleTheme} title={theme === "dark" ? "Light mode" : "Dark mode"}>
+              {theme === "dark" ? (
+                <Icon>
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+                </Icon>
+              ) : (
+                <Icon d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+              )}
             </button>
-            {widthOpen && (
-              <>
-                <div className="menu-backdrop" onClick={() => setWidthOpen(false)} />
-                <div className="menu">
-                  {WIDTH_OPTIONS.map((w) => (
-                    <button
-                      key={w.id}
-                      data-on={width === w.id}
-                      onClick={() => {
-                        setWidth(w.id);
-                        setWidthOpen(false);
-                      }}
-                    >
-                      {w.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <div className="menu-wrap">
-            <button className="icon-btn" data-on={exportOpen} onClick={() => setExportOpen((v) => !v)} title="Export">
-              <Icon d="M5 13v6h14v-6M12 16V3M8 7l4-4 4 4" />
-            </button>
-            {exportOpen && (
-              <>
-                <div className="menu-backdrop" onClick={() => setExportOpen(false)} />
-                <div className="menu">
-                  <button onClick={() => handleExport("pdf")}>Export PDF…</button>
-                  <button onClick={() => handleExport("epub")}>Export EPUB…</button>
-                </div>
-              </>
-            )}
-          </div>
-          <button className="icon-btn" onClick={toggleTheme} title={theme === "dark" ? "Light mode" : "Dark mode"}>
-            {theme === "dark" ? (
-              <Icon>
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
-              </Icon>
-            ) : (
-              <Icon d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-            )}
-          </button>
-          <button className="icon-btn" data-on={dock} onClick={() => setDock(!dock)} title="Toggle preview">
+          )}
+          <button className="icon-btn" data-on={dock} onClick={toggleDock} title="Toggle preview">
             <Icon d="M3 4.5h18v15H3zM14 4.5v15" />
           </button>
+          {isCompact && (
+            <div className="menu-wrap">
+              <button className="icon-btn" data-on={moreOpen} onClick={() => setMoreOpen((v) => !v)} title="More" aria-label="More options">
+                <Icon d="M5 12h.01M12 12h.01M19 12h.01" />
+              </button>
+              {moreOpen && (
+                <>
+                  <div className="menu-backdrop" onClick={() => setMoreOpen(false)} />
+                  <div className="menu">
+                    <div className="menu-label">Editor width</div>
+                    {WIDTH_OPTIONS.map((w) => (
+                      <button
+                        key={w.id}
+                        data-on={width === w.id}
+                        onClick={() => {
+                          setWidth(w.id);
+                          setMoreOpen(false);
+                        }}
+                      >
+                        {w.label}
+                      </button>
+                    ))}
+                    <div className="menu-sep" />
+                    <button
+                      onClick={() => {
+                        setMoreOpen(false);
+                        handleExport("pdf");
+                      }}
+                    >
+                      Export PDF…
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMoreOpen(false);
+                        handleExport("epub");
+                      }}
+                    >
+                      Export EPUB…
+                    </button>
+                    {proofingAvailable && !coverActive && (
+                      <>
+                        <div className="menu-sep" />
+                        <button data-on={spelling} onClick={toggleSpelling}>
+                          Check spelling
+                        </button>
+                        <button data-on={grammar} onClick={toggleGrammar}>
+                          Check grammar
+                        </button>
+                      </>
+                    )}
+                    <div className="menu-sep" />
+                    <button onClick={toggleTheme}>{theme === "dark" ? "Light mode" : "Dark mode"}</button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -248,8 +342,8 @@ export function EditorView() {
       />
 
       <div className="body">
-        <Sidebar />
-        <ResizeHandle pane="sidebar" />
+        <Sidebar onNavigate={() => isCompact && setSidebarOpen(false)} />
+        {sidebarOpen && !isCompact && <ResizeHandle pane="sidebar" />}
         <main className="editor-pane">
           {coverActive ? (
             <CoverView />
@@ -259,7 +353,7 @@ export function EditorView() {
                 <header className="chapter-opener">
                   <div className="chapter-num">{eyebrow}</div>
                   <ChapterTitleInput
-                    value={chapter.noTitle ? "" : chapter.title}
+                    value={chapter.title}
                     placeholder={
                       chapter.noTitle ? "No title" : kind === "body" ? "Chapter title" : kind === "part" ? "Part title (optional)" : "Page title"
                     }
@@ -293,8 +387,11 @@ export function EditorView() {
             </>
           )}
         </main>
-        {dock && <ResizeHandle pane="dock" />}
+        {dock && !isCompact && <ResizeHandle pane="dock" />}
         {dock && <Dock />}
+        {isCompact && (sidebarOpen || dock) && (
+          <button className="drawer-scrim" aria-label="Close panel" onClick={closeDrawers} />
+        )}
       </div>
 
       {proofPopover && editor && (

@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { JSONContent } from "@tiptap/core";
-import { type Book, type BookMetadata, type Chapter, type Cover, createCover } from "../model/book";
+import { type Book, type BookMetadata, type Chapter, type Cover, clampLanguage, createCover } from "../model/book";
 import { DEFAULT_FONTS } from "../model/fonts";
 
 export interface RawFile {
@@ -508,7 +508,7 @@ export function filesToBook(files: RawFile[], fallbackName = "Imported book"): B
     subtitle: "",
     author: localText(opf, "creator"),
     isbn: findIsbn(opf),
-    language: localText(opf, "language") || "en",
+    language: clampLanguage(localText(opf, "language") || "en"),
   };
 
   return {

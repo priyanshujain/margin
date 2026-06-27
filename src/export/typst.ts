@@ -37,6 +37,15 @@ function str(value: string): string {
   return JSON.stringify(value);
 }
 
+function localeParams(tag: string): string {
+  const parts = (tag || "en").trim().split(/[-_]/);
+  const primary = parts[0] ?? "";
+  const lang = /^[a-zA-Z]{2,3}$/.test(primary) ? primary.toLowerCase() : "en";
+  const region = parts.slice(1).find((p) => /^[a-zA-Z]{2}$/.test(p));
+  const params = `lang: ${str(lang)}`;
+  return region ? `${params}, region: ${str(region.toUpperCase())}` : params;
+}
+
 function inline(node: JSONContent, atLineStart: boolean): string {
   if (node.type === "text") {
     const marks = node.marks ?? [];
@@ -80,15 +89,22 @@ function figure(node: JSONContent, paths: Map<string, string>): string {
   return `#figure(image(${str(path)}, width: ${width}%)${caption}${float})`;
 }
 
+function aligned(align: unknown, body: string): string {
+  if (align === "center" || align === "right") return `#align(${align})[#set par(justify: false)\n${body}]`;
+  return body;
+}
+
 function block(node: JSONContent, paths: Map<string, string>): string {
   switch (node.type) {
     case "paragraph": {
       const body = inlines(node.content, true);
       if (!body.trim()) return "~";
+      const align = node.attrs?.align;
+      if (align === "center" || align === "right") return aligned(align, body);
       return node.attrs?.indent ? `#h(1.3em)${body}` : body;
     }
     case "heading":
-      return `#heading(level: ${node.attrs?.level ?? 2})[${inlines(node.content, true)}]`;
+      return aligned(node.attrs?.align, `#heading(level: ${node.attrs?.level ?? 2})[${inlines(node.content, true)}]`);
     case "blockquote":
       return `#blockquote[${(node.content ?? []).map((n) => block(n, paths)).join("\n\n")}]`;
     case "bulletList":
@@ -124,7 +140,7 @@ function preamble(book: Book): string {
   margin: (inside: 0.875in, outside: 0.625in + ${bleed}, top: 0.8in + ${bleed}, bottom: 0.8in + ${bleed}),
   binding: left,
 )
-#set text(font: ${str(body)}, size: 11pt, lang: ${str(meta.language || "en")}, hyphenate: true)
+#set text(font: ${str(body)}, size: 11pt, ${localeParams(meta.language)}, hyphenate: true)
 #set par(justify: true, leading: 0.72em, spacing: 0.72em)
 #show heading: set text(font: ${str(heading)}, weight: "medium")
 #show heading.where(level: 1): set text(size: 22pt)
@@ -153,7 +169,7 @@ function preamble(book: Book): string {
 #let openchapter(info) = {
   pagebreak(weak: true)
   [#metadata(info) <chap>]
-  v(2.1in)
+  if not info.nomargin { v(2.1in) }
   align(center)[
     #if info.kind == "body" {
       text(font: "Hanken Grotesk", size: 8.5pt, weight: "semibold", tracking: 0.28em)[#upper("Chapter " + info.num)]
@@ -169,7 +185,7 @@ function preamble(book: Book): string {
 #let openpart(info) = {
   pagebreak(to: "odd", weak: true)
   [#metadata(info) <chap>]
-  v(3.1in)
+  if not info.nomargin { v(3.1in) }
   align(center)[
     #text(font: "Hanken Grotesk", size: 10pt, weight: "semibold", tracking: 0.34em)[#upper("Part " + info.numeral)]
     #if not info.notitle and info.title != "" {
@@ -340,14 +356,15 @@ function openerCall(book: Book, index: number): string {
   const chapter = book.chapters[index];
   const kind = chapterKind(chapter);
   const notitle = !!chapter.noTitle;
+  const nomargin = !!chapter.noMargin;
   if (kind === "part") {
     const numeral = partRoman(partNumber(book.chapters, index) ?? 0);
     const title = notitle ? "" : cleanTitle(chapter.title);
-    return `#openpart((kind: "part", numeral: ${str(numeral)}, title: ${str(title)}, notitle: ${notitle}, toc: ${inToc(book, index)}))`;
+    return `#openpart((kind: "part", numeral: ${str(numeral)}, title: ${str(title)}, notitle: ${notitle}, nomargin: ${nomargin}, toc: ${inToc(book, index)}))`;
   }
   const num = kind === "body" ? String(bodyNumber(book.chapters, index)) : "";
   const title = notitle ? "" : cleanTitle(chapter.title) || "Untitled";
-  return `#openchapter((kind: ${str(kind)}, num: ${str(num)}, title: ${str(title)}, notitle: ${notitle}, toc: ${inToc(book, index)}))`;
+  return `#openchapter((kind: ${str(kind)}, num: ${str(num)}, title: ${str(title)}, notitle: ${notitle}, nomargin: ${nomargin}, toc: ${inToc(book, index)}))`;
 }
 
 export function bookToTypst(book: Book, paths: Map<string, string> = new Map(), coverPath?: string): string {

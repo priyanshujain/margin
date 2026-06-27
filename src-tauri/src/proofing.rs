@@ -59,8 +59,14 @@ fn read_words(contents: &str, set: &mut HashSet<String>) {
     for line in contents.lines() {
         let word = line.trim();
         if !word.is_empty() && !word.starts_with('#') {
-            set.insert(word.to_string());
+            set.insert(word.to_lowercase());
         }
+    }
+}
+
+fn load_tech(app: &tauri::AppHandle, set: &mut HashSet<String>) {
+    if let Ok(contents) = dict_file(app, "tech.txt") {
+        read_words(&contents, set);
     }
 }
 
@@ -98,6 +104,10 @@ fn is_word_char(c: char) -> bool {
     c.is_alphabetic()
 }
 
+fn has_irregular_case(word: &str) -> bool {
+    word.chars().skip(1).any(|c| c.is_uppercase())
+}
+
 fn is_apostrophe(c: char) -> bool {
     c == '\'' || c == '\u{2019}'
 }
@@ -128,7 +138,7 @@ fn collect_spelling(
         }
         let end = i;
         let word: String = chars[start..end].iter().collect();
-        if speller.check(&word) || custom.contains(&word) {
+        if has_irregular_case(&word) || speller.check(&word) || custom.contains(&word.to_lowercase()) {
             continue;
         }
         let mut suggestions = Vec::new();
@@ -184,10 +194,12 @@ pub async fn proof_text(
         let state = app.state::<ProofState>();
         let mut guard = state.lock().map_err(|e| e.to_string())?;
         if guard.is_none() {
+            let mut custom = load_custom(&app);
+            load_tech(&app, &mut custom);
             *guard = Some(Engine {
                 speller: None,
                 harper: None,
-                custom: load_custom(&app),
+                custom,
             });
         }
         let engine = guard.as_mut().unwrap();
@@ -232,7 +244,7 @@ pub fn remember_word(
 
     let mut guard = state.inner().lock().map_err(|e| e.to_string())?;
     if let Some(engine) = guard.as_mut() {
-        engine.custom.insert(word);
+        engine.custom.insert(word.to_lowercase());
     }
     Ok(())
 }

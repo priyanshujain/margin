@@ -37,10 +37,11 @@ interface ProofingState {
 
 export const proofingKey = new PluginKey<ProofingState>("proofing");
 
-function buildDecorations(doc: PMNode, issues: ProofIssue[]): DecorationSet {
+function buildDecorations(doc: PMNode, issues: ProofIssue[], cursor: number | null): DecorationSet {
   const size = doc.content.size;
   const decos = issues
     .filter((i) => i.from < i.to && i.to <= size)
+    .filter((i) => cursor === null || cursor < i.from || cursor > i.to)
     .map((i) => Decoration.inline(i.from, i.to, { class: `proof-mark sev-${severityFor(i.category)}` }));
   return DecorationSet.create(doc, decos);
 }
@@ -73,9 +74,11 @@ export const Proofing = Extension.create<unknown, ProofingStorage>({
         state: {
           init: () => ({ issues: [], decorations: DecorationSet.empty }),
           apply(tr, value, _old, newState) {
+            const sel = newState.selection;
+            const cursor = sel.empty ? sel.head : null;
             const meta = tr.getMeta(proofingKey) as { issues: ProofIssue[] } | { clear: true } | undefined;
             if (meta && "issues" in meta) {
-              return { issues: meta.issues, decorations: buildDecorations(newState.doc, meta.issues) };
+              return { issues: meta.issues, decorations: buildDecorations(newState.doc, meta.issues, cursor) };
             }
             if (meta && "clear" in meta) {
               return { issues: [], decorations: DecorationSet.empty };
@@ -84,7 +87,10 @@ export const Proofing = Extension.create<unknown, ProofingStorage>({
               const issues = value.issues
                 .map((i) => ({ ...i, from: tr.mapping.map(i.from), to: tr.mapping.map(i.to) }))
                 .filter((i) => i.to > i.from);
-              return { issues, decorations: value.decorations.map(tr.mapping, tr.doc) };
+              return { issues, decorations: buildDecorations(newState.doc, issues, cursor) };
+            }
+            if (tr.selectionSet && value.issues.length) {
+              return { issues: value.issues, decorations: buildDecorations(newState.doc, value.issues, cursor) };
             }
             return value;
           },

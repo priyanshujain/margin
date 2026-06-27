@@ -33,6 +33,7 @@ interface BookState {
   setChapterContent: (id: string, content: JSONContent) => void;
   setChapterTitle: (id: string, title: string) => void;
   setChapterNoTitle: (id: string, noTitle: boolean) => void;
+  setChapterNoMargin: (id: string, noMargin: boolean) => void;
   addChapter: () => void;
   addPage: (group: "front" | "back", title: string) => void;
   addPart: () => void;
@@ -87,7 +88,13 @@ export const useBook = create<BookState>((set, get) => ({
   setChapterNoTitle: (id, noTitle) =>
     set((s) =>
       s.book
-        ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, noTitle, title: noTitle ? "" : c.title, updatedAt: Date.now() } : c)) } }
+        ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, noTitle, updatedAt: Date.now() } : c)) } }
+        : {}
+    ),
+  setChapterNoMargin: (id, noMargin) =>
+    set((s) =>
+      s.book
+        ? { dirty: true, book: { ...s.book, chapters: s.book.chapters.map((c) => (c.id === id ? { ...c, noMargin, updatedAt: Date.now() } : c)) } }
         : {}
     ),
   addChapter: () =>

@@ -132,17 +132,23 @@ function figure(node: JSONContent, paths: Map<string, string>): string {
   return `<figure class="placement-${attr(placement)}"${style}><img src="${attr(path)}" alt="${alt}"/>${caption}</figure>`;
 }
 
+function alignStyle(align: unknown): string {
+  return align === "center" || align === "right" ? ` style="text-align:${align}"` : "";
+}
+
 function block(node: JSONContent, paths: Map<string, string>): string {
   switch (node.type) {
     case "paragraph": {
       const body = inlines(node.content);
       if (!body.trim()) return "<p>&#160;</p>";
+      const align = node.attrs?.align;
+      if (align === "center" || align === "right") return `<p${alignStyle(align)}>${body}</p>`;
       return `<p${node.attrs?.indent ? ' data-indent="true"' : ""}>${body}</p>`;
     }
-    case "heading":
-      return node.attrs?.level === 3
-        ? `<h3>${inlines(node.content)}</h3>`
-        : `<h2>${inlines(node.content)}</h2>`;
+    case "heading": {
+      const tag = node.attrs?.level === 3 ? "h3" : "h2";
+      return `<${tag}${alignStyle(node.attrs?.align)}>${inlines(node.content)}</${tag}>`;
+    }
     case "blockquote":
       return `<blockquote>${(node.content ?? []).map((n) => block(n, paths)).join("")}</blockquote>`;
     case "bulletList":

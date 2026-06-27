@@ -3,8 +3,10 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Figure } from "./figure";
 import { ParagraphIndent } from "./indent";
+import { TextAlign } from "./align";
 import { SearchHighlight } from "./search";
 import { Proofing } from "./proofing";
+import { Paste } from "./paste";
 
 export const editorExtensions: Extensions = [
   StarterKit.configure({
@@ -17,6 +19,8 @@ export const editorExtensions: Extensions = [
   }),
   Figure,
   ParagraphIndent,
+  TextAlign,
   SearchHighlight,
   Proofing,
+  Paste,
 ];

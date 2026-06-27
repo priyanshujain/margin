@@ -4,8 +4,10 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Library } from "./components/Library";
 import { EditorView } from "./components/EditorView";
 import { BackupSettings } from "./components/BackupSettings";
+import { ExportPreview } from "./components/ExportPreview";
 import { useBook } from "./store/useBook";
 import { useBackup } from "./store/useBackup";
+import { useExportPreview } from "./store/useExportPreview";
 import { isDesktop } from "./ipc";
 import { createAndOpenBook, saveBook } from "./library";
 import { runExport } from "./export/run";
@@ -21,7 +23,9 @@ function App() {
     const unlisten = listen<string>("menu-action", (event) => {
       const state = useBook.getState();
       if (event.payload === "new-book") createAndOpenBook(state.openBook, state.setNotice);
-      else if (event.payload === "export-pdf") runExport("pdf");
+      else if (event.payload === "export-pdf") {
+        if (useBook.getState().book) useExportPreview.getState().openPreview();
+      }
       else if (event.payload === "export-epub") runExport("epub");
       else if (event.payload === "check-updates") checkForUpdates(false);
     });
@@ -82,6 +86,7 @@ function App() {
     <>
       {book ? <EditorView /> : <Library onOpen={openBook} />}
       {isDesktop && <BackupSettings />}
+      {isDesktop && <ExportPreview />}
     </>
   );
 }

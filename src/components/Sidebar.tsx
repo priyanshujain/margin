@@ -39,7 +39,7 @@ function formatEdited(ts: number, now: number): string {
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const chapters = useBook((s) => s.book?.chapters ?? []);
   const activeChapterId = useBook((s) => s.activeChapterId);
   const setActiveChapter = useBook((s) => s.setActiveChapter);
@@ -47,6 +47,8 @@ export function Sidebar() {
   const addPage = useBook((s) => s.addPage);
   const addPart = useBook((s) => s.addPart);
   const duplicateChapter = useBook((s) => s.duplicateChapter);
+  const setChapterNoTitle = useBook((s) => s.setChapterNoTitle);
+  const setChapterNoMargin = useBook((s) => s.setChapterNoMargin);
   const deleteChapter = useBook((s) => s.deleteChapter);
   const moveChapter = useBook((s) => s.moveChapter);
   const closeBook = useBook((s) => s.closeBook);
@@ -150,6 +152,7 @@ export function Sidebar() {
       return;
     }
     setActiveChapter(id);
+    onNavigate?.();
   };
 
   return (
@@ -161,7 +164,10 @@ export function Sidebar() {
       <button
         className="cover-item"
         data-active={activeChapterId === COVER_ID}
-        onClick={() => setActiveChapter(COVER_ID)}
+        onClick={() => {
+          setActiveChapter(COVER_ID);
+          onNavigate?.();
+        }}
       >
         <Icon d="M5 4h11l3 3v13H5zM16 4v4h3" size={15} />
         <span className="title">Cover</span>
@@ -224,6 +230,10 @@ export function Sidebar() {
                       onOpenChange={(open) =>
                         setMenuOpenId((cur) => (open ? row.chapter.id : cur === row.chapter.id ? null : cur))
                       }
+                      titleHidden={!!row.chapter.noTitle}
+                      onToggleTitle={() => setChapterNoTitle(row.chapter.id, !row.chapter.noTitle)}
+                      marginHidden={!!row.chapter.noMargin}
+                      onToggleMargin={() => setChapterNoMargin(row.chapter.id, !row.chapter.noMargin)}
                       onDuplicate={() => duplicateChapter(row.chapter.id)}
                       onDelete={() => setPendingDelete({ id: row.chapter.id, title: rowLabel })}
                     />

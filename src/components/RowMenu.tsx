@@ -6,11 +6,15 @@ interface RowMenuProps {
   label: string;
   onDuplicate?: () => void;
   onDelete: () => void;
+  onToggleTitle?: () => void;
+  titleHidden?: boolean;
+  onToggleMargin?: () => void;
+  marginHidden?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
 }
 
-export function RowMenu({ label, onDuplicate, onDelete, onOpenChange, className = "" }: RowMenuProps) {
+export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidden, onToggleMargin, marginHidden, onOpenChange, className = "" }: RowMenuProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -46,6 +50,18 @@ export function RowMenu({ label, onDuplicate, onDelete, onOpenChange, className 
     };
   }, [open]);
 
+  const toggleTitle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(false);
+    onToggleTitle?.();
+  };
+
+  const toggleMargin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(false);
+    onToggleMargin?.();
+  };
+
   const duplicate = (e: React.MouseEvent) => {
     e.stopPropagation();
     setOpen(false);
@@ -73,6 +89,26 @@ export function RowMenu({ label, onDuplicate, onDelete, onOpenChange, className 
       {open &&
         createPortal(
           <div ref={popRef} className="row-menu-pop" style={{ top: coords.top, right: coords.right }}>
+            {onToggleTitle && (
+              <button className="row-menu-item" onClick={toggleTitle}>
+                {titleHidden ? (
+                  <Icon d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" size={14} />
+                ) : (
+                  <Icon d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22" size={14} />
+                )}
+                {titleHidden ? "Show title" : "Hide title"}
+              </button>
+            )}
+            {onToggleMargin && (
+              <button className="row-menu-item" onClick={toggleMargin}>
+                {marginHidden ? (
+                  <Icon d="M4 5h16 M12 10v10 M8 16l4 4 4-4" size={14} />
+                ) : (
+                  <Icon d="M4 5h16 M12 20V10 M8 14l4-4 4 4" size={14} />
+                )}
+                {marginHidden ? "Show top margin" : "Hide top margin"}
+              </button>
+            )}
             {onDuplicate && (
               <button className="row-menu-item" onClick={duplicate}>
                 <Icon d="M9 9h11v11h-11z M6 15V5h9" size={14} />

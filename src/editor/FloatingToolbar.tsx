@@ -1,6 +1,13 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { Icon } from "../components/Icon";
+import type { Alignment } from "./align";
+
+const ALIGN_ICONS: Record<Alignment, string> = {
+  left: "M4 7h16M4 12h10M4 17h13",
+  center: "M4 7h16M7 12h10M5 17h14",
+  right: "M4 7h16M10 12h10M7 17h13",
+};
 
 function readImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -23,6 +30,7 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
+  const [alignOpen, setAlignOpen] = useState(false);
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
   useEffect(() => {
@@ -67,6 +75,13 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
     setLinkOpen(false);
   };
 
+  const align: Alignment = (editor.getAttributes("heading").align ?? editor.getAttributes("paragraph").align) || "left";
+
+  const setAlign = (value: Alignment) => {
+    editor.chain().focus().setTextAlign(value).run();
+    setAlignOpen(false);
+  };
+
   const tool = (active: boolean, onClick: () => void, title: string, content: ReactNode) => (
     <button
       className="tool"
@@ -87,6 +102,28 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
       {tool(editor.isActive("heading", { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), "Heading", <Icon d="M5 5v14M5 12h8M13 5v14" />)}
       {tool(editor.isActive("blockquote"), () => editor.chain().focus().toggleBlockquote().run(), "Quote", <Icon d="M7 8h4v4a4 4 0 0 1-4 4M14 8h4v4a4 4 0 0 1-4 4" />)}
       {tool(editor.isActive("bulletList"), () => editor.chain().focus().toggleBulletList().run(), "Bulleted list", <Icon d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01" />)}
+      <span className="tool-wrap">
+        {tool(alignOpen || align !== "left", () => setAlignOpen((v) => !v), "Align", <Icon d={ALIGN_ICONS[align]} />)}
+        {alignOpen && (
+          <>
+            <div className="link-pop-backdrop" onMouseDown={() => setAlignOpen(false)} />
+            <div className="align-pop" onMouseDown={(e) => e.stopPropagation()}>
+              {(["left", "center", "right"] as Alignment[]).map((value) => (
+                <button
+                  key={value}
+                  className="tool"
+                  data-on={align === value}
+                  title={`Align ${value}`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setAlign(value)}
+                >
+                  <Icon d={ALIGN_ICONS[value]} />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </span>
       <span className="tool-sep" />
       <span className="tool-wrap">
         {tool(editor.isActive("link") || linkOpen, () => (linkOpen ? setLinkOpen(false) : openLink()), "Link", <Icon d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />)}

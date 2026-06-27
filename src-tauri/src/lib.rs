@@ -6,9 +6,12 @@ mod pdf;
 mod project;
 mod proofing;
 
+#[cfg(desktop)]
 use tauri::menu::{Menu, MenuItemBuilder, MenuItemKind, PredefinedMenuItem, SubmenuBuilder};
+#[cfg(desktop)]
 use tauri::{Emitter, Runtime};
 
+#[cfg(desktop)]
 fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
     let menu = Menu::default(handle)?;
     let new_book = MenuItemBuilder::with_id("new-book", "New Book")
@@ -62,31 +65,42 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
 pub fn run() {
     let context = tauri::generate_context!();
 
+    #[cfg_attr(mobile, allow(unused_mut))]
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_process::init());
+        .plugin(tauri_plugin_dialog::init());
 
-    if context.config().plugins.0.contains_key("updater") {
-        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_process::init());
+        if context.config().plugins.0.contains_key("updater") {
+            builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+        }
     }
 
-    builder
+    builder = builder
         .manage(proofing::new_state())
         .manage(gdrive::GDriveState::default())
         .setup(|app| {
             gdrive::init_session(app.handle());
             Ok(())
-        })
-        .menu(|handle| build_menu(handle))
-        .on_menu_event(|app, event| {
-            if matches!(
-                event.id().0.as_str(),
-                "new-book" | "export-pdf" | "export-epub" | "check-updates"
-            ) {
-                app.emit("menu-action", event.id().0.as_str()).ok();
-            }
-        })
+        });
+
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .menu(|handle| build_menu(handle))
+            .on_menu_event(|app, event| {
+                if matches!(
+                    event.id().0.as_str(),
+                    "new-book" | "export-pdf" | "export-epub" | "check-updates"
+                ) {
+                    app.emit("menu-action", event.id().0.as_str()).ok();
+                }
+            });
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![
             epub::package_epub,
             epub::unzip_epub,

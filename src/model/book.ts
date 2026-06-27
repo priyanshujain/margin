@@ -73,6 +73,7 @@ export interface Chapter {
   updatedAt: number;
   kind?: ChapterKind;
   noTitle?: boolean;
+  noMargin?: boolean;
 }
 
 export interface PageType {
@@ -182,11 +183,19 @@ export function createCover(): Cover {
 const DEFAULT_METADATA: BookMetadata = { title: "Untitled", subtitle: "", author: "", isbn: "", language: "en" };
 const DEFAULT_SETTINGS: BookSettings = { trim: "6x9", bleed: true, fonts: DEFAULT_FONTS };
 
+export const SUPPORTED_LANGUAGES = ["en", "es", "fr", "de", "it", "pt"] as const;
+
+export function clampLanguage(tag: string): string {
+  const primary = (tag || "").trim().split(/[-_]/)[0]?.toLowerCase() ?? "";
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(primary) ? primary : "en";
+}
+
 export function normalizeBook(book: Book): Book {
   const chapters = (Array.isArray(book.chapters) ? book.chapters : []).filter(Boolean);
+  const metadata = { ...DEFAULT_METADATA, ...book.metadata };
   return {
     ...book,
-    metadata: { ...DEFAULT_METADATA, ...book.metadata },
+    metadata: { ...metadata, language: clampLanguage(metadata.language) },
     settings: { ...DEFAULT_SETTINGS, ...book.settings, fonts: { ...DEFAULT_FONTS, ...book.settings?.fonts } },
     cover: book.cover ? { ...createCover(), ...book.cover } : createCover(),
     chapters: (chapters.length ? chapters : [createChapter()]).map((c) =>
