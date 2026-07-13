@@ -27,6 +27,7 @@ struct Harper {
 }
 
 pub struct Engine {
+    #[cfg(not(target_os = "macos"))]
     speller: Option<spellbook::Dictionary>,
     harper: Option<Harper>,
     custom: HashSet<String>,
@@ -87,6 +88,7 @@ fn load_custom(app: &tauri::AppHandle) -> HashSet<String> {
     set
 }
 
+#[cfg(not(target_os = "macos"))]
 fn build_speller(app: &tauri::AppHandle) -> Result<spellbook::Dictionary, String> {
     let aff = dict_file(app, "index.aff")?;
     let dic = dict_file(app, "index.dic")?;
@@ -100,18 +102,22 @@ fn build_harper() -> Harper {
     Harper { linter, dict }
 }
 
+#[cfg(not(target_os = "macos"))]
 fn is_word_char(c: char) -> bool {
     c.is_alphabetic()
 }
 
+#[cfg(not(target_os = "macos"))]
 fn has_irregular_case(word: &str) -> bool {
     word.chars().skip(1).any(|c| c.is_uppercase())
 }
 
+#[cfg(not(target_os = "macos"))]
 fn is_apostrophe(c: char) -> bool {
     c == '\'' || c == '\u{2019}'
 }
 
+#[cfg(not(target_os = "macos"))]
 fn collect_spelling(
     speller: &spellbook::Dictionary,
     custom: &HashSet<String>,
@@ -143,6 +149,10 @@ fn collect_spelling(
         }
         let mut suggestions = Vec::new();
         speller.suggest(&word, &mut suggestions);
+        let lower = word.to_lowercase();
+        if suggestions.iter().any(|s| s.to_lowercase() == lower) {
+            continue;
+        }
         suggestions.truncate(5);
         issues.push(Issue {
             start,
@@ -197,6 +207,7 @@ pub async fn proof_text(
             let mut custom = load_custom(&app);
             load_tech(&app, &mut custom);
             *guard = Some(Engine {
+                #[cfg(not(target_os = "macos"))]
                 speller: None,
                 harper: None,
                 custom,
@@ -207,10 +218,24 @@ pub async fn proof_text(
         let chars: Vec<char> = text.chars().collect();
         let mut issues = Vec::new();
         if spelling {
-            if engine.speller.is_none() {
-                engine.speller = Some(build_speller(&app)?);
+            #[cfg(target_os = "macos")]
+            for mi in crate::macspell::check(&text, &engine.custom) {
+                issues.push(Issue {
+                    start: mi.start,
+                    end: mi.end,
+                    kind: "spelling".into(),
+                    category: "Spelling".into(),
+                    message: format!("“{}” may be misspelled", mi.word),
+                    suggestions: mi.suggestions,
+                });
             }
-            collect_spelling(engine.speller.as_ref().unwrap(), &engine.custom, &chars, &mut issues);
+            #[cfg(not(target_os = "macos"))]
+            {
+                if engine.speller.is_none() {
+                    engine.speller = Some(build_speller(&app)?);
+                }
+                collect_spelling(engine.speller.as_ref().unwrap(), &engine.custom, &chars, &mut issues);
+            }
         }
         if grammar {
             if engine.harper.is_none() {

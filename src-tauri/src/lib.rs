@@ -2,6 +2,8 @@ mod epub;
 mod fonts;
 mod gdrive;
 mod library;
+#[cfg(target_os = "macos")]
+mod macspell;
 mod pdf;
 mod project;
 mod proofing;

@@ -31,7 +31,6 @@ fontdb = "0.23"
 typst = "0.14.2"
 typst-pdf = "0.14.2"
 typst-as-lib = "0.15.5"
-spellbook = "0.4"
 # Pinned exactly: the [patch] stubs below are tied to this version's burn/cubecl graph. A minor
 # bump could silently invalidate the patch ("unused") and pull the broken CUDA subtree back in,
 # so bump deliberately and re-audit the stubs. (see [patch.crates-io])
@@ -40,6 +39,18 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 sha2 = "0.10"
 rand = "0.8"
 url = "2"
+
+# Spelling on macOS uses the system NSSpellChecker (same engine as TextEdit/Safari): far better
+# vocabulary than the bundled Hunspell dictionary and it skips URLs. These objc2 crates are already
+# in the graph via Tauri, so this adds nothing new to the build.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSSpellChecker"] }
+objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSRange", "NSTextCheckingResult"] }
+
+# Other platforms fall back to the bundled Hunspell dictionary via spellbook.
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+spellbook = "0.4"
 
 # harper-core transitively declares an optional, disabled `burn-cuda` (CUDA backend).
 # Cargo still version-resolves that dead subtree, which currently fails (broken tracel-llvm
