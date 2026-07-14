@@ -35,6 +35,25 @@ export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidd
 
   useEffect(() => {
     if (!open) return;
+    popRef.current?.querySelector<HTMLElement>(".row-menu-item")?.focus();
+  }, [open]);
+
+  const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      btnRef.current?.focus();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const items = Array.from(popRef.current?.querySelectorAll<HTMLElement>(".row-menu-item") ?? []);
+      const idx = items.indexOf(document.activeElement as HTMLElement);
+      const nextIdx = e.key === "ArrowDown" ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+      items[nextIdx]?.focus();
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
     const onDown = (e: MouseEvent) => {
       if (btnRef.current?.contains(e.target as Node) || popRef.current?.contains(e.target as Node)) return;
       setOpen(false);
@@ -88,7 +107,7 @@ export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidd
       </button>
       {open &&
         createPortal(
-          <div ref={popRef} className="row-menu-pop" style={{ top: coords.top, right: coords.right }}>
+          <div ref={popRef} className="row-menu-pop" style={{ top: coords.top, right: coords.right }} onKeyDown={onMenuKeyDown}>
             {onToggleTitle && (
               <button className="row-menu-item" onClick={toggleTitle}>
                 {titleHidden ? (

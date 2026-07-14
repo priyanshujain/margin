@@ -51,6 +51,11 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
     onOpen(copy);
   };
 
+  const openById = (id: string) =>
+    loadBook(id)
+      .then(onOpen)
+      .catch((e) => setNotice(`Could not open book: ${e}`));
+
   const removeBook = async () => {
     if (!pendingDelete) return;
     await deleteBook(pendingDelete.id);
@@ -108,7 +113,15 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
             <div
               key={b.id}
               className="card card-book"
-              onClick={() => loadBook(b.id).then(onOpen).catch((e) => setNotice(`Could not open book: ${e}`))}
+              role="button"
+              tabIndex={0}
+              onClick={() => openById(b.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openById(b.id);
+                }
+              }}
             >
               <span className="card-title">{b.title || "Untitled"}</span>
               {b.author && <span className="card-author">{b.author}</span>}

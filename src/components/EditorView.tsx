@@ -44,6 +44,9 @@ export function EditorView() {
 
   const isCompact = useCompact();
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
+  const editorRef = useRef<TiptapEditor | null>(null);
+  editorRef.current = editor;
+  const lastChapterRef = useRef<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(!isCompact);
   const [dock, setDock] = useState(!isCompact);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -83,6 +86,18 @@ export function EditorView() {
     setFindOpen(true);
   }, []);
 
+  const focusEditorSoon = useCallback(() => {
+    requestAnimationFrame(() => editorRef.current?.commands.focus(undefined, { scrollIntoView: false }));
+  }, []);
+
+  const switchChapter = useCallback(
+    (dir: 1 | -1) => {
+      useBook.getState().goToAdjacentChapter(dir);
+      focusEditorSoon();
+    },
+    [focusEditorSoon]
+  );
+
   const reproof = useCallback(() => {
     if (!editor) return;
     const state = useProofing.getState();
@@ -120,11 +135,36 @@ export function EditorView() {
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
         e.preventDefault();
         openFind(e.altKey);
+      } else if (e.metaKey && e.altKey && (e.key === "ArrowDown" || e.key === "ArrowRight")) {
+        e.preventDefault();
+        e.stopPropagation();
+        switchChapter(1);
+      } else if (e.metaKey && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowLeft")) {
+        e.preventDefault();
+        e.stopPropagation();
+        switchChapter(-1);
+      } else if (e.ctrlKey && !e.metaKey && e.key === "Tab") {
+        e.preventDefault();
+        e.stopPropagation();
+        switchChapter(e.shiftKey ? -1 : 1);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [saveNow, openFind, switchChapter]);
+
+  useEffect(() => {
+    if (!widthOpen && !exportOpen && !moreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setWidthOpen(false);
+        setExportOpen(false);
+        setMoreOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [saveNow, openFind]);
+  }, [widthOpen, exportOpen, moreOpen]);
 
   useEffect(() => {
     if (!notice) return;
@@ -177,8 +217,11 @@ export function EditorView() {
   };
 
   if (!book) return null;
-  const idx = book.chapters.findIndex((c) => c.id === activeChapterId);
-  const chapter = book.chapters[idx] ?? book.chapters[0];
+  const activeIdx = book.chapters.findIndex((c) => c.id === activeChapterId);
+  const activeChapter = book.chapters[activeIdx];
+  if (activeChapter) lastChapterRef.current = activeChapter.id;
+  const editorIdx = activeChapter ? activeIdx : book.chapters.findIndex((c) => c.id === lastChapterRef.current);
+  const chapter = book.chapters[editorIdx] ?? book.chapters[0];
   const realIdx = book.chapters.findIndex((c) => c.id === chapter?.id);
   const kind = chapter ? chapterKind(chapter) : "body";
   const eyebrow =
@@ -342,50 +385,49 @@ export function EditorView() {
       />
 
       <div className="body">
-        <Sidebar onNavigate={() => isCompact && setSidebarOpen(false)} />
+        <Sidebar
+          onNavigate={() => {
+            if (isCompact) setSidebarOpen(false);
+            focusEditorSoon();
+          }}
+        />
         {sidebarOpen && !isCompact && <ResizeHandle pane="sidebar" />}
         <main className="editor-pane">
-          {coverActive ? (
-            <CoverView />
-          ) : (
-            <>
-              <article className="sheet">
-                <header className="chapter-opener">
-                  <div className="chapter-num">{eyebrow}</div>
-                  <ChapterTitleInput
-                    value={chapter.title}
-                    placeholder={
-                      chapter.noTitle ? "No title" : kind === "body" ? "Chapter title" : kind === "part" ? "Part title (optional)" : "Page title"
-                    }
-                    disabled={!!chapter.noTitle}
-                    onChange={(value) => setChapterTitle(chapter.id, value)}
+          {coverActive && <CoverView />}
+          <article className="sheet" hidden={coverActive}>
+            <header className="chapter-opener">
+              <div className="chapter-num">{eyebrow}</div>
+              <ChapterTitleInput
+                value={chapter.title}
+                placeholder={
+                  chapter.noTitle ? "No title" : kind === "body" ? "Chapter title" : kind === "part" ? "Part title (optional)" : "Page title"
+                }
+                disabled={!!chapter.noTitle}
+                onChange={(value) => setChapterTitle(chapter.id, value)}
+              />
+              {(chapter.noTitle || !chapter.title.trim()) && (
+                <label className="no-title-check">
+                  <input
+                    type="checkbox"
+                    checked={!!chapter.noTitle}
+                    onChange={(e) => setChapterNoTitle(chapter.id, e.target.checked)}
                   />
-                  {(chapter.noTitle || !chapter.title.trim()) && (
-                    <label className="no-title-check">
-                      <input
-                        type="checkbox"
-                        checked={!!chapter.noTitle}
-                        onChange={(e) => setChapterNoTitle(chapter.id, e.target.checked)}
-                      />
-                      No title
-                    </label>
-                  )}
-                </header>
-                <Editor
-                  key={chapter.id}
-                  bookId={book.id}
-                  chapterId={chapter.id}
-                  content={chapter.content}
-                  onChange={(content) => setChapterContent(chapter.id, content)}
-                  onReady={setEditor}
-                  onContentError={() =>
-                    setNotice("This chapter contains content Margin couldn't fully read; editing may drop the unrecognized parts.")
-                  }
-                />
-              </article>
-              <FloatingToolbar editor={editor} />
-            </>
-          )}
+                  No title
+                </label>
+              )}
+            </header>
+            <Editor
+              bookId={book.id}
+              chapterId={chapter.id}
+              content={chapter.content}
+              onChange={(content) => setChapterContent(chapter.id, content)}
+              onReady={setEditor}
+              onContentError={() =>
+                setNotice("This chapter contains content Margin couldn't fully read; editing may drop the unrecognized parts.")
+              }
+            />
+          </article>
+          {!coverActive && <FloatingToolbar editor={editor} />}
         </main>
         {dock && !isCompact && <ResizeHandle pane="dock" />}
         {dock && <Dock />}

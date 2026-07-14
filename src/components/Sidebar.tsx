@@ -155,6 +155,33 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     onNavigate?.();
   };
 
+  const focusRow = (id: string) =>
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`.chapter[data-id="${CSS.escape(id)}"]`)?.focus();
+    });
+
+  const onRowKeyDown = (e: React.KeyboardEvent, index: number, id: string) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setActiveChapter(id);
+      onNavigate?.();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
+      e.preventDefault();
+      const target =
+        e.key === "Home"
+          ? chapters[0]
+          : e.key === "End"
+            ? chapters[chapters.length - 1]
+            : chapters[index + (e.key === "ArrowDown" ? 1 : -1)];
+      if (target) {
+        setActiveChapter(target.id);
+        focusRow(target.id);
+      }
+    }
+  };
+
+  const tabStopId = chapters.some((c) => c.id === activeChapterId) ? activeChapterId : chapters[0]?.id;
+
   return (
     <aside className="sidebar">
       <button className="brand" onClick={closeBook} title="All books">
@@ -193,6 +220,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     key={row.chapter.id}
                     className="chapter"
                     data-idx={row.index}
+                    data-id={row.chapter.id}
                     data-kind={group.kind}
                     data-part={isPart}
                     data-indent={row.indent}
@@ -200,7 +228,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     data-dragging={dragIndex === row.index}
                     data-drop-before={dropTarget?.kind === group.kind && dropTarget.index === row.index}
                     data-drop-after={dropTarget?.kind === group.kind && i === group.rows.length - 1 && dropTarget.index === row.index + 1}
+                    role="button"
+                    tabIndex={row.chapter.id === tabStopId ? 0 : -1}
+                    aria-current={row.chapter.id === activeChapterId}
                     onClick={() => onRowClick(row.chapter.id)}
+                    onKeyDown={(e) => onRowKeyDown(e, row.index, row.chapter.id)}
                     onPointerDown={(e) => onRowPointerDown(e, row.index)}
                   >
                     <span className="grip" title="Drag to reorder">

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Icon } from "./Icon";
 
 interface ConfirmDialogProps {
@@ -10,6 +10,21 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ title, message, confirmLabel = "Delete", onConfirm, onClose }: ConfirmDialogProps) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    confirmRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="overlay" onClick={onClose}>
       <div className="panel panel-confirm" onClick={(e) => e.stopPropagation()}>
@@ -26,7 +41,7 @@ export function ConfirmDialog({ title, message, confirmLabel = "Delete", onConfi
           <button className="btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn-danger" onClick={onConfirm}>
+          <button ref={confirmRef} className="btn-danger" onClick={onConfirm}>
             {confirmLabel}
           </button>
         </div>

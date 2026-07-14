@@ -58,7 +58,7 @@ export function FindBar({ editor, open, initialExpanded, onClose }: FindBarProps
     return () => {
       editor.off("transaction", update);
     };
-  }, [editor]);
+  }, [editor, activeChapterId]);
 
   useEffect(() => {
     if (!editor) return;
@@ -67,7 +67,7 @@ export function FindBar({ editor, open, initialExpanded, onClose }: FindBarProps
     } else {
       editor.commands.clearSearch();
     }
-  }, [editor, open, query, caseSensitive, wholeWord]);
+  }, [editor, open, query, caseSensitive, wholeWord, activeChapterId]);
 
   useEffect(() => {
     if (open) {

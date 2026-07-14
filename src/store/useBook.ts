@@ -30,6 +30,7 @@ interface BookState {
   openBook: (book: Book) => void;
   closeBook: () => void;
   setActiveChapter: (id: string) => void;
+  goToAdjacentChapter: (dir: 1 | -1) => void;
   setChapterContent: (id: string, content: JSONContent) => void;
   setChapterTitle: (id: string, title: string) => void;
   setChapterNoTitle: (id: string, noTitle: boolean) => void;
@@ -73,6 +74,15 @@ export const useBook = create<BookState>((set, get) => ({
     set({ book: null, activeChapterId: "", dirty: false });
   },
   setActiveChapter: (id) => set({ activeChapterId: id }),
+  goToAdjacentChapter: (dir) => {
+    const { book, activeChapterId } = get();
+    if (!book) return;
+    const ids = [COVER_ID, ...book.chapters.map((c) => c.id)];
+    const i = ids.indexOf(activeChapterId);
+    if (i === -1) return;
+    const next = ids[(i + dir + ids.length) % ids.length];
+    if (next !== activeChapterId) set({ activeChapterId: next });
+  },
   setChapterContent: (id, content) =>
     set((s) =>
       s.book

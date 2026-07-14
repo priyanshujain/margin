@@ -94,6 +94,17 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
     });
   }, []);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   if (!book) return null;
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
@@ -121,7 +132,7 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
         </div>
         <div className="panel-body">
           <Field label="Title">
-            <input value={draft.title} placeholder="Untitled" onChange={(e) => set({ title: e.target.value })} />
+            <input autoFocus value={draft.title} placeholder="Untitled" onChange={(e) => set({ title: e.target.value })} />
           </Field>
           <Field label="Subtitle">
             <input value={draft.subtitle} onChange={(e) => set({ subtitle: e.target.value })} />

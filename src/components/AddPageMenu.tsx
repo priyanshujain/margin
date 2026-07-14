@@ -16,6 +16,7 @@ export function AddPageMenu({ onAdd, onAddPart }: AddPageMenuProps) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
 
   const toggle = () => {
     if (!open && btnRef.current) {
@@ -38,6 +39,25 @@ export function AddPageMenu({ onAdd, onAddPart }: AddPageMenuProps) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    popRef.current?.querySelector<HTMLElement>(".add-page-item")?.focus();
+  }, [open]);
+
+  const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      btnRef.current?.focus();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const items = Array.from(popRef.current?.querySelectorAll<HTMLElement>(".add-page-item") ?? []);
+      const idx = items.indexOf(document.activeElement as HTMLElement);
+      const nextIdx = e.key === "ArrowDown" ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+      items[nextIdx]?.focus();
+    }
+  };
+
   const pick = (group: "front" | "back", label: string) => {
     setOpen(false);
     onAdd(group, label);
@@ -56,9 +76,11 @@ export function AddPageMenu({ onAdd, onAddPart }: AddPageMenuProps) {
       </button>
       {open && (
         <div
+          ref={popRef}
           className="add-page-pop"
           style={{ top: coords.top, left: coords.left }}
           onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={onMenuKeyDown}
         >
           <div className="add-page-group">
             <div className="add-page-label">Body</div>
