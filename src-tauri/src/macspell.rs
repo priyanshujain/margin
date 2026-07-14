@@ -33,7 +33,7 @@ pub fn check(text: &str, custom: &HashSet<String>) -> Vec<MacIssue> {
             checker.checkString_range_types_options_inSpellDocumentWithTag_orthography_wordCount(
                 &ns,
                 NSRange { location: 0, length: len },
-                NSTextCheckingType::Spelling.bits(),
+                (NSTextCheckingType::Spelling | NSTextCheckingType::Link).bits(),
                 None,
                 0,
                 None,
@@ -45,6 +45,9 @@ pub fn check(text: &str, custom: &HashSet<String>) -> Vec<MacIssue> {
         let chars: Vec<char> = text.chars().collect();
         let mut issues = Vec::new();
         for result in results.iter() {
+            if result.resultType() != NSTextCheckingType::Spelling {
+                continue;
+            }
             let range = result.range();
             let start = map[range.location.min(len)];
             let end = map[(range.location + range.length).min(len)];
