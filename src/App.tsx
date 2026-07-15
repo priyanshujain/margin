@@ -5,6 +5,7 @@ import { Library } from "./components/Library";
 import { EditorView } from "./components/EditorView";
 import { BackupSettings } from "./components/BackupSettings";
 import { ExportPreview } from "./components/ExportPreview";
+import { UpdateDialog } from "./components/UpdateDialog";
 import { useBook } from "./store/useBook";
 import { useBackup } from "./store/useBackup";
 import { useExportPreview } from "./store/useExportPreview";
@@ -87,6 +88,7 @@ function App() {
       {book ? <EditorView /> : <Library onOpen={openBook} />}
       {isDesktop && <BackupSettings />}
       {isDesktop && <ExportPreview />}
+      {isDesktop && <UpdateDialog />}
     </>
   );
 }
