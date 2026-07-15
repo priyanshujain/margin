@@ -16,35 +16,55 @@ use tauri::{Emitter, Runtime};
 #[cfg(desktop)]
 fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
     let menu = Menu::default(handle)?;
+
     let new_book = MenuItemBuilder::with_id("new-book", "New Book")
         .accelerator("CmdOrCtrl+N")
         .build(handle)?;
-    let export_pdf = MenuItemBuilder::with_id("export-pdf", "Export as PDF…").build(handle)?;
-    let export_epub = MenuItemBuilder::with_id("export-epub", "Export as EPUB…").build(handle)?;
+    let save = MenuItemBuilder::with_id("save", "Save")
+        .accelerator("CmdOrCtrl+S")
+        .build(handle)?;
+    let export_pdf = MenuItemBuilder::with_id("export-pdf", "Export as PDF…")
+        .accelerator("CmdOrCtrl+Shift+P")
+        .build(handle)?;
+    let export_epub = MenuItemBuilder::with_id("export-epub", "Export as EPUB…")
+        .accelerator("CmdOrCtrl+Shift+E")
+        .build(handle)?;
     let check_updates =
         MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(handle)?;
+    let settings = MenuItemBuilder::with_id("settings", "Settings…")
+        .accelerator("CmdOrCtrl+,")
+        .build(handle)?;
+    let find = MenuItemBuilder::with_id("find", "Find…")
+        .accelerator("CmdOrCtrl+F")
+        .build(handle)?;
+    let report_issue =
+        MenuItemBuilder::with_id("report-issue", "Report an Issue…").build(handle)?;
 
-    let file_submenu = menu
+    let submenus: Vec<_> = menu
         .items()?
         .into_iter()
-        .find_map(|item| match item {
-            MenuItemKind::Submenu(submenu)
-                if submenu.text().map(|t| t == "File").unwrap_or(false) =>
-            {
-                Some(submenu)
-            }
+        .filter_map(|item| match item {
+            MenuItemKind::Submenu(submenu) => Some(submenu),
             _ => None,
-        });
+        })
+        .collect();
 
-    match file_submenu {
+    let find_submenu = |name: &str| {
+        submenus
+            .iter()
+            .find(|submenu| submenu.text().map(|t| t == name).unwrap_or(false))
+            .cloned()
+    };
+
+    match find_submenu("File") {
         Some(submenu) => {
             submenu.prepend_items(&[
                 &new_book,
                 &PredefinedMenuItem::separator(handle)?,
+                &save,
+                &PredefinedMenuItem::separator(handle)?,
                 &export_pdf,
                 &export_epub,
-                &PredefinedMenuItem::separator(handle)?,
-                &check_updates,
                 &PredefinedMenuItem::separator(handle)?,
             ])?;
         }
@@ -52,14 +72,60 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
             let submenu = SubmenuBuilder::new(handle, "File")
                 .item(&new_book)
                 .item(&PredefinedMenuItem::separator(handle)?)
+                .item(&save)
+                .item(&PredefinedMenuItem::separator(handle)?)
                 .item(&export_pdf)
                 .item(&export_epub)
-                .item(&PredefinedMenuItem::separator(handle)?)
-                .item(&check_updates)
                 .build()?;
             menu.insert(&submenu, 1)?;
         }
     }
+
+    if let Some(edit) = find_submenu("Edit") {
+        edit.append_items(&[&PredefinedMenuItem::separator(handle)?, &find])?;
+    }
+
+    if let Some(help) = find_submenu("Help") {
+        help.append_items(&[&report_issue])?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(app_submenu) = submenus.first() {
+            app_submenu.insert(&check_updates, 1)?;
+            app_submenu.insert(&settings, 3)?;
+            app_submenu.insert(&PredefinedMenuItem::separator(handle)?, 4)?;
+        }
+        if let Some(view) = find_submenu("View") {
+            let toggle_chapters = MenuItemBuilder::with_id("toggle-chapters", "Toggle Chapters")
+                .accelerator("CmdOrCtrl+\\")
+                .build(handle)?;
+            let next_chapter = MenuItemBuilder::with_id("next-chapter", "Next Chapter")
+                .accelerator("CmdOrCtrl+Alt+Down")
+                .build(handle)?;
+            let prev_chapter = MenuItemBuilder::with_id("prev-chapter", "Previous Chapter")
+                .accelerator("CmdOrCtrl+Alt+Up")
+                .build(handle)?;
+            view.prepend_items(&[
+                &toggle_chapters,
+                &PredefinedMenuItem::separator(handle)?,
+                &next_chapter,
+                &prev_chapter,
+                &PredefinedMenuItem::separator(handle)?,
+            ])?;
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Some(file) = find_submenu("File") {
+            file.append_items(&[&PredefinedMenuItem::separator(handle)?, &check_updates])?;
+        }
+        if let Some(edit) = find_submenu("Edit") {
+            edit.append_items(&[&settings])?;
+        }
+    }
+
     Ok(menu)
 }
 
@@ -95,7 +161,17 @@ pub fn run() {
             .on_menu_event(|app, event| {
                 if matches!(
                     event.id().0.as_str(),
-                    "new-book" | "export-pdf" | "export-epub" | "check-updates"
+                    "new-book"
+                        | "save"
+                        | "export-pdf"
+                        | "export-epub"
+                        | "check-updates"
+                        | "settings"
+                        | "find"
+                        | "toggle-chapters"
+                        | "next-chapter"
+                        | "prev-chapter"
+                        | "report-issue"
                 ) {
                     app.emit("menu-action", event.id().0.as_str()).ok();
                 }

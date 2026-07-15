@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Library } from "./components/Library";
 import { EditorView } from "./components/EditorView";
@@ -29,6 +30,8 @@ function App() {
       }
       else if (event.payload === "export-epub") runExport("epub");
       else if (event.payload === "check-updates") checkForUpdates(false);
+      else if (event.payload === "report-issue")
+        openUrl("https://github.com/priyanshujain/margin/issues").catch(() => {});
     });
     const unlistenWarn = listen<string>("pdf-warnings", (event) => {
       useBook.getState().setNotice(`PDF exported with warnings:\n${event.payload}`);

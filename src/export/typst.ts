@@ -20,7 +20,7 @@ const TRIM: Record<TrimSize, { w: string; h: string }> = {
   a5: { w: "148mm", h: "210mm" },
 };
 
-const INLINE_SPECIAL = /[\\#$*_`<>@~[\]]/g;
+const INLINE_SPECIAL = /[\\#$*_`<>@~()[\]]/g;
 const LINE_SEPARATORS = /[\n\r\v\f\u2028\u2029]+/g;
 
 function esc(text: string): string {

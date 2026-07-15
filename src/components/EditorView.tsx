@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { Sidebar } from "./Sidebar";
 import { Dock } from "./Dock";
@@ -129,17 +130,14 @@ export function EditorView() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+      if (e.metaKey && e.altKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
-        saveNow();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        openFind(e.altKey);
-      } else if (e.metaKey && e.altKey && (e.key === "ArrowDown" || e.key === "ArrowRight")) {
+        openFind(true);
+      } else if (e.metaKey && e.altKey && e.key === "ArrowRight") {
         e.preventDefault();
         e.stopPropagation();
         switchChapter(1);
-      } else if (e.metaKey && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowLeft")) {
+      } else if (e.metaKey && e.altKey && e.key === "ArrowLeft") {
         e.preventDefault();
         e.stopPropagation();
         switchChapter(-1);
@@ -151,7 +149,26 @@ export function EditorView() {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [saveNow, openFind, switchChapter]);
+  }, [openFind, switchChapter]);
+
+  const menuCommands = useRef({ saveNow, openFind, setSettingsOpen, toggleSidebar, switchChapter });
+  menuCommands.current = { saveNow, openFind, setSettingsOpen, toggleSidebar, switchChapter };
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    const unlisten = listen<string>("menu-action", (e) => {
+      const cmd = menuCommands.current;
+      if (e.payload === "save") cmd.saveNow();
+      else if (e.payload === "find") cmd.openFind(false);
+      else if (e.payload === "settings") cmd.setSettingsOpen(true);
+      else if (e.payload === "toggle-chapters") cmd.toggleSidebar();
+      else if (e.payload === "next-chapter") cmd.switchChapter(1);
+      else if (e.payload === "prev-chapter") cmd.switchChapter(-1);
+    });
+    return () => {
+      unlisten.then((stop) => stop());
+    };
+  }, []);
 
   useEffect(() => {
     if (!widthOpen && !exportOpen && !moreOpen) return;
