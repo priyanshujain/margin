@@ -260,7 +260,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 )}
               </ul>
               {group.kind === "body" && (
-                <button className="add-chapter" onClick={addChapter}>
+                <button
+                  className="add-chapter"
+                  onClick={() => {
+                    addChapter();
+                    onNavigate?.();
+                  }}
+                >
                   <Icon d="M12 5v14M5 12h14" />
                   New chapter
                 </button>

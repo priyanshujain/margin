@@ -37,6 +37,8 @@ export function EditorView() {
   const setChapterContent = useBook((s) => s.setChapterContent);
   const setChapterTitle = useBook((s) => s.setChapterTitle);
   const setChapterNoTitle = useBook((s) => s.setChapterNoTitle);
+  const pendingTitleFocus = useBook((s) => s.pendingTitleFocus);
+  const clearTitleFocus = useBook((s) => s.clearTitleFocus);
   const markSaved = useBook((s) => s.markSaved);
   const theme = useTheme((s) => s.theme);
   const toggleTheme = useTheme((s) => s.toggle);
@@ -88,6 +90,7 @@ export function EditorView() {
   }, []);
 
   const focusEditorSoon = useCallback(() => {
+    if (useBook.getState().pendingTitleFocus) return;
     requestAnimationFrame(() => editorRef.current?.commands.focus(undefined, { scrollIntoView: false }));
   }, []);
 
@@ -420,6 +423,8 @@ export function EditorView() {
                   chapter.noTitle ? "No title" : kind === "body" ? "Chapter title" : kind === "part" ? "Part title (optional)" : "Page title"
                 }
                 disabled={!!chapter.noTitle}
+                focusRequest={pendingTitleFocus === chapter.id}
+                onFocused={clearTitleFocus}
                 onChange={(value) => setChapterTitle(chapter.id, value)}
               />
               {(chapter.noTitle || !chapter.title.trim()) && (
@@ -495,11 +500,15 @@ function ChapterTitleInput({
   value,
   placeholder,
   disabled,
+  focusRequest,
+  onFocused,
   onChange,
 }: {
   value: string;
   placeholder: string;
   disabled: boolean;
+  focusRequest: boolean;
+  onFocused: () => void;
   onChange: (value: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -510,6 +519,15 @@ function ChapterTitleInput({
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [value, disabled]);
+
+  useEffect(() => {
+    if (!focusRequest || disabled) return;
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+    onFocused();
+  }, [focusRequest, disabled, onFocused]);
 
   return (
     <textarea

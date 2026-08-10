@@ -25,6 +25,8 @@ interface BookState {
   dirty: boolean;
   exporting: string | null;
   notice: string | null;
+  pendingTitleFocus: string | null;
+  clearTitleFocus: () => void;
   setExporting: (label: string | null) => void;
   setNotice: (message: string | null) => void;
   openBook: (book: Book) => void;
@@ -57,6 +59,8 @@ export const useBook = create<BookState>((set, get) => ({
   dirty: false,
   exporting: null,
   notice: null,
+  pendingTitleFocus: null,
+  clearTitleFocus: () => set({ pendingTitleFocus: null }),
   setExporting: (label) => set({ exporting: label }),
   setNotice: (message) => set({ notice: message }),
   openBook: (book) => {
@@ -66,14 +70,14 @@ export const useBook = create<BookState>((set, get) => ({
     const valid = saved === COVER_ID || normalized.chapters.some((c) => c.id === saved);
     const activeChapterId = valid ? (saved as string) : normalized.chapters[0]?.id ?? "";
     applyBookFonts(normalized.settings.fonts);
-    set({ book: normalized, activeChapterId, dirty: false });
+    set({ book: normalized, activeChapterId, dirty: false, pendingTitleFocus: null });
   },
   closeBook: () => {
     flushOutgoing(get().book, get().dirty);
     resetBookFonts();
-    set({ book: null, activeChapterId: "", dirty: false });
+    set({ book: null, activeChapterId: "", dirty: false, pendingTitleFocus: null });
   },
-  setActiveChapter: (id) => set({ activeChapterId: id }),
+  setActiveChapter: (id) => set({ activeChapterId: id, pendingTitleFocus: null }),
   goToAdjacentChapter: (dir) => {
     const { book, activeChapterId } = get();
     if (!book) return;
@@ -81,7 +85,7 @@ export const useBook = create<BookState>((set, get) => ({
     const i = ids.indexOf(activeChapterId);
     if (i === -1) return;
     const next = ids[(i + dir + ids.length) % ids.length];
-    if (next !== activeChapterId) set({ activeChapterId: next });
+    if (next !== activeChapterId) set({ activeChapterId: next, pendingTitleFocus: null });
   },
   setChapterContent: (id, content) =>
     set((s) =>
@@ -110,11 +114,16 @@ export const useBook = create<BookState>((set, get) => ({
   addChapter: () =>
     set((s) => {
       if (!s.book) return {};
-      const chapter = createChapter();
+      const chapter = createChapter("");
       const chapters = [...s.book.chapters];
       const backCount = chapters.filter((c) => chapterKind(c) === "back").length;
       chapters.splice(chapters.length - backCount, 0, chapter);
-      return { activeChapterId: chapter.id, dirty: true, book: { ...s.book, chapters } };
+      return {
+        activeChapterId: chapter.id,
+        pendingTitleFocus: chapter.id,
+        dirty: true,
+        book: { ...s.book, chapters },
+      };
     }),
   addPage: (group, title) =>
     set((s) => {
