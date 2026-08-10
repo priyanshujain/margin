@@ -1566,6 +1566,19 @@ body.resizing .sidebar {
   color: var(--accent);
 }
 
+.card-meta {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .card-action {
   background: transparent;
   border: 1px dashed var(--line-strong);

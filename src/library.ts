@@ -6,6 +6,7 @@ export interface BookSummary {
   id: string;
   title: string;
   author: string;
+  updatedAt: number;
   corrupt?: boolean;
 }
 

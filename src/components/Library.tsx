@@ -10,10 +10,12 @@ import { RowMenu } from "./RowMenu";
 import { BackupButton } from "./BackupButton";
 import { useBackup } from "../store/useBackup";
 import { useBook } from "../store/useBook";
+import { relativeTime } from "../time";
 
 export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<BookSummary | null>(null);
   const notice = useBook((s) => s.notice);
@@ -29,6 +31,10 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
       .finally(() => setLoaded(true));
   useEffect(() => {
     refresh();
+  }, []);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     if (restoreNonce) refresh();
@@ -125,6 +131,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
             >
               <span className="card-title">{b.title || "Untitled"}</span>
               {b.author && <span className="card-author">{b.author}</span>}
+              {b.updatedAt > 0 && <span className="card-meta">Edited {relativeTime(b.updatedAt, now)}</span>}
               <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
             </div>
           ),

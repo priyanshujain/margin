@@ -5,6 +5,7 @@ import { AddPageMenu } from "./AddPageMenu";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
 import { RowMenu } from "./RowMenu";
+import { relativeTime } from "../time";
 
 interface Row {
   chapter: Chapter;
@@ -17,26 +18,6 @@ interface Row {
 interface DropTarget {
   kind: ChapterKind;
   index: number;
-}
-
-function formatEdited(ts: number, now: number): string {
-  const diff = Math.max(0, now - ts);
-  const min = 60_000;
-  const hour = 60 * min;
-  const day = 24 * hour;
-  if (diff < min) return "just now";
-  if (diff < hour) {
-    const m = Math.floor(diff / min);
-    return `${m} minute${m === 1 ? "" : "s"} ago`;
-  }
-  if (diff < day) {
-    const h = Math.floor(diff / hour);
-    return `${h} hour${h === 1 ? "" : "s"} ago`;
-  }
-  if (diff < 2 * day) return "yesterday";
-  const d = Math.floor(diff / day);
-  if (d < 7) return `${d} days ago`;
-  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -254,7 +235,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                         </span>
                       )}
                       {row.chapter.id === activeChapterId && (
-                        <span className="meta">Edited {formatEdited(row.chapter.updatedAt, now)}</span>
+                        <span className="meta">Edited {relativeTime(row.chapter.updatedAt, now)}</span>
                       )}
                     </span>
                     <RowMenu

@@ -1,13 +1,16 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 use tauri::Manager;
 
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BookSummary {
     id: String,
     title: String,
     author: String,
     corrupt: bool,
+    updated_at: u64,
 }
 
 fn corrupt_summary(stem: &str) -> BookSummary {
@@ -16,7 +19,31 @@ fn corrupt_summary(stem: &str) -> BookSummary {
         title: "Unreadable book".to_string(),
         author: String::new(),
         corrupt: true,
+        updated_at: 0,
     }
+}
+
+fn file_modified_ms(path: &Path) -> u64 {
+    fs::metadata(path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn latest_chapter_ms(value: &serde_json::Value) -> u64 {
+    value
+        .get("chapters")
+        .and_then(|c| c.as_array())
+        .map(|chapters| {
+            chapters
+                .iter()
+                .filter_map(|c| c.get("updatedAt").and_then(|v| v.as_u64()))
+                .max()
+                .unwrap_or(0)
+        })
+        .unwrap_or(0)
 }
 
 pub(crate) fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -81,11 +108,16 @@ pub fn list_books(app: tauri::AppHandle) -> Result<Vec<BookSummary>, String> {
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
+        let updated_at = match latest_chapter_ms(&value) {
+            0 => file_modified_ms(&path),
+            ms => ms,
+        };
         books.push(BookSummary {
             id: id.to_string(),
             title,
             author,
             corrupt: false,
+            updated_at,
         });
     }
     Ok(books)
