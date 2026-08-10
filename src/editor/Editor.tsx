@@ -21,6 +21,8 @@ interface Cached {
   scroll: number;
 }
 
+const SCROLL_KEEPOUT = { top: 32, right: 0, bottom: 96, left: 0 };
+
 function buildState(editor: TiptapEditor, content: JSONContent, onError: (error: Error) => void): EditorState {
   const base = editor.view.state;
   try {
@@ -49,7 +51,11 @@ export function Editor({ bookId, chapterId, content, onChange, onReady, onConten
     content,
     immediatelyRender: false,
     enableContentCheck: true,
-    editorProps: { attributes: { class: "prose" } },
+    editorProps: {
+      attributes: { class: "prose" },
+      scrollThreshold: SCROLL_KEEPOUT,
+      scrollMargin: SCROLL_KEEPOUT,
+    },
     onContentError: ({ error }) => onContentErrorRef.current(error),
     onUpdate: ({ editor }) => onChangeRef.current(editor.getJSON()),
   });
