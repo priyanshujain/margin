@@ -2096,6 +2096,32 @@ body.resizing .sidebar {
   }
 }
 
+.esc-hint {
+  position: fixed;
+  top: 54px;
+  left: 50%;
+  z-index: 30;
+  padding: 7px 14px;
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  color: var(--ink-soft);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow-pop);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: find-drop 140ms var(--ease);
+}
+
+.esc-hint kbd {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--ink);
+}
+
 .find-expand {
   flex: none;
   width: 20px;

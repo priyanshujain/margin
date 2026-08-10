@@ -3,6 +3,7 @@ import type { Editor as TiptapEditor } from "@tiptap/react";
 import { buildRegex, getSearchState } from "../editor/search";
 import { countMatches, replaceInContent } from "../search-book";
 import { useBook } from "../store/useBook";
+import { useEscapeLayer } from "../escape";
 import { Icon } from "./Icon";
 
 interface FindBarProps {
@@ -95,6 +96,8 @@ export function FindBar({ editor, open, initialExpanded, onClose }: FindBarProps
     };
   }, [editor, pendingNav, activeChapterId]);
 
+  useEscapeLayer(open, onClose);
+
   if (!open || !editor) return null;
 
   const before = jsonCounts.slice(0, Math.max(0, activeIdx)).reduce((a, b) => a + b, 0);
@@ -163,9 +166,6 @@ export function FindBar({ editor, open, initialExpanded, onClose }: FindBarProps
     if (e.key === "Enter") {
       e.preventDefault();
       e.shiftKey ? prev() : next();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onClose();
     }
   };
 
@@ -256,9 +256,6 @@ export function FindBar({ editor, open, initialExpanded, onClose }: FindBarProps
                 if (e.key === "Enter") {
                   e.preventDefault();
                   replaceOne();
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  onClose();
                 }
               }}
             />

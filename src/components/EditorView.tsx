@@ -22,6 +22,7 @@ import { useWidth } from "../store/useWidth";
 import { WIDTH_OPTIONS } from "../width";
 import { bodyNumber, chapterKind, partNumber, partRoman } from "../model/book";
 import { saveBook } from "../library";
+import { useEscapeLayer } from "../escape";
 import { isDesktop } from "../ipc";
 import { useCompact } from "../useMedia";
 import { issueSignature, rememberWord, runProof } from "../proofing";
@@ -59,6 +60,10 @@ export function EditorView() {
   const [findOpen, setFindOpen] = useState(false);
   const [findExpanded, setFindExpanded] = useState(false);
   const [proofPopover, setProofPopover] = useState<{ issue: ProofIssue; coords: ProofCoords } | null>(null);
+  const [escArmed, setEscArmed] = useState(false);
+  const escArmedRef = useRef(false);
+  escArmedRef.current = escArmed;
+  const escTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const spelling = useProofing((s) => s.spelling);
   const grammar = useProofing((s) => s.grammar);
@@ -83,6 +88,25 @@ export function EditorView() {
     setSidebarOpen(false);
     setDock(false);
   };
+
+  useEscapeLayer(true, () => {
+    clearTimeout(escTimer.current);
+    if (escArmedRef.current) {
+      setEscArmed(false);
+      useBook.getState().closeBook();
+      return;
+    }
+    (document.activeElement as HTMLElement | null)?.blur();
+    setEscArmed(true);
+    escTimer.current = setTimeout(() => setEscArmed(false), 1500);
+  });
+  useEscapeLayer(isCompact && (sidebarOpen || dock), closeDrawers);
+  useEscapeLayer(widthOpen, () => setWidthOpen(false));
+  useEscapeLayer(exportOpen, () => setExportOpen(false));
+  useEscapeLayer(moreOpen, () => setMoreOpen(false));
+  useEscapeLayer(!!proofPopover, () => setProofPopover(null));
+
+  useEffect(() => () => clearTimeout(escTimer.current), []);
 
   const openFind = useCallback((expanded: boolean) => {
     setFindExpanded(expanded);
@@ -172,19 +196,6 @@ export function EditorView() {
       unlisten.then((stop) => stop());
     };
   }, []);
-
-  useEffect(() => {
-    if (!widthOpen && !exportOpen && !moreOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setWidthOpen(false);
-        setExportOpen(false);
-        setMoreOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [widthOpen, exportOpen, moreOpen]);
 
   useEffect(() => {
     if (!notice) return;
@@ -478,6 +489,12 @@ export function EditorView() {
           }}
           onClose={() => setProofPopover(null)}
         />
+      )}
+
+      {escArmed && (
+        <div className="esc-hint">
+          Press <kbd>Esc</kbd> again for All books
+        </div>
       )}
 
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} onSave={saveNow} />}

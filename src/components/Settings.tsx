@@ -13,6 +13,7 @@ import {
   fontStack,
   pairingFor,
 } from "../model/fonts";
+import { useEscapeLayer } from "../escape";
 import { Icon } from "./Icon";
 
 const LANGUAGES = [
@@ -94,16 +95,7 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
     });
   }, []);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscapeLayer(true, onClose);
 
   if (!book) return null;
 

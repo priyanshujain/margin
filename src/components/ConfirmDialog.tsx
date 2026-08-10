@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { useEscapeLayer } from "../escape";
 import { Icon } from "./Icon";
 
 interface ConfirmDialogProps {
@@ -14,16 +15,9 @@ export function ConfirmDialog({ title, message, confirmLabel = "Delete", onConfi
 
   useEffect(() => {
     confirmRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEscapeLayer(true, onClose);
 
   return (
     <div className="overlay" onClick={onClose}>

@@ -1,5 +1,6 @@
 import { useUpdater } from "../store/useUpdater";
 import { installUpdate, dismissUpdate } from "../updater";
+import { useEscapeLayer } from "../escape";
 import { Icon } from "./Icon";
 
 const TITLES: Record<string, string> = {
@@ -19,9 +20,11 @@ export function UpdateDialog() {
   const total = useUpdater((s) => s.total);
   const error = useUpdater((s) => s.error);
 
+  const busy = phase === "downloading" || phase === "installing";
+  useEscapeLayer(phase !== "idle" && !busy, dismissUpdate);
+
   if (phase === "idle") return null;
 
-  const busy = phase === "downloading" || phase === "installing";
   const pct = total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : 0;
   const close = busy ? undefined : dismissUpdate;
 

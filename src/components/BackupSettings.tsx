@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useBackup } from "../store/useBackup";
+import { useEscapeLayer } from "../escape";
 import { formatBackupTime, gdriveListBackups } from "../backup";
 
 export function BackupSettings() {
@@ -37,6 +38,8 @@ export function BackupSettings() {
       active = false;
     };
   }, [open, connected, lastBackup]);
+
+  useEscapeLayer(open, close);
 
   if (!open) return null;
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PAGE_TYPES } from "../model/book";
+import { useEscapeLayer } from "../escape";
 import { Icon } from "./Icon";
 
 interface AddPageMenuProps {
@@ -44,12 +45,13 @@ export function AddPageMenu({ onAdd, onAddPart }: AddPageMenuProps) {
     popRef.current?.querySelector<HTMLElement>(".add-page-item")?.focus();
   }, [open]);
 
+  useEscapeLayer(open, () => {
+    setOpen(false);
+    btnRef.current?.focus();
+  });
+
   const onMenuKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      setOpen(false);
-      btnRef.current?.focus();
-    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const items = Array.from(popRef.current?.querySelectorAll<HTMLElement>(".add-page-item") ?? []);
       const idx = items.indexOf(document.activeElement as HTMLElement);

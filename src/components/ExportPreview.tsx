@@ -7,6 +7,7 @@ import { useExportPreview } from "../store/useExportPreview";
 import { bookToPdfInputs, unsupportedScripts } from "../export/typst";
 import { compilePdf } from "../ipc";
 import { saveBytes } from "../project";
+import { useEscapeLayer } from "../escape";
 import { Icon } from "./Icon";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -81,13 +82,7 @@ function ExportPreviewModal() {
     };
   }, [book]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
+  useEscapeLayer(true, close);
 
   useEffect(() => {
     const el = panelRef.current;

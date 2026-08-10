@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { Icon } from "../components/Icon";
+import { useEscapeLayer } from "../escape";
 import type { Alignment } from "./align";
 
 const ALIGN_ICONS: Record<Alignment, string> = {
@@ -66,6 +67,12 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
     return () => window.removeEventListener("keydown", onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, linkOpen]);
+
+  useEscapeLayer(linkOpen, () => {
+    setLinkOpen(false);
+    editor?.commands.focus();
+  });
+  useEscapeLayer(alignOpen, () => setAlignOpen(false));
 
   if (!editor) return null;
 
@@ -158,9 +165,6 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
                   if (e.key === "Enter") {
                     e.preventDefault();
                     applyLink();
-                  } else if (e.key === "Escape") {
-                    e.preventDefault();
-                    setLinkOpen(false);
                   }
                 }}
               />

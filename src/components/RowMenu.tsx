@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useEscapeLayer } from "../escape";
 import { Icon } from "./Icon";
 
 interface RowMenuProps {
@@ -38,12 +39,13 @@ export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidd
     popRef.current?.querySelector<HTMLElement>(".row-menu-item")?.focus();
   }, [open]);
 
+  useEscapeLayer(open, () => {
+    setOpen(false);
+    btnRef.current?.focus();
+  });
+
   const onMenuKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      setOpen(false);
-      btnRef.current?.focus();
-    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const items = Array.from(popRef.current?.querySelectorAll<HTMLElement>(".row-menu-item") ?? []);
       const idx = items.indexOf(document.activeElement as HTMLElement);
