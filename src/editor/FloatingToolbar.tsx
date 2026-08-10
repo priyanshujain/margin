@@ -33,6 +33,12 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
   const [alignOpen, setAlignOpen] = useState(false);
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
+  const openLink = () => {
+    if (!editor) return;
+    setLinkValue((editor.getAttributes("link").href as string) ?? "");
+    setLinkOpen(true);
+  };
+
   useEffect(() => {
     if (linkOpen) linkInputRef.current?.focus();
   }, [linkOpen]);
@@ -46,16 +52,26 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
     };
   }, [editor]);
 
+  useEffect(() => {
+    if (!editor) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (!editor.isFocused && !linkOpen) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (linkOpen) setLinkOpen(false);
+      else openLink();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, linkOpen]);
+
   if (!editor) return null;
 
   const insertImage = async (file: File) => {
     const src = await readImage(file);
     editor.chain().focus().insertContent({ type: "figure", attrs: { src, placement: "full-width" } }).run();
-  };
-
-  const openLink = () => {
-    setLinkValue((editor.getAttributes("link").href as string) ?? "");
-    setLinkOpen(true);
   };
 
   const applyLink = () => {
@@ -126,7 +142,7 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
       </span>
       <span className="tool-sep" />
       <span className="tool-wrap">
-        {tool(editor.isActive("link") || linkOpen, () => (linkOpen ? setLinkOpen(false) : openLink()), "Link", <Icon d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />)}
+        {tool(editor.isActive("link") || linkOpen, () => (linkOpen ? setLinkOpen(false) : openLink()), "Link (⌘K)", <Icon d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />)}
         {linkOpen && (
           <>
             <div className="link-pop-backdrop" onMouseDown={() => setLinkOpen(false)} />
