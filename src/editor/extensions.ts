@@ -7,6 +7,7 @@ import { TextAlign } from "./align";
 import { SearchHighlight } from "./search";
 import { Proofing } from "./proofing";
 import { Paste } from "./paste";
+import { Shortcuts } from "./shortcuts";
 
 export const editorExtensions: Extensions = [
   StarterKit.configure({
@@ -23,4 +24,5 @@ export const editorExtensions: Extensions = [
   SearchHighlight,
   Proofing,
   Paste,
+  Shortcuts,
 ];
