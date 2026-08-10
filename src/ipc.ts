@@ -2,6 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 
 export const isDesktop = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+export async function runWritingTool(tool: "Proofread" | "Rewrite"): Promise<void> {
+  if (!isDesktop) return;
+  await invoke("run_writing_tool", { tool });
+}
+
 export interface ImageInput {
   path: string;
   data: string;

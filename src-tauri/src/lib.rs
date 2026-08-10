@@ -7,6 +7,7 @@ mod macspell;
 mod pdf;
 mod project;
 mod proofing;
+mod writingtools;
 
 #[cfg(desktop)]
 use tauri::menu::{Menu, MenuItemBuilder, MenuItemKind, PredefinedMenuItem, SubmenuBuilder};
@@ -151,6 +152,7 @@ pub fn run() {
         .manage(gdrive::GDriveState::default())
         .setup(|app| {
             gdrive::init_session(app.handle());
+            writingtools::label_writing_tool_shortcuts();
             Ok(())
         });
 
@@ -193,6 +195,7 @@ pub fn run() {
             library::delete_book,
             proofing::proof_text,
             proofing::remember_word,
+            writingtools::run_writing_tool,
             gdrive::gdrive_connect,
             gdrive::gdrive_disconnect,
             gdrive::gdrive_status,

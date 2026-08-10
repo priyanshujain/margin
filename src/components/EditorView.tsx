@@ -23,10 +23,15 @@ import { WIDTH_OPTIONS } from "../width";
 import { bodyNumber, chapterKind, partNumber, partRoman } from "../model/book";
 import { saveBook } from "../library";
 import { useEscapeLayer } from "../escape";
-import { isDesktop } from "../ipc";
+import { isDesktop, runWritingTool } from "../ipc";
 import { useCompact } from "../useMedia";
 import { issueSignature, rememberWord, runProof } from "../proofing";
 import { runExport } from "../export/run";
+
+const WRITING_TOOLS: Record<string, "Proofread" | "Rewrite"> = {
+  KeyF: "Proofread",
+  KeyR: "Rewrite",
+};
 
 export function EditorView() {
   const book = useBook((s) => s.book);
@@ -172,6 +177,10 @@ export function EditorView() {
         e.preventDefault();
         e.stopPropagation();
         switchChapter(e.shiftKey ? -1 : 1);
+      } else if (e.shiftKey && e.altKey && !e.metaKey && !e.ctrlKey && WRITING_TOOLS[e.code]) {
+        e.preventDefault();
+        e.stopPropagation();
+        runWritingTool(WRITING_TOOLS[e.code]).catch(() => {});
       }
     };
     window.addEventListener("keydown", onKey, true);

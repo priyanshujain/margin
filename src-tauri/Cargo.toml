@@ -45,7 +45,15 @@ url = "2"
 # in the graph via Tauri, so this adds nothing new to the build.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSSpellChecker"] }
+objc2-app-kit = { version = "0.3", features = [
+    "NSSpellChecker",
+    "NSApplication",
+    "NSEvent",
+    "NSMenu",
+    "NSMenuItem",
+    "NSResponder",
+    "NSWritingToolsCoordinator",
+] }
 objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSRange", "NSTextCheckingResult"] }
 
 # Other platforms fall back to the bundled Hunspell dictionary via spellbook.
