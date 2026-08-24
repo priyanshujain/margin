@@ -169,6 +169,14 @@ body.resizing .pane-resizer::after {
   opacity: 0.55;
 }
 
+.pane-resizer:focus-visible {
+  outline: none;
+}
+
+.pane-resizer:focus-visible::after {
+  opacity: 1;
+}
+
 body.resizing {
   cursor: col-resize;
   user-select: none;
@@ -192,6 +200,7 @@ body.resizing {
   width: 0;
   border-right-width: 0;
   overflow: hidden;
+  visibility: hidden;
 }
 
 body.resizing .sidebar {
@@ -401,6 +410,7 @@ body.resizing .sidebar {
 }
 
 .chapter:hover .row-menu-btn,
+.chapter .row-menu-btn:focus-visible,
 .chapter .row-menu-btn[data-open="true"] {
   opacity: 0.7;
 }
@@ -1600,6 +1610,7 @@ body.resizing .sidebar {
 }
 
 .card-book:hover .card-menu,
+.card-menu:focus-visible,
 .card-menu[data-open="true"] {
   opacity: 1;
 }
@@ -1626,6 +1637,63 @@ body.resizing .sidebar {
 .confirm-text strong {
   font-weight: 600;
   color: var(--ink);
+}
+
+.panel-move {
+  width: 440px;
+}
+
+.move-empty {
+  margin: 0;
+  font-size: var(--t-3);
+  color: var(--ink-soft);
+}
+
+.move-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.move-target {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.move-target:hover:not(:disabled),
+.move-target:focus-visible {
+  background: var(--raised);
+  border-color: var(--line);
+}
+
+.move-target:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.move-title {
+  font-family: var(--font-book);
+  font-size: var(--t-4);
+  color: var(--ink);
+}
+
+.move-author {
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  color: var(--ink-soft);
 }
 
 .update-notes {
@@ -2779,7 +2847,20 @@ body.resizing .sidebar {
 
 .backup-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+}
+
+.backup-warn {
+  margin: 18px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  line-height: 1.5;
+  color: var(--ink-soft);
 }
 
 .backup-note {
@@ -2815,11 +2896,13 @@ body.resizing .sidebar {
   padding-left: env(safe-area-inset-left);
   border-right: 1px solid var(--line);
   transform: translateX(-100%);
-  transition: transform 260ms var(--ease);
+  visibility: hidden;
+  transition: transform 260ms var(--ease), visibility 260ms var(--ease);
 }
 
 .app[data-compact="true"][data-sidebar="true"] .sidebar {
   transform: translateX(0);
+  visibility: visible;
 }
 
 .app[data-compact="true"] .dock {

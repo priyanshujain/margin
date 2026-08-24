@@ -1,8 +1,19 @@
 import { useEffect, useState } from "react";
-import { type BookSummary, createAndOpenBook, deleteBook, exampleBook, listBooks, loadBook, saveBook } from "../library";
+import {
+  type BookSummary,
+  createAndOpenBook,
+  deleteBook,
+  exampleBook,
+  lastBookId,
+  listBooks,
+  loadBook,
+  rememberLastBook,
+  saveBook,
+} from "../library";
 import type { Book } from "../model/book";
 import { importEpub } from "../import/epub";
 import { clearPositions } from "../editor/positions";
+import { clearChapterStates } from "../editor/session";
 import { isDesktop } from "../ipc";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
@@ -66,6 +77,8 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
     if (!pendingDelete) return;
     await deleteBook(pendingDelete.id);
     clearPositions(pendingDelete.id);
+    clearChapterStates(pendingDelete.id);
+    if (lastBookId() === pendingDelete.id) rememberLastBook(null);
     setPendingDelete(null);
     refresh();
   };

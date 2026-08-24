@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PAGE_TYPES } from "../model/book";
 import { useEscapeLayer } from "../escape";
+import { useFocusTrap } from "../focus";
 import { Icon } from "./Icon";
 
 interface AddPageMenuProps {
@@ -40,10 +41,7 @@ export function AddPageMenu({ onAdd, onAddPart }: AddPageMenuProps) {
     };
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    popRef.current?.querySelector<HTMLElement>(".add-page-item")?.focus();
-  }, [open]);
+  useFocusTrap(popRef, open);
 
   useEscapeLayer(open, () => {
     setOpen(false);

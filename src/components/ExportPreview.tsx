@@ -8,6 +8,7 @@ import { bookToPdfInputs, unsupportedScripts } from "../export/typst";
 import { compilePdf } from "../ipc";
 import { saveBytes } from "../project";
 import { useEscapeLayer } from "../escape";
+import { useFocusTrap } from "../focus";
 import { Icon } from "./Icon";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -83,6 +84,7 @@ function ExportPreviewModal() {
   }, [book]);
 
   useEscapeLayer(true, close);
+  useFocusTrap(panelRef);
 
   useEffect(() => {
     const el = panelRef.current;
@@ -168,7 +170,7 @@ function ExportPreviewModal() {
             <button className="icon-btn" disabled={!pdf || zoom <= ZOOM_MIN} onClick={() => adjustZoom(-ZOOM_STEP)} title="Zoom out">
               <Icon d="M5 12h14" />
             </button>
-            {!compact && <span>{Math.round(zoom * 100)}%</span>}
+            {!compact && <span>{zoom === 1 ? "Fit" : `${Math.round(zoom * 100)}%`}</span>}
             <button className="icon-btn" disabled={!pdf || zoom >= ZOOM_MAX} onClick={() => adjustZoom(ZOOM_STEP)} title="Zoom in">
               <Icon d="M12 5v14M5 12h14" />
             </button>
@@ -207,7 +209,7 @@ function BookPages({ data, zoom, onPages }: { data: Uint8Array; zoom: number; on
   const stageRef = useRef<HTMLDivElement>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [baseRatio, setBaseRatio] = useState<number | null>(null);
-  const [stageWidth, setStageWidth] = useState(0);
+  const [stage, setStage] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -229,21 +231,21 @@ function BookPages({ data, zoom, onPages }: { data: Uint8Array; zoom: number; on
   }, [data, onPages]);
 
   useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const update = () => setStageWidth(stage.clientWidth);
+    const el = stageRef.current;
+    if (!el) return;
+    const update = () => setStage({ width: el.clientWidth, height: el.clientHeight });
     update();
     const observer = new ResizeObserver(update);
-    observer.observe(stage);
+    observer.observe(el);
     return () => observer.disconnect();
   }, [doc]);
 
-  const fit = Math.max(280, stageWidth - 56);
-  const displayWidth = Math.round(fit * zoom);
+  const pageFit = Math.max(240, Math.min(stage.width - 56, (stage.height - 56) / (baseRatio ?? 1)));
+  const displayWidth = Math.round(pageFit * zoom);
 
   return (
     <div className="preview-stage" ref={stageRef}>
-      {doc && baseRatio !== null && stageWidth > 0 && (
+      {doc && baseRatio !== null && stage.width > 0 && (
         <div className="preview-col">
           {Array.from({ length: doc.numPages }, (_, i) => (
             <PdfPage

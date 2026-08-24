@@ -97,6 +97,12 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
             app_submenu.insert(&settings, 3)?;
             app_submenu.insert(&PredefinedMenuItem::separator(handle)?, 4)?;
         }
+        if let Some(window) = find_submenu("Window") {
+            let show_window = MenuItemBuilder::with_id("show-window", "Open Window")
+                .accelerator("CmdOrCtrl+Shift+M")
+                .build(handle)?;
+            window.append_items(&[&PredefinedMenuItem::separator(handle)?, &show_window])?;
+        }
         if let Some(view) = find_submenu("View") {
             let toggle_chapters = MenuItemBuilder::with_id("toggle-chapters", "Toggle Chapters")
                 .accelerator("CmdOrCtrl+\\")
@@ -177,10 +183,14 @@ pub fn run() {
                 ) {
                     app.emit("menu-action", event.id().0.as_str()).ok();
                 }
+                #[cfg(target_os = "macos")]
+                if event.id().0.as_str() == "show-window" {
+                    open_main_window(app);
+                }
             });
     }
 
-    builder
+    let app = builder
         .invoke_handler(tauri::generate_handler![
             epub::package_epub,
             epub::unzip_epub,
@@ -200,9 +210,36 @@ pub fn run() {
             gdrive::gdrive_disconnect,
             gdrive::gdrive_status,
             gdrive::gdrive_backup,
+            gdrive::gdrive_sync,
             gdrive::gdrive_restore,
             gdrive::gdrive_list_backups
         ])
-        .run(context)
-        .expect("error while running margin");
+        .build(context)
+        .expect("error while building margin");
+
+    app.run(|_app, _event| {
+        #[cfg(target_os = "macos")]
+        match &_event {
+            tauri::RunEvent::ExitRequested { code: None, api, .. } => api.prevent_exit(),
+            tauri::RunEvent::Reopen { has_visible_windows: false, .. } => open_main_window(_app),
+            _ => {}
+        }
+    });
+}
+
+#[cfg(target_os = "macos")]
+fn open_main_window(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+        return;
+    }
+    let Some(config) = app.config().app.windows.first().cloned() else {
+        return;
+    };
+    if let Ok(builder) = tauri::WebviewWindowBuilder::from_config(app, &config) {
+        let _ = builder.build();
+    }
 }

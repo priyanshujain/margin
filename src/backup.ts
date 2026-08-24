@@ -6,6 +6,7 @@ export interface BackupStatus {
   email: string | null;
   lastBackup: number | null;
   pending: boolean;
+  needsReauth: boolean;
 }
 
 export interface RestoreResult {
@@ -16,11 +17,16 @@ export interface BackupOutcome extends BackupStatus {
   uploaded: number;
 }
 
+export interface SyncOutcome extends BackupStatus {
+  uploaded: number;
+  downloaded: number;
+}
+
 export interface RemoteBackup {
   name: string;
 }
 
-const OFFLINE: BackupStatus = { connected: false, email: null, lastBackup: null, pending: false };
+const OFFLINE: BackupStatus = { connected: false, email: null, lastBackup: null, pending: false, needsReauth: false };
 
 export async function gdriveStatus(): Promise<BackupStatus> {
   if (!isDesktop) return OFFLINE;
@@ -37,6 +43,10 @@ export async function gdriveDisconnect(): Promise<BackupStatus> {
 
 export async function gdriveBackup(): Promise<BackupOutcome> {
   return invoke<BackupOutcome>("gdrive_backup");
+}
+
+export async function gdriveSync(): Promise<SyncOutcome> {
+  return invoke<SyncOutcome>("gdrive_sync");
 }
 
 export async function gdriveRestore(): Promise<RestoreResult> {

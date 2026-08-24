@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useBook } from "../store/useBook";
 import { listSystemFonts } from "../ipc";
@@ -14,6 +14,7 @@ import {
   pairingFor,
 } from "../model/fonts";
 import { useEscapeLayer } from "../escape";
+import { useFocusTrap } from "../focus";
 import { Icon } from "./Icon";
 
 const LANGUAGES = [
@@ -86,6 +87,13 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
   }));
   const [system, setSystem] = useState<string[]>(() => systemFontCache ?? []);
   const [advanced, setAdvanced] = useState(() => pairingFor(draft.fonts) === null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    titleRef.current?.focus();
+    titleRef.current?.select();
+  }, []);
 
   useEffect(() => {
     if (systemFontCache) return;
@@ -96,6 +104,7 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
   }, []);
 
   useEscapeLayer(true, onClose);
+  useFocusTrap(panelRef);
 
   if (!book) return null;
 
@@ -115,7 +124,7 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
 
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="panel" onClick={(e) => e.stopPropagation()}>
+      <div ref={panelRef} className="panel" onClick={(e) => e.stopPropagation()}>
         <div className="panel-head">
           <h2>Book setup</h2>
           <button className="icon-btn" onClick={onClose} title="Close">
@@ -124,7 +133,7 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
         </div>
         <div className="panel-body">
           <Field label="Title">
-            <input autoFocus value={draft.title} placeholder="Untitled" onChange={(e) => set({ title: e.target.value })} />
+            <input ref={titleRef} value={draft.title} placeholder="Untitled" onChange={(e) => set({ title: e.target.value })} />
           </Field>
           <Field label="Subtitle">
             <input value={draft.subtitle} onChange={(e) => set({ subtitle: e.target.value })} />

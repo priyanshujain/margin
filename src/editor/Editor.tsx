@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { EditorContent, type Editor as TiptapEditor } from "@tiptap/react";
 import { EditorState } from "@tiptap/pm/state";
 import type { JSONContent } from "@tiptap/core";
-import { editorExtensions } from "./extensions";
 import { loadPosition, savePosition, type ChapterPosition } from "./positions";
+import { loadChapterState, saveChapterState, sharedEditor, type ChapterState } from "./session";
 import { useBook } from "../store/useBook";
 
 interface EditorProps {
@@ -14,14 +14,6 @@ interface EditorProps {
   onReady: (editor: TiptapEditor | null) => void;
   onContentError: (error: Error) => void;
 }
-
-interface Cached {
-  state: EditorState;
-  content: JSONContent;
-  scroll: number;
-}
-
-const SCROLL_KEEPOUT = { top: 32, right: 0, bottom: 96, left: 0 };
 
 function buildState(editor: TiptapEditor, content: JSONContent, onError: (error: Error) => void): EditorState {
   const base = editor.view.state;
@@ -35,30 +27,32 @@ function buildState(editor: TiptapEditor, content: JSONContent, onError: (error:
   }
 }
 
+function stillMatches(editor: TiptapEditor, entry: ChapterState, content: JSONContent): boolean {
+  if (entry.state.schema !== editor.schema) return false;
+  if (entry.content === content) return true;
+  try {
+    return entry.state.doc.eq(editor.schema.nodeFromJSON(content));
+  } catch {
+    return false;
+  }
+}
+
 export function Editor({ bookId, chapterId, content, onChange, onReady, onContentError }: EditorProps) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const onContentErrorRef = useRef(onContentError);
   onContentErrorRef.current = onContentError;
 
-  const cache = useRef(new Map<string, Cached>());
-  const activeId = useRef(chapterId);
+  const [editor] = useState(() =>
+    sharedEditor({
+      onUpdate: (next) => onChangeRef.current(next),
+      onContentError: (error) => onContentErrorRef.current(error),
+    })
+  );
+
+  const active = useRef({ bookId: "", chapterId: "" });
   const latest = useRef<ChapterPosition | null>(null);
   const restoreToken = useRef(0);
-
-  const editor = useEditor({
-    extensions: editorExtensions,
-    content,
-    immediatelyRender: false,
-    enableContentCheck: true,
-    editorProps: {
-      attributes: { class: "prose" },
-      scrollThreshold: SCROLL_KEEPOUT,
-      scrollMargin: SCROLL_KEEPOUT,
-    },
-    onContentError: ({ error }) => onContentErrorRef.current(error),
-    onUpdate: ({ editor }) => onChangeRef.current(editor.getJSON()),
-  });
 
   const scrollerOf = (ed: TiptapEditor) => ed.view.dom.closest(".editor-pane") as HTMLElement | null;
 
@@ -82,62 +76,66 @@ export function Editor({ bookId, chapterId, content, onChange, onReady, onConten
     }
   };
 
-  const stash = (ed: TiptapEditor, id: string) => {
+  const stash = (ed: TiptapEditor) => {
+    const { bookId: prevBook, chapterId: prevChapter } = active.current;
+    if (!prevChapter) return;
     const scroller = scrollerOf(ed);
     const { from, to } = ed.state.selection;
-    const scroll = scroller?.scrollTop ?? 0;
-    const stored = useBook.getState().book?.chapters.find((c) => c.id === id)?.content ?? cache.current.get(id)?.content ?? ed.getJSON();
-    cache.current.set(id, { state: ed.view.state, content: stored, scroll });
-    savePosition(bookId, id, { from, to, scroll });
+    const scroll = scroller?.scrollTop ?? loadChapterState(prevBook, prevChapter)?.scroll ?? 0;
+    const stored = useBook.getState().book?.chapters.find((c) => c.id === prevChapter)?.content ?? ed.getJSON();
+    saveChapterState(prevBook, prevChapter, { state: ed.view.state, content: stored, scroll });
+    savePosition(prevBook, prevChapter, { from, to, scroll });
   };
 
+  const applyChapter = (ed: TiptapEditor, id: string, next: JSONContent, focus: boolean) => {
+    const entry = loadChapterState(bookId, id);
+    if (entry && stillMatches(ed, entry, next)) {
+      entry.content = next;
+      ed.view.updateState(entry.state);
+      const scroller = scrollerOf(ed);
+      if (scroller) scroller.scrollTop = entry.scroll;
+      ++restoreToken.current;
+      if (focus) ed.commands.focus(undefined, { scrollIntoView: false });
+      return;
+    }
+    ed.view.updateState(buildState(ed, next, onContentErrorRef.current));
+    saveChapterState(bookId, id, { state: ed.view.state, content: next, scroll: 0 });
+    restorePosition(ed, id, focus);
+  };
+
+  useLayoutEffect(() => {
+    const prev = active.current;
+    if (prev.bookId === bookId && prev.chapterId === chapterId) return;
+    stash(editor);
+    applyChapter(editor, chapterId, content, !prev.chapterId);
+    active.current = { bookId, chapterId };
+    latest.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId, chapterId, content, editor]);
+
   useEffect(() => {
-    if (!editor) return;
-    cache.current.set(chapterId, { state: editor.view.state, content, scroll: 0 });
-    activeId.current = chapterId;
-    restorePosition(editor, chapterId, true);
     onReady(editor);
-    return () => onReady(null);
+    return () => {
+      stash(editor);
+      onReady(null);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
-  useLayoutEffect(() => {
-    if (!editor) return;
-    const prev = activeId.current;
-    if (prev === chapterId) return;
-
-    stash(editor, prev);
-    const entry = cache.current.get(chapterId);
-    if (entry && entry.content === content) {
-      editor.view.updateState(entry.state);
-      const scroller = scrollerOf(editor);
-      if (scroller) scroller.scrollTop = entry.scroll;
-      ++restoreToken.current;
-    } else {
-      editor.view.updateState(buildState(editor, content, onContentErrorRef.current));
-      cache.current.set(chapterId, { state: editor.view.state, content, scroll: 0 });
-      restorePosition(editor, chapterId, false);
-    }
-    activeId.current = chapterId;
-    latest.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterId, content, editor]);
-
   useEffect(() => {
-    if (!editor) return;
     const scroller = scrollerOf(editor);
     let timer: ReturnType<typeof setTimeout>;
     const capture = () => {
       const { from, to } = editor.state.selection;
       const scroll = scroller?.scrollTop ?? 0;
       latest.current = { from, to, scroll };
-      const entry = cache.current.get(activeId.current);
+      const entry = loadChapterState(active.current.bookId, active.current.chapterId);
       if (entry) entry.scroll = scroll;
     };
     const persist = () => {
       capture();
       clearTimeout(timer);
-      timer = setTimeout(() => savePosition(bookId, activeId.current, latest.current!), 400);
+      timer = setTimeout(() => savePosition(active.current.bookId, active.current.chapterId, latest.current!), 400);
     };
     editor.on("selectionUpdate", persist);
     scroller?.addEventListener("scroll", persist, { passive: true });
@@ -145,9 +143,9 @@ export function Editor({ bookId, chapterId, content, onChange, onReady, onConten
       clearTimeout(timer);
       editor.off("selectionUpdate", persist);
       scroller?.removeEventListener("scroll", persist);
-      if (latest.current) savePosition(bookId, activeId.current, latest.current);
+      if (latest.current) savePosition(active.current.bookId, active.current.chapterId, latest.current);
     };
-  }, [editor, bookId]);
+  }, [editor]);
 
   return <EditorContent editor={editor} className="editor-host" />;
 }

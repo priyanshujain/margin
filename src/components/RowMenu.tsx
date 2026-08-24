@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useEscapeLayer } from "../escape";
+import { useFocusTrap } from "../focus";
 import { Icon } from "./Icon";
 
 interface RowMenuProps {
   label: string;
   onDuplicate?: () => void;
+  onMove?: () => void;
   onDelete: () => void;
   onToggleTitle?: () => void;
   titleHidden?: boolean;
@@ -13,9 +15,10 @@ interface RowMenuProps {
   marginHidden?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
+  tabIndex?: number;
 }
 
-export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidden, onToggleMargin, marginHidden, onOpenChange, className = "" }: RowMenuProps) {
+export function RowMenu({ label, onDuplicate, onMove, onDelete, onToggleTitle, titleHidden, onToggleMargin, marginHidden, onOpenChange, className = "", tabIndex }: RowMenuProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -34,10 +37,7 @@ export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidd
     setOpen((v) => !v);
   };
 
-  useEffect(() => {
-    if (!open) return;
-    popRef.current?.querySelector<HTMLElement>(".row-menu-item")?.focus();
-  }, [open]);
+  useFocusTrap(popRef, open);
 
   useEscapeLayer(open, () => {
     setOpen(false);
@@ -89,6 +89,12 @@ export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidd
     onDuplicate?.();
   };
 
+  const moveOut = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(false);
+    onMove?.();
+  };
+
   const remove = (e: React.MouseEvent) => {
     e.stopPropagation();
     setOpen(false);
@@ -101,6 +107,7 @@ export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidd
         ref={btnRef}
         className={`row-menu-btn ${className}`}
         data-open={open}
+        tabIndex={tabIndex}
         title={label}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={toggle}
@@ -134,6 +141,12 @@ export function RowMenu({ label, onDuplicate, onDelete, onToggleTitle, titleHidd
               <button className="row-menu-item" onClick={duplicate}>
                 <Icon d="M9 9h11v11h-11z M6 15V5h9" size={14} />
                 Duplicate
+              </button>
+            )}
+            {onMove && (
+              <button className="row-menu-item" onClick={moveOut}>
+                <Icon d="M4 12h13M13 8l4 4-4 4M20 4v16" size={14} />
+                Move to book…
               </button>
             )}
             <button className="row-menu-item danger" onClick={remove}>

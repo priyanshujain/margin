@@ -120,6 +120,7 @@ pub fn list_books(app: tauri::AppHandle) -> Result<Vec<BookSummary>, String> {
             updated_at,
         });
     }
+    books.sort_by_key(|b| std::cmp::Reverse(b.updated_at));
     Ok(books)
 }
 

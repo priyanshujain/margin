@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { Icon } from "../components/Icon";
 import { useEscapeLayer } from "../escape";
+import { useFocusTrap } from "../focus";
 import type { Alignment } from "./align";
 
 const ALIGN_ICONS: Record<Alignment, string> = {
@@ -28,7 +29,8 @@ function normalizeUrl(url: string): string {
 
 export function FloatingToolbar({ editor }: { editor: Editor | null }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const linkInputRef = useRef<HTMLInputElement>(null);
+  const linkPopRef = useRef<HTMLDivElement>(null);
+  const alignPopRef = useRef<HTMLDivElement>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [alignOpen, setAlignOpen] = useState(false);
@@ -40,9 +42,8 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
     setLinkOpen(true);
   };
 
-  useEffect(() => {
-    if (linkOpen) linkInputRef.current?.focus();
-  }, [linkOpen]);
+  useFocusTrap(linkPopRef, linkOpen);
+  useFocusTrap(alignPopRef, alignOpen);
 
   useEffect(() => {
     if (!editor) return;
@@ -130,7 +131,7 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
         {alignOpen && (
           <>
             <div className="link-pop-backdrop" onMouseDown={() => setAlignOpen(false)} />
-            <div className="align-pop" onMouseDown={(e) => e.stopPropagation()}>
+            <div ref={alignPopRef} className="align-pop" onMouseDown={(e) => e.stopPropagation()}>
               {(["left", "center", "right"] as Alignment[]).map((value) => (
                 <button
                   key={value}
@@ -153,9 +154,8 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
         {linkOpen && (
           <>
             <div className="link-pop-backdrop" onMouseDown={() => setLinkOpen(false)} />
-            <div className="link-pop" onMouseDown={(e) => e.stopPropagation()}>
+            <div ref={linkPopRef} className="link-pop" onMouseDown={(e) => e.stopPropagation()}>
               <input
-                ref={linkInputRef}
                 className="link-input"
                 value={linkValue}
                 placeholder="https://…"

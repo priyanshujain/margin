@@ -14,7 +14,7 @@ import {
   normalizeBook,
 } from "../model/book";
 import { loadActiveChapter, saveActiveChapter } from "../editor/positions";
-import { saveBook } from "../library";
+import { rememberLastBook, saveBook } from "../library";
 import { applyBookFonts, resetBookFonts } from "../book-style";
 
 export const COVER_ID = "__cover__";
@@ -70,10 +70,12 @@ export const useBook = create<BookState>((set, get) => ({
     const valid = saved === COVER_ID || normalized.chapters.some((c) => c.id === saved);
     const activeChapterId = valid ? (saved as string) : normalized.chapters[0]?.id ?? "";
     applyBookFonts(normalized.settings.fonts);
+    rememberLastBook(normalized.id);
     set({ book: normalized, activeChapterId, dirty: false, pendingTitleFocus: null });
   },
   closeBook: () => {
     flushOutgoing(get().book, get().dirty);
+    rememberLastBook(null);
     resetBookFonts();
     set({ book: null, activeChapterId: "", dirty: false, pendingTitleFocus: null });
   },
@@ -163,6 +165,7 @@ export const useBook = create<BookState>((set, get) => ({
       const index = s.book.chapters.findIndex((c) => c.id === id);
       if (index === -1) return {};
       const chapters = s.book.chapters.filter((c) => c.id !== id);
+      if (!chapters.length) chapters.push(createChapter(""));
       const activeChapterId =
         s.activeChapterId === id ? (chapters[index] ?? chapters[index - 1])?.id ?? COVER_ID : s.activeChapterId;
       return { dirty: true, activeChapterId, book: { ...s.book, chapters } };

@@ -171,6 +171,19 @@ export function createPart(title = ""): Chapter {
   return { id: crypto.randomUUID(), title, content: emptyDoc(), kind: "part", updatedAt: Date.now() };
 }
 
+export function insertByKind(chapters: Chapter[], chapter: Chapter): Chapter[] {
+  const kind = chapterKind(chapter);
+  const next = [...chapters];
+  const at =
+    kind === "front"
+      ? next.filter((c) => chapterKind(c) === "front").length
+      : kind === "back"
+        ? next.length
+        : next.length - next.filter((c) => chapterKind(c) === "back").length;
+  next.splice(at, 0, chapter);
+  return next;
+}
+
 export function cloneChapter(chapter: Chapter): Chapter {
   const title = chapter.noTitle || !chapter.title ? chapter.title : `${chapter.title} (copy)`;
   return { ...chapter, id: crypto.randomUUID(), title, content: structuredClone(chapter.content), updatedAt: Date.now() };

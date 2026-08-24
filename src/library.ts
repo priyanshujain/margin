@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isDesktop } from "./ipc";
-import { type Book, SCHEMA_VERSION, createBook, schemaVersion, starterBook } from "./model/book";
+import {
+  type Book,
+  type Chapter,
+  SCHEMA_VERSION,
+  createBook,
+  insertByKind,
+  normalizeBook,
+  schemaVersion,
+  starterBook,
+} from "./model/book";
 
 export interface BookSummary {
   id: string;
@@ -37,6 +46,23 @@ export async function saveBook(book: Book): Promise<void> {
 export async function deleteBook(id: string): Promise<void> {
   if (!isDesktop) return;
   await invoke("delete_book", { id });
+}
+
+export async function moveChapterToBook(chapter: Chapter, targetId: string): Promise<void> {
+  const target = normalizeBook(await loadBook(targetId));
+  const moved = { ...chapter, content: structuredClone(chapter.content), updatedAt: Date.now() };
+  await saveBook({ ...target, chapters: insertByKind(target.chapters, moved) });
+}
+
+const LAST_BOOK_KEY = "margin-last-book";
+
+export function lastBookId(): string | null {
+  return localStorage.getItem(LAST_BOOK_KEY);
+}
+
+export function rememberLastBook(id: string | null): void {
+  if (id) localStorage.setItem(LAST_BOOK_KEY, id);
+  else localStorage.removeItem(LAST_BOOK_KEY);
 }
 
 export function newBook(): Book {

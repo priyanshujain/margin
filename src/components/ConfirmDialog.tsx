@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useEscapeLayer } from "../escape";
+import { useFocusTrap } from "../focus";
 import { Icon } from "./Icon";
 
 interface ConfirmDialogProps {
@@ -12,16 +13,18 @@ interface ConfirmDialogProps {
 
 export function ConfirmDialog({ title, message, confirmLabel = "Delete", onConfirm, onClose }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     confirmRef.current?.focus();
   }, []);
 
   useEscapeLayer(true, onClose);
+  useFocusTrap(panelRef);
 
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="panel panel-confirm" onClick={(e) => e.stopPropagation()}>
+      <div ref={panelRef} className="panel panel-confirm" onClick={(e) => e.stopPropagation()}>
         <div className="panel-head">
           <h2>{title}</h2>
           <button className="icon-btn" onClick={onClose} title="Close">

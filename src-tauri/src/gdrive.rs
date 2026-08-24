@@ -15,6 +15,7 @@ use tauri::{Emitter, Manager};
 
 const FOLDER_NAME: &str = "margin";
 const DICTIONARY_NAME: &str = "custom-dictionary.txt";
+const DRIVE_SCOPE: &str = "https://www.googleapis.com/auth/drive.file";
 const SCOPES: &str = "openid email https://www.googleapis.com/auth/drive.file";
 const AUTH_TIMEOUT_SECS: u64 = 120;
 
@@ -58,6 +59,7 @@ pub struct Session {
     access_expiry: u64,
     email: Option<String>,
     folder_id: Option<String>,
+    scopes: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -67,6 +69,8 @@ struct BackupState {
     email: Option<String>,
     folder_id: Option<String>,
     last_backup: Option<u64>,
+    #[serde(default)]
+    scopes: Option<String>,
     #[serde(default)]
     files: HashMap<String, FileRecord>,
 }
@@ -84,12 +88,22 @@ pub struct Status {
     email: Option<String>,
     last_backup: Option<u64>,
     pending: bool,
+    needs_reauth: bool,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RestoreResult {
     restored: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncOutcome {
+    uploaded: usize,
+    downloaded: usize,
+    #[serde(flatten)]
+    status: Status,
 }
 
 #[derive(Serialize)]
@@ -163,6 +177,13 @@ fn hash_bytes(bytes: &[u8]) -> String {
 fn urlencode(s: &str) -> String {
     url::form_urlencoded::byte_serialize(s.as_bytes()).collect()
 }
+
+fn has_drive_scope(scope: &str) -> bool {
+    scope.split_whitespace().any(|s| s == DRIVE_SCOPE)
+}
+
+const REAUTH_MESSAGE: &str =
+    "margin needs the \"See, edit, create and delete only the specific Google Drive files you use with this app\" permission. Connect again and tick that box.";
 
 fn drive_escape(s: &str) -> String {
     s.replace('\\', "\\\\").replace('\'', "\\'")
@@ -260,6 +281,8 @@ struct TokenResponse {
     refresh_token: Option<String>,
     #[serde(default)]
     expires_in: u64,
+    #[serde(default)]
+    scope: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -484,7 +507,29 @@ async fn valid_access_token(app: &tauri::AppHandle, state: &GDriveState) -> Resu
     }
     let refresh = refresh.ok_or("Not connected to Google Drive.")?;
     let creds = load_credentials()?;
-    let tokens = refresh_access_token(&creds, &refresh).await?;
+    let tokens = match refresh_access_token(&creds, &refresh).await {
+        Ok(tokens) => tokens,
+        Err(e) => {
+            if e.contains("invalid_grant") {
+                forget_credentials(app, state);
+                return Err(
+                    "Google Drive access has expired. Connect again to keep backing up.".to_string()
+                );
+            }
+            return Err(e);
+        }
+    };
+    if let Some(granted) = &tokens.scope {
+        if !has_drive_scope(granted) {
+            let mut session = state.0.lock().unwrap();
+            session.scopes = Some(granted.clone());
+            drop(session);
+            let mut stored = load_state(app);
+            stored.scopes = Some(granted.clone());
+            let _ = save_state(app, &stored);
+            return Err(REAUTH_MESSAGE.to_string());
+        }
+    }
     let access_token = tokens.access_token.clone();
     {
         let mut session = state.0.lock().unwrap();
@@ -493,10 +538,18 @@ async fn valid_access_token(app: &tauri::AppHandle, state: &GDriveState) -> Resu
         if let Some(rotated) = &tokens.refresh_token {
             session.refresh_token = Some(rotated.clone());
         }
+        if let Some(granted) = &tokens.scope {
+            session.scopes = Some(granted.clone());
+        }
     }
-    if let Some(rotated) = &tokens.refresh_token {
+    if tokens.refresh_token.is_some() || tokens.scope.is_some() {
         let mut stored = load_state(app);
-        stored.refresh_token = Some(rotated.clone());
+        if let Some(rotated) = &tokens.refresh_token {
+            stored.refresh_token = Some(rotated.clone());
+        }
+        if let Some(granted) = &tokens.scope {
+            stored.scopes = Some(granted.clone());
+        }
         let _ = save_state(app, &stored);
     }
     Ok(access_token)
@@ -592,17 +645,19 @@ fn compute_pending(app: &tauri::AppHandle, stored: &BackupState) -> bool {
 }
 
 fn status_inner(app: &tauri::AppHandle, state: &GDriveState) -> Status {
-    let (connected, email) = {
+    let (connected, email, scopes) = {
         let session = state.0.lock().unwrap();
-        (session.refresh_token.is_some(), session.email.clone())
+        (session.refresh_token.is_some(), session.email.clone(), session.scopes.clone())
     };
     let stored = load_state(app);
     let pending = connected && compute_pending(app, &stored);
+    let granted = scopes.or_else(|| stored.scopes.clone());
     Status {
         connected,
         email: email.or(stored.email),
         last_backup: stored.last_backup,
         pending,
+        needs_reauth: connected && granted.map(|s| !has_drive_scope(&s)).unwrap_or(false),
     }
 }
 
@@ -613,6 +668,21 @@ pub fn init_session(app: &tauri::AppHandle) {
     session.refresh_token = stored.refresh_token;
     session.email = stored.email;
     session.folder_id = stored.folder_id;
+    session.scopes = stored.scopes;
+}
+
+fn forget_credentials(app: &tauri::AppHandle, state: &GDriveState) {
+    {
+        let mut session = state.0.lock().unwrap();
+        session.refresh_token = None;
+        session.access_token = None;
+        session.access_expiry = 0;
+        session.scopes = None;
+    }
+    let mut stored = load_state(app);
+    stored.refresh_token = None;
+    stored.scopes = None;
+    let _ = save_state(app, &stored);
 }
 
 async fn complete_auth(
@@ -631,6 +701,15 @@ async fn complete_auth(
     .map_err(|e| e.to_string())??;
 
     let tokens = exchange_code(&creds, &code, &redirect, &verifier).await?;
+    let granted = tokens.scope.clone().unwrap_or_default();
+    if !has_drive_scope(&granted) {
+        let _ = HTTP
+            .post("https://oauth2.googleapis.com/revoke")
+            .form(&[("token", tokens.access_token.as_str())])
+            .send()
+            .await;
+        return Err(REAUTH_MESSAGE.to_string());
+    }
     let email = fetch_email(&tokens.access_token).await?;
     let folder_id = ensure_folder(&tokens.access_token).await?;
 
@@ -644,6 +723,7 @@ async fn complete_auth(
         session.access_expiry = now() + tokens.expires_in.saturating_sub(60);
         session.email = Some(email.clone());
         session.folder_id = Some(folder_id.clone());
+        session.scopes = Some(granted.clone());
     }
 
     let mut stored = load_state(app);
@@ -652,6 +732,7 @@ async fn complete_auth(
     }
     stored.email = Some(email);
     stored.folder_id = Some(folder_id);
+    stored.scopes = Some(granted);
     save_state(app, &stored)?;
     Ok(())
 }
@@ -711,10 +792,12 @@ pub async fn gdrive_disconnect(app: tauri::AppHandle, state: tauri::State<'_, GD
         session.access_token = None;
         session.access_expiry = 0;
         session.email = None;
+        session.scopes = None;
     }
     let mut stored = load_state(&app);
     stored.refresh_token = None;
     stored.email = None;
+    stored.scopes = None;
     save_state(&app, &stored)?;
     Ok(status_inner(&app, &state))
 }
@@ -724,12 +807,13 @@ pub async fn gdrive_status(app: tauri::AppHandle, state: tauri::State<'_, GDrive
     Ok(status_inner(&app, &state))
 }
 
-#[tauri::command]
-pub async fn gdrive_backup(app: tauri::AppHandle, state: tauri::State<'_, GDriveState>) -> Result<BackupOutcome, String> {
-    let access_token = valid_access_token(&app, &state).await?;
-    let folder_id = ensure_folder_id(&app, &state, &access_token).await?;
-    let files = collect_local_files(&app)?;
-    let mut stored = load_state(&app);
+async fn push_local_files(
+    app: &tauri::AppHandle,
+    access_token: &str,
+    folder_id: &str,
+    stored: &mut BackupState,
+) -> Result<usize, String> {
+    let files = collect_local_files(app)?;
     let mut uploaded = 0;
     for (name, bytes) in &files {
         let hash = hash_bytes(bytes);
@@ -739,18 +823,27 @@ pub async fn gdrive_backup(app: tauri::AppHandle, state: tauri::State<'_, GDrive
                 continue;
             }
         }
-        let drive_id = match &existing {
-            Some(record) => Some(record.drive_id.clone()),
-            None => find_file(&access_token, &folder_id, name).await?.map(|file| file.id),
+        let drive_id = match existing.filter(|record| !record.drive_id.is_empty()) {
+            Some(record) => Some(record.drive_id),
+            None => find_file(access_token, folder_id, name).await?.map(|file| file.id),
         };
-        let result = upload_file(&access_token, &folder_id, name, bytes, drive_id).await?;
+        let result = upload_file(access_token, folder_id, name, bytes, drive_id).await?;
         stored.files.insert(name.clone(), FileRecord { hash, drive_id: result.id });
         uploaded += 1;
     }
+    Ok(uploaded)
+}
+
+#[tauri::command]
+pub async fn gdrive_backup(app: tauri::AppHandle, state: tauri::State<'_, GDriveState>) -> Result<BackupOutcome, String> {
+    let access_token = valid_access_token(&app, &state).await?;
+    let folder_id = ensure_folder_id(&app, &state, &access_token).await?;
+    let mut stored = load_state(&app);
+    let uploaded = push_local_files(&app, &access_token, &folder_id, &mut stored).await?;
     if uploaded > 0 {
         stored.last_backup = Some(now());
-        save_state(&app, &stored)?;
     }
+    save_state(&app, &stored)?;
     Ok(BackupOutcome {
         uploaded,
         status: Status {
@@ -758,6 +851,60 @@ pub async fn gdrive_backup(app: tauri::AppHandle, state: tauri::State<'_, GDrive
             email: stored.email.clone(),
             last_backup: stored.last_backup,
             pending: false,
+            needs_reauth: false,
+        },
+    })
+}
+
+#[tauri::command]
+pub async fn gdrive_sync(app: tauri::AppHandle, state: tauri::State<'_, GDriveState>) -> Result<SyncOutcome, String> {
+    let access_token = valid_access_token(&app, &state).await?;
+    let folder_id = ensure_folder_id(&app, &state, &access_token).await?;
+    let remote = list_in_folder(&access_token, &folder_id).await?;
+    let mut stored = load_state(&app);
+    let mut downloaded = 0;
+
+    for file in &remote {
+        let is_dictionary = file.name == DICTIONARY_NAME;
+        if !is_dictionary && !safe_book_name(&file.name) {
+            continue;
+        }
+        let destination = if is_dictionary {
+            dictionary_path(&app)?
+        } else {
+            crate::library::library_dir(&app)?.join(&file.name)
+        };
+        if destination.exists() {
+            let record = stored
+                .files
+                .entry(file.name.clone())
+                .or_insert_with(|| FileRecord { hash: String::new(), drive_id: file.id.clone() });
+            record.drive_id = file.id.clone();
+            continue;
+        }
+        let bytes = download_file(&access_token, &file.id).await?;
+        crate::project::atomic_write(&destination, &bytes, false)?;
+        stored.files.insert(
+            file.name.clone(),
+            FileRecord { hash: hash_bytes(&bytes), drive_id: file.id.clone() },
+        );
+        downloaded += 1;
+    }
+
+    let uploaded = push_local_files(&app, &access_token, &folder_id, &mut stored).await?;
+    if uploaded > 0 || downloaded > 0 {
+        stored.last_backup = Some(now());
+    }
+    save_state(&app, &stored)?;
+    Ok(SyncOutcome {
+        uploaded,
+        downloaded,
+        status: Status {
+            connected: true,
+            email: stored.email.clone(),
+            last_backup: stored.last_backup,
+            pending: false,
+            needs_reauth: false,
         },
     })
 }

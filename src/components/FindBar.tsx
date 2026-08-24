@@ -96,7 +96,12 @@ export function FindBar({ editor, open, initialExpanded, onClose }: FindBarProps
     };
   }, [editor, pendingNav, activeChapterId]);
 
-  useEscapeLayer(open, onClose);
+  const close = () => {
+    editor?.commands.focus();
+    onClose();
+  };
+
+  useEscapeLayer(open, close);
 
   if (!open || !editor) return null;
 
@@ -239,7 +244,7 @@ export function FindBar({ editor, open, initialExpanded, onClose }: FindBarProps
           <button className="find-toggle" data-on={wholeWord} title="Whole word" onClick={() => setWholeWord((v) => !v)}>
             <span className="find-ww">ab</span>
           </button>
-          <button className="find-btn" title="Close (Esc)" onClick={onClose}>
+          <button className="find-btn" title="Close (Esc)" onClick={close}>
             <Icon d="M18 6L6 18M6 6l12 12" size={14} />
           </button>
         </div>

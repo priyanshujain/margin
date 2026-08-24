@@ -11,7 +11,7 @@ import { useBook } from "./store/useBook";
 import { useBackup } from "./store/useBackup";
 import { useExportPreview } from "./store/useExportPreview";
 import { isDesktop } from "./ipc";
-import { createAndOpenBook, saveBook } from "./library";
+import { createAndOpenBook, lastBookId, loadBook, saveBook } from "./library";
 import { runExport } from "./export/run";
 import { checkForUpdates } from "./updater";
 
@@ -51,12 +51,7 @@ function App() {
       if ((!book || !dirty) && !connected) return;
       event.preventDefault();
       if (book && dirty) await saveBook(book).catch(() => {});
-      if (connected) {
-        await Promise.race([
-          useBackup.getState().backup(true),
-          new Promise((resolve) => setTimeout(resolve, 8000)),
-        ]);
-      }
+      if (connected) useBackup.getState().backup(true);
       win.destroy();
     });
     return () => {
@@ -76,14 +71,32 @@ function App() {
 
   useEffect(() => {
     if (!isDesktop) return;
+    let first = true;
     const tick = async () => {
       await useBackup.getState().refresh();
       const state = useBackup.getState();
-      if (state.connected && state.pending) state.backup(true);
+      if (!state.connected || state.needsReauth) return;
+      if (first) {
+        first = false;
+        state.sync(true);
+      } else if (state.pending) {
+        state.backup(true);
+      }
     };
     tick();
     const id = setInterval(tick, 15 * 60 * 1000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    const id = lastBookId();
+    if (!id || useBook.getState().book) return;
+    loadBook(id)
+      .then((last) => {
+        if (!useBook.getState().book) useBook.getState().openBook(last);
+      })
+      .catch(() => {});
   }, []);
 
   return (

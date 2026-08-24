@@ -5,7 +5,9 @@ import { AddPageMenu } from "./AddPageMenu";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
 import { RowMenu } from "./RowMenu";
+import { MoveChapterDialog } from "./MoveChapterDialog";
 import { relativeTime } from "../time";
+import { isDesktop } from "../ipc";
 
 interface Row {
   chapter: Chapter;
@@ -37,6 +39,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const [pendingMove, setPendingMove] = useState<{ chapter: Chapter; label: string } | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -142,6 +145,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     });
 
   const onRowKeyDown = (e: React.KeyboardEvent, index: number, id: string) => {
+    if ((e.target as HTMLElement).closest(".row-menu-btn")) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       setActiveChapter(id);
@@ -240,6 +244,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     </span>
                     <RowMenu
                       label="Page options"
+                      tabIndex={row.chapter.id === tabStopId ? 0 : -1}
                       onOpenChange={(open) =>
                         setMenuOpenId((cur) => (open ? row.chapter.id : cur === row.chapter.id ? null : cur))
                       }
@@ -248,6 +253,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                       marginHidden={!!row.chapter.noMargin}
                       onToggleMargin={() => setChapterNoMargin(row.chapter.id, !row.chapter.noMargin)}
                       onDuplicate={() => duplicateChapter(row.chapter.id)}
+                      onMove={isDesktop ? () => setPendingMove({ chapter: row.chapter, label: rowLabel }) : undefined}
                       onDelete={() => setPendingDelete({ id: row.chapter.id, title: rowLabel })}
                     />
                   </li>
@@ -275,6 +281,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           ) : null
         )}
       </div>
+
+      {pendingMove && (
+        <MoveChapterDialog
+          chapter={pendingMove.chapter}
+          label={pendingMove.label}
+          onClose={() => setPendingMove(null)}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmDialog

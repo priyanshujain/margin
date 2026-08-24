@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "../focus";
 import { severityFor, type ProofCoords, type ProofIssue } from "../editor/proofing";
 
 function humanize(category: string): string {
@@ -19,6 +20,8 @@ const POP_WIDTH = 264;
 
 export function ProofPopover({ issue, coords, onReplace, onIgnore, onRemember, onClose }: ProofPopoverProps) {
   const popRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(popRef);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {

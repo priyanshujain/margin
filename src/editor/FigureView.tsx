@@ -20,6 +20,14 @@ export function FigureView({ node, updateAttributes, selected }: NodeViewProps) 
   const baseWidth = node.attrs.width ?? FIGURE_WIDTH[placement as FigurePlacement] ?? 100;
   const width = resizable ? (dragWidth ?? baseWidth) : null;
 
+  const nudge = (delta: number) => updateAttributes({ width: clampWidth((width ?? baseWidth) + delta) });
+
+  const onHandleKey = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    nudge(e.key === "ArrowRight" ? 5 : -5);
+  };
+
   const startResize = (e: React.PointerEvent) => {
     e.preventDefault();
     const wrapper = frameRef.current?.closest(".figure") as HTMLElement | null;
@@ -52,7 +60,13 @@ export function FigureView({ node, updateAttributes, selected }: NodeViewProps) 
       <div className="figure-frame" ref={frameRef}>
         {src ? <img src={src} alt={alt} /> : <div className="figure-empty">No image</div>}
         {selected && src && resizable && (
-          <div className="figure-handle" onPointerDown={startResize} title="Drag to resize" />
+          <button
+            className="figure-handle"
+            aria-label="Resize image"
+            title="Drag or press arrow keys to resize"
+            onPointerDown={startResize}
+            onKeyDown={onHandleKey}
+          />
         )}
       </div>
       <input

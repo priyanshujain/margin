@@ -5,6 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { Dock } from "./Dock";
 import { ResizeHandle } from "./ResizeHandle";
 import { Icon } from "./Icon";
+import { Menu } from "./Menu";
 import { Settings } from "./Settings";
 import { BackupButton } from "./BackupButton";
 import { CoverView } from "./CoverView";
@@ -23,6 +24,7 @@ import { WIDTH_OPTIONS } from "../width";
 import { bodyNumber, chapterKind, partNumber, partRoman } from "../model/book";
 import { saveBook } from "../library";
 import { useEscapeLayer } from "../escape";
+import { focusTrapped } from "../focus";
 import { isDesktop, runWritingTool } from "../ipc";
 import { useCompact } from "../useMedia";
 import { issueSignature, rememberWord, runProof } from "../proofing";
@@ -57,7 +59,7 @@ export function EditorView() {
   editorRef.current = editor;
   const lastChapterRef = useRef<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(!isCompact);
-  const [dock, setDock] = useState(!isCompact);
+  const [dock, setDock] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -119,7 +121,7 @@ export function EditorView() {
   }, []);
 
   const focusEditorSoon = useCallback(() => {
-    if (useBook.getState().pendingTitleFocus) return;
+    if (useBook.getState().pendingTitleFocus || focusTrapped()) return;
     requestAnimationFrame(() => editorRef.current?.commands.focus(undefined, { scrollIntoView: false }));
   }, []);
 
@@ -162,6 +164,7 @@ export function EditorView() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (focusTrapped()) return;
       if (e.metaKey && e.altKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
         openFind(true);
@@ -214,7 +217,7 @@ export function EditorView() {
 
   useEffect(() => {
     setSidebarOpen(!isCompact);
-    setDock(!isCompact);
+    if (isCompact) setDock(false);
   }, [isCompact]);
 
   useEffect(() => {
@@ -305,25 +308,20 @@ export function EditorView() {
               <button className="icon-btn" data-on={widthOpen} onClick={() => setWidthOpen((v) => !v)} title="Editor width">
                 <Icon d="M3 5v14M21 5v14M7 12h10M7 12l3-3M7 12l3 3M17 12l-3-3M17 12l-3 3" />
               </button>
-              {widthOpen && (
-                <>
-                  <div className="menu-backdrop" onClick={() => setWidthOpen(false)} />
-                  <div className="menu">
-                    {WIDTH_OPTIONS.map((w) => (
-                      <button
-                        key={w.id}
-                        data-on={width === w.id}
-                        onClick={() => {
-                          setWidth(w.id);
-                          setWidthOpen(false);
-                        }}
-                      >
-                        {w.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+              <Menu open={widthOpen} onClose={() => setWidthOpen(false)}>
+                {WIDTH_OPTIONS.map((w) => (
+                  <button
+                    key={w.id}
+                    data-on={width === w.id}
+                    onClick={() => {
+                      setWidth(w.id);
+                      setWidthOpen(false);
+                    }}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </Menu>
             </div>
           )}
           {!isCompact && (
@@ -331,15 +329,10 @@ export function EditorView() {
               <button className="icon-btn" data-on={exportOpen} onClick={() => setExportOpen((v) => !v)} title="Export">
                 <Icon d="M5 13v6h14v-6M12 16V3M8 7l4-4 4 4" />
               </button>
-              {exportOpen && (
-                <>
-                  <div className="menu-backdrop" onClick={() => setExportOpen(false)} />
-                  <div className="menu">
-                    <button onClick={() => handleExport("pdf")}>Export PDF…</button>
-                    <button onClick={() => handleExport("epub")}>Export EPUB…</button>
-                  </div>
-                </>
-              )}
+              <Menu open={exportOpen} onClose={() => setExportOpen(false)}>
+                <button onClick={() => handleExport("pdf")}>Export PDF…</button>
+                <button onClick={() => handleExport("epub")}>Export EPUB…</button>
+              </Menu>
             </div>
           )}
           {!isCompact && (
@@ -362,56 +355,51 @@ export function EditorView() {
               <button className="icon-btn" data-on={moreOpen} onClick={() => setMoreOpen((v) => !v)} title="More" aria-label="More options">
                 <Icon d="M5 12h.01M12 12h.01M19 12h.01" />
               </button>
-              {moreOpen && (
-                <>
-                  <div className="menu-backdrop" onClick={() => setMoreOpen(false)} />
-                  <div className="menu">
-                    <div className="menu-label">Editor width</div>
-                    {WIDTH_OPTIONS.map((w) => (
-                      <button
-                        key={w.id}
-                        data-on={width === w.id}
-                        onClick={() => {
-                          setWidth(w.id);
-                          setMoreOpen(false);
-                        }}
-                      >
-                        {w.label}
-                      </button>
-                    ))}
+              <Menu open={moreOpen} onClose={() => setMoreOpen(false)}>
+                <div className="menu-label">Editor width</div>
+                {WIDTH_OPTIONS.map((w) => (
+                  <button
+                    key={w.id}
+                    data-on={width === w.id}
+                    onClick={() => {
+                      setWidth(w.id);
+                      setMoreOpen(false);
+                    }}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+                <div className="menu-sep" />
+                <button
+                  onClick={() => {
+                    setMoreOpen(false);
+                    handleExport("pdf");
+                  }}
+                >
+                  Export PDF…
+                </button>
+                <button
+                  onClick={() => {
+                    setMoreOpen(false);
+                    handleExport("epub");
+                  }}
+                >
+                  Export EPUB…
+                </button>
+                {proofingAvailable && !coverActive && (
+                  <>
                     <div className="menu-sep" />
-                    <button
-                      onClick={() => {
-                        setMoreOpen(false);
-                        handleExport("pdf");
-                      }}
-                    >
-                      Export PDF…
+                    <button data-on={spelling} onClick={toggleSpelling}>
+                      Check spelling
                     </button>
-                    <button
-                      onClick={() => {
-                        setMoreOpen(false);
-                        handleExport("epub");
-                      }}
-                    >
-                      Export EPUB…
+                    <button data-on={grammar} onClick={toggleGrammar}>
+                      Check grammar
                     </button>
-                    {proofingAvailable && !coverActive && (
-                      <>
-                        <div className="menu-sep" />
-                        <button data-on={spelling} onClick={toggleSpelling}>
-                          Check spelling
-                        </button>
-                        <button data-on={grammar} onClick={toggleGrammar}>
-                          Check grammar
-                        </button>
-                      </>
-                    )}
-                    <div className="menu-sep" />
-                    <button onClick={toggleTheme}>{theme === "dark" ? "Light mode" : "Dark mode"}</button>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+                <div className="menu-sep" />
+                <button onClick={toggleTheme}>{theme === "dark" ? "Light mode" : "Dark mode"}</button>
+              </Menu>
             </div>
           )}
         </div>

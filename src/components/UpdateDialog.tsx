@@ -1,6 +1,8 @@
+import { useRef } from "react";
 import { useUpdater } from "../store/useUpdater";
 import { installUpdate, dismissUpdate } from "../updater";
 import { useEscapeLayer } from "../escape";
+import { useFocusTrap } from "../focus";
 import { Icon } from "./Icon";
 
 const TITLES: Record<string, string> = {
@@ -21,7 +23,9 @@ export function UpdateDialog() {
   const error = useUpdater((s) => s.error);
 
   const busy = phase === "downloading" || phase === "installing";
+  const panelRef = useRef<HTMLDivElement>(null);
   useEscapeLayer(phase !== "idle" && !busy, dismissUpdate);
+  useFocusTrap(panelRef, phase !== "idle");
 
   if (phase === "idle") return null;
 
@@ -30,7 +34,7 @@ export function UpdateDialog() {
 
   return (
     <div className="overlay" onClick={close}>
-      <div className="panel panel-confirm" onClick={(e) => e.stopPropagation()}>
+      <div ref={panelRef} className="panel panel-confirm" onClick={(e) => e.stopPropagation()}>
         <div className="panel-head">
           <h2>{TITLES[phase]}</h2>
           {!busy && (
