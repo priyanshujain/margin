@@ -10,7 +10,7 @@ export interface PdfFonts {
 
 function pdfFonts(book: Book): PdfFonts {
   const used = fontsUsed(book.settings.fonts);
-  return { bundled: used.bundled.map((f) => f.id), system: used.system };
+  return { bundled: used.bundled, system: used.system };
 }
 
 const TRIM: Record<TrimSize, { w: string; h: string }> = {

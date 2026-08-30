@@ -1,7 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { invoke } from "@tauri-apps/api/core";
 import { type Book, type FigurePlacement, TRIM_DIMS, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement, partNumber, partRoman } from "../model/book";
-import { fontStack, fontsUsed } from "../model/fonts";
+import { bundledFont, fontStack, fontsUsed } from "../model/fonts";
 
 export interface EpubFile {
   path: string;
@@ -66,7 +66,11 @@ async function fetchFontBase64(file: string): Promise<string | null> {
 }
 
 async function loadFontAssets(book: Book): Promise<FontAssets> {
-  const used = fontsUsed(book.settings.fonts).bundled;
+  // Ids from the shared helper, resolved back to records: an EPUB embeds the font files, so this
+  // is the one caller that needs a face's filenames rather than its name.
+  const used = fontsUsed(book.settings.fonts)
+    .bundled.map((id) => bundledFont(id))
+    .filter((font) => font !== undefined);
   const files: EpubFile[] = [];
   const faces: string[] = [];
   const manifest: string[] = [];

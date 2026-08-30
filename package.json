@@ -8,7 +8,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "dmg": "tauri build --bundles dmg"
+    "dmg": "tauri build --bundles dmg",
+    "fonts:sync": "node node_modules/margin-shared/bin/sync-fonts.mjs .",
+    "fonts:check": "node node_modules/margin-shared/bin/sync-fonts.mjs . --check"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -21,6 +23,7 @@
     "@tiptap/pm": "^3.27.1",
     "@tiptap/react": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",
+    "margin-shared": "file:./shared",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

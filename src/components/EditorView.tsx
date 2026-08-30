@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { Editor as TiptapEditor } from "@tiptap/react";
+import { icons } from "margin-shared";
 import { Sidebar } from "./Sidebar";
 import { Dock } from "./Dock";
 import { ResizeHandle } from "./ResizeHandle";
@@ -281,7 +282,7 @@ export function EditorView() {
       <header className="titlebar" data-tauri-drag-region>
         <div className="lead">
           <button className="icon-btn" data-on={sidebarOpen} onClick={toggleSidebar} title="Toggle chapters" aria-label="Toggle chapters">
-            <Icon d="M3 4.5h18v15H3zM9 4.5v15" />
+            <Icon d={icons.SIDEBAR} />
           </button>
         </div>
         <button className="doc-title" onClick={() => setSettingsOpen(true)} title="Book setup">
@@ -291,22 +292,22 @@ export function EditorView() {
         <div className="actions">
           {isDesktop && !isCompact && <BackupButton />}
           <button className="icon-btn" data-on={findOpen} onClick={() => (findOpen ? setFindOpen(false) : openFind(false))} title="Find (⌘F)">
-            <Icon d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4" />
+            <Icon d={icons.SEARCH} />
           </button>
           {!isCompact && proofingAvailable && !coverActive && (
             <>
               <button className="icon-btn" data-on={spelling} onClick={toggleSpelling} title="Check spelling">
-                <Icon d="M4 17l4-10 4 10M5.4 13.4h5.2M15 17l2.5 2.5L22 14" />
+                <Icon d={icons.SPELLING} />
               </button>
               <button className="icon-btn" data-on={grammar} onClick={toggleGrammar} title="Check grammar">
-                <Icon d="M4 7h16M4 12h12M4 17h7M13.5 18.5c1-1.2 2-1.2 3 0s2 1.2 3 0" />
+                <Icon d={icons.GRAMMAR} />
               </button>
             </>
           )}
           {!isCompact && (
             <div className="menu-wrap">
               <button className="icon-btn" data-on={widthOpen} onClick={() => setWidthOpen((v) => !v)} title="Editor width">
-                <Icon d="M3 5v14M21 5v14M7 12h10M7 12l3-3M7 12l3 3M17 12l-3-3M17 12l-3 3" />
+                <Icon d={icons.WIDTH} />
               </button>
               <Menu open={widthOpen} onClose={() => setWidthOpen(false)}>
                 {WIDTH_OPTIONS.map((w) => (
@@ -327,7 +328,7 @@ export function EditorView() {
           {!isCompact && (
             <div className="menu-wrap">
               <button className="icon-btn" data-on={exportOpen} onClick={() => setExportOpen((v) => !v)} title="Export">
-                <Icon d="M5 13v6h14v-6M12 16V3M8 7l4-4 4 4" />
+                <Icon d={icons.EXPORT} />
               </button>
               <Menu open={exportOpen} onClose={() => setExportOpen(false)}>
                 <button onClick={() => handleExport("pdf")}>Export PDF…</button>
@@ -339,21 +340,21 @@ export function EditorView() {
             <button className="icon-btn" onClick={toggleTheme} title={theme === "dark" ? "Light mode" : "Dark mode"}>
               {theme === "dark" ? (
                 <Icon>
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+                  <circle cx={icons.SUN_DISC.cx} cy={icons.SUN_DISC.cy} r={icons.SUN_DISC.r} />
+                  <path d={icons.SUN_RAYS} />
                 </Icon>
               ) : (
-                <Icon d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                <Icon d={icons.MOON} />
               )}
             </button>
           )}
           <button className="icon-btn" data-on={dock} onClick={toggleDock} title="Toggle preview">
-            <Icon d="M3 4.5h18v15H3zM14 4.5v15" />
+            <Icon d={icons.DOCK} />
           </button>
           {isCompact && (
             <div className="menu-wrap">
               <button className="icon-btn" data-on={moreOpen} onClick={() => setMoreOpen((v) => !v)} title="More" aria-label="More options">
-                <Icon d="M5 12h.01M12 12h.01M19 12h.01" />
+                <Icon d={icons.MORE} />
               </button>
               <Menu open={moreOpen} onClose={() => setMoreOpen(false)}>
                 <div className="menu-label">Editor width</div>

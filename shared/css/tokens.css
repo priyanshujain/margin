@@ -1,0 +1,91 @@
+/* The palette, the type scale and the shape constants both apps are built from.
+ *
+ * These 35 tokens already held identical values in the two repos before this package existed, which
+ * is the argument for moving them: they were identical by somebody remembering to copy a hex across,
+ * and that is not a mechanism. A colour that only exists in one app is not here. Each app layers its
+ * own sheet on top of this one and adds what only it needs, which is a preview pane width in Margin
+ * and a document typography scale in Margin Docs.
+ *
+ * --font-book and --font-heading are the two a document overrides at runtime, per book or per
+ * document. What is set here is the default pair, and the only place that decides what an untouched
+ * page looks like. */
+
+:root {
+  --font-ui: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-book: "Literata", Georgia, "Times New Roman", serif;
+  --font-heading: "Literata", Georgia, "Times New Roman", serif;
+
+  --r-sm: 5px;
+  --r-md: 8px;
+  --r-lg: 12px;
+
+  --pane-sidebar: 248px;
+  --measure: 46em;
+  --titlebar-h: 46px;
+
+  --t-1: 11px;
+  --t-2: 12px;
+  --t-3: 13px;
+  --t-4: 15px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+:root,
+:root[data-theme="light"] {
+  --paper: #fcfbf7;
+  --shell: #f1ece2;
+  --sidebar: #ece6da;
+  --raised: #fbfaf6;
+
+  --ink: #23201b;
+  --ink-soft: #6b6458;
+  --ink-faint: #9b9484;
+
+  --line: #e3ddce;
+  --line-strong: #d6cfbd;
+
+  --accent: #2a2622;
+  --accent-ink: #100e0b;
+  --accent-wash: rgba(35, 32, 27, 0.08);
+  --accent-contrast: #faf7f0;
+  --selection: rgba(35, 32, 27, 0.14);
+  --glass: rgba(252, 251, 247, 0.86);
+
+  --danger: #b4453a;
+  --danger-ink: #963327;
+  --danger-wash: rgba(180, 69, 58, 0.1);
+  --danger-contrast: #faf7f0;
+
+  --shadow-page: 0 1px 2px rgba(35, 32, 27, 0.06), 0 14px 30px rgba(35, 32, 27, 0.09);
+  --shadow-pop: 0 8px 24px rgba(35, 32, 27, 0.14);
+}
+
+:root[data-theme="dark"] {
+  --paper: #1d1a16;
+  --shell: #151310;
+  --sidebar: #1a1713;
+  --raised: #232019;
+
+  --ink: #ece6da;
+  --ink-soft: #a89f8e;
+  --ink-faint: #756d5e;
+
+  --line: #2c2823;
+  --line-strong: #3a352d;
+
+  --accent: #efe9dc;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(239, 233, 220, 0.12);
+  --accent-contrast: #1a1714;
+  --selection: rgba(239, 233, 220, 0.18);
+  --glass: rgba(33, 30, 25, 0.88);
+
+  --danger: #d97a6f;
+  --danger-ink: #e58e84;
+  --danger-wash: rgba(217, 122, 111, 0.16);
+  --danger-contrast: #1a1714;
+
+  --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 34px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.55);
+}

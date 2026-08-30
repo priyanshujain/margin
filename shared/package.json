@@ -1,0 +1,20 @@
+{
+  "name": "margin-shared",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "The faces, palette and glyphs Margin and Margin Docs both draw from.",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fonts": "./src/fonts.ts",
+    "./icons": "./src/icons.ts",
+    "./css/fonts.css": "./css/fonts.css",
+    "./css/tokens.css": "./css/tokens.css"
+  },
+  "bin": {
+    "margin-shared-fonts": "./bin/sync-fonts.mjs"
+  },
+  "files": ["src", "css", "fonts", "bin"]
+}

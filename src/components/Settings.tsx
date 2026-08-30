@@ -13,6 +13,7 @@ import {
   fontStack,
   pairingFor,
 } from "../model/fonts";
+import { icons } from "margin-shared";
 import { useEscapeLayer } from "../escape";
 import { useFocusTrap } from "../focus";
 import { Icon } from "./Icon";
@@ -128,7 +129,7 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
         <div className="panel-head">
           <h2>Book setup</h2>
           <button className="icon-btn" onClick={onClose} title="Close">
-            <Icon d="M6 6l12 12M18 6L6 18" />
+            <Icon d={icons.CLOSE} />
           </button>
         </div>
         <div className="panel-body">
