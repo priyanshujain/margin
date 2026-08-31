@@ -1,8 +1,9 @@
 [package]
 name = "margin-app"
 version = "0.1.17"
-description = "A Tauri App"
-authors = ["you"]
+description = "A calm, offline writing studio for authors"
+authors = ["Priyanshu Jain"]
+license = "LicenseRef-FSL-1.1-MIT"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
