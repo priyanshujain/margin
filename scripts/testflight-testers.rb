@@ -34,6 +34,37 @@ group = app.get_beta_groups.find { |g| g.name == GROUP }
 abort "No group named #{GROUP.inspect}." unless group
 puts "#{app.name}: #{group.name} (#{group.is_internal_group ? 'internal' : 'external'})"
 
+# An internal tester has to be a user on the App Store Connect account first, which is a far larger
+# grant than a build: it is access to the account, not to an app. So the invitation is narrowed as
+# far as the API allows, to this one app and with provisioning refused, and the person still has to
+# accept it before they can be put in the group.
+if group.is_internal_group
+  known = Spaceship::ConnectAPI::User.all.map { |u| u.email.to_s.downcase }
+  invited = Spaceship::ConnectAPI::UserInvitation.all.map { |i| i.email.to_s.downcase }
+
+  emails.each do |email|
+    next if known.include?(email.downcase)
+
+    if invited.include?(email.downcase)
+      puts "  #{email} has an invitation waiting to be accepted"
+      next
+    end
+
+    local = email.split("@").first
+    Spaceship::ConnectAPI::UserInvitation.create(
+      email: email,
+      first_name: ENV.fetch("FIRST_NAME", local),
+      last_name: ENV.fetch("LAST_NAME", "Tester"),
+      roles: [Spaceship::ConnectAPI::User::UserRole::DEVELOPER],
+      provisioning_allowed: false,
+      all_apps_visible: false,
+      visible_app_ids: [app.id],
+    )
+    puts "  invited #{email} to App Store Connect, limited to this app, no provisioning access"
+    invited << email.downcase
+  end
+end
+
 existing = Spaceship::ConnectAPI::BetaTester
   .all(filter: { betaGroups: group.id })
   .map { |t| t.email.to_s.downcase }
@@ -48,7 +79,20 @@ emails.each do |email|
     beta_group_id: group.id,
     beta_testers: [{ email: email }],
   )
-  puts "  invited #{email}"
+
+  # The bulk endpoint reports success for an address it then quietly declines to add, which is what
+  # happens on an internal group when the person has not accepted their account invitation yet. So
+  # the group is read back rather than trusted.
+  landed = Spaceship::ConnectAPI::BetaTester
+    .all(filter: { betaGroups: group.id })
+    .any? { |t| t.email.to_s.casecmp?(email) }
+
+  if landed
+    puts "  added #{email}"
+  else
+    puts "  #{email} was not added. An internal tester has to accept the App Store Connect"
+    puts "  invitation first; rerun this once they have."
+  end
 end
 
 puts
