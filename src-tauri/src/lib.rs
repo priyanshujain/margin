@@ -18,7 +18,7 @@ use tauri::{Emitter, Runtime};
 fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
     let menu = Menu::default(handle)?;
 
-    let new_book = MenuItemBuilder::with_id("new-book", "New Book")
+    let new_book = MenuItemBuilder::with_id("new-book", "New Project")
         .accelerator("CmdOrCtrl+N")
         .build(handle)?;
     let save = MenuItemBuilder::with_id("save", "Save")

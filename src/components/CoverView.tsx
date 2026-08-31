@@ -72,7 +72,7 @@ export function CoverView() {
                 <Icon d="M4 5h16v14H4zM4 16l4.5-4.5 3 3L16 10l4 4" /> Upload image
               </button>
             </div>
-            <p className="cover-hint">Title, subtitle &amp; author are set in Book setup.</p>
+            <p className="cover-hint">Title, subtitle &amp; author are set in Project setup.</p>
           </>
         )}
         <input

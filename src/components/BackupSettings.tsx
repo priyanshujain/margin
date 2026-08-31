@@ -141,7 +141,7 @@ export function BackupSettings() {
                         disabled={working || remoteCount === 0}
                         onClick={() => setConfirmRestore(true)}
                       >
-                        {remoteCount === null ? "Restore from Drive" : `Restore ${remoteCount} book${remoteCount === 1 ? "" : "s"}`}
+                        {remoteCount === null ? "Restore from Drive" : `Restore ${remoteCount} project${remoteCount === 1 ? "" : "s"}`}
                       </button>
                     </div>
 

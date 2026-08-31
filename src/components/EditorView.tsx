@@ -285,7 +285,7 @@ export function EditorView() {
             <Icon d={icons.SIDEBAR} />
           </button>
         </div>
-        <button className="doc-title" onClick={() => setSettingsOpen(true)} title="Book setup">
+        <button className="doc-title" onClick={() => setSettingsOpen(true)} title="Project setup">
           {book.metadata.title || "Untitled"}
           {dirty && <span className="dirty-dot" />}
         </button>
@@ -491,7 +491,7 @@ export function EditorView() {
 
       {escArmed && (
         <div className="esc-hint">
-          Press <kbd>Esc</kbd> again for All books
+          Press <kbd>Esc</kbd> again for All projects
         </div>
       )}
 

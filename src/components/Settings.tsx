@@ -127,7 +127,7 @@ export function Settings({ onClose, onSave }: { onClose: () => void; onSave: () 
     <div className="overlay" onClick={onClose}>
       <div ref={panelRef} className="panel" onClick={(e) => e.stopPropagation()}>
         <div className="panel-head">
-          <h2>Book setup</h2>
+          <h2>Project setup</h2>
           <button className="icon-btn" onClick={onClose} title="Close">
             <Icon d={icons.CLOSE} />
           </button>

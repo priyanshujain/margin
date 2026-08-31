@@ -16,7 +16,7 @@ pub struct BookSummary {
 fn corrupt_summary(stem: &str) -> BookSummary {
     BookSummary {
         id: stem.to_string(),
-        title: "Unreadable book".to_string(),
+        title: "Unreadable project".to_string(),
         author: String::new(),
         corrupt: true,
         updated_at: 0,

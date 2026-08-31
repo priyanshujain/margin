@@ -71,7 +71,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   const openById = (id: string) =>
     loadBook(id)
       .then(onOpen)
-      .catch((e) => setNotice(`Could not open book: ${e}`));
+      .catch((e) => setNotice(`Could not open project: ${e}`));
 
   const removeBook = async () => {
     if (!pendingDelete) return;
@@ -109,7 +109,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
       <div className="shelf">
         <button className="card card-action" onClick={() => createAndOpenBook(onOpen, setNotice)}>
           <Icon d="M12 5v14M5 12h14" size={20} />
-          <span>New book</span>
+          <span>New project</span>
         </button>
         <button className="card card-action" onClick={handleImport} disabled={busy}>
           <Icon d="M12 3v10m0 0l-4-4m4 4l4-4M5 19h14" size={20} />
@@ -126,7 +126,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
             <div key={b.id} className="card card-book card-corrupt">
               <span className="card-title">{b.title}</span>
               <span className="card-author">Couldn't be read; a .bak backup may sit beside it.</span>
-              <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
+              <RowMenu label="Project options" className="card-menu" onDelete={() => setPendingDelete(b)} />
             </div>
           ) : (
             <div
@@ -145,7 +145,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
               <span className="card-title">{b.title || "Untitled"}</span>
               {b.author && <span className="card-author">{b.author}</span>}
               {b.updatedAt > 0 && <span className="card-meta">Edited {relativeTime(b.updatedAt, now)}</span>}
-              <RowMenu label="Book options" className="card-menu" onDelete={() => setPendingDelete(b)} />
+              <RowMenu label="Project options" className="card-menu" onDelete={() => setPendingDelete(b)} />
             </div>
           ),
         )}
@@ -165,10 +165,10 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
       )}
       {pendingDelete && (
         <ConfirmDialog
-          title="Delete book"
+          title="Delete project"
           message={
             <>
-              Delete <strong>{pendingDelete.title || "Untitled"}</strong>? This permanently removes the book and all its
+              Delete <strong>{pendingDelete.title || "Untitled"}</strong>? This permanently removes the project and all its
               chapters.
             </>
           }

@@ -50,19 +50,19 @@ export function MoveChapterDialog({ chapter, label, onClose }: MoveChapterDialog
     <div className="overlay" onClick={moving ? undefined : onClose}>
       <div ref={panelRef} className="panel panel-move" onClick={(e) => e.stopPropagation()}>
         <div className="panel-head">
-          <h2>Move to book</h2>
+          <h2>Move to project</h2>
           <button className="icon-btn" onClick={onClose} title="Close">
             <Icon d="M6 6l12 12M18 6L6 18" />
           </button>
         </div>
         <div className="panel-body">
           <p className="confirm-text">
-            Move <strong>{label}</strong> out of this book and into:
+            Move <strong>{label}</strong> out of this project and into:
           </p>
           {books === null ? (
-            <p className="move-empty">Loading books…</p>
+            <p className="move-empty">Loading projects…</p>
           ) : books.length === 0 ? (
-            <p className="move-empty">There is no other book to move this into yet.</p>
+            <p className="move-empty">There is no other project to move this into yet.</p>
           ) : (
             <ul className="move-list">
               {books.map((b) => (

@@ -196,7 +196,7 @@ function ExportPreviewModal() {
           <div className="preview-stage">
             <div className="preview-loading">
               <div className="spinner spinner-dark" />
-              <p>Typesetting your book…</p>
+              <p>Typesetting your project…</p>
             </div>
           </div>
         )}

@@ -275,7 +275,7 @@ export function FindBar({ editor, open, initialExpanded, onClose }: FindBarProps
               title="Replace All scope"
               onClick={() => setScope((s) => (s === "chapter" ? "book" : "chapter"))}
             >
-              {scope === "chapter" ? "This chapter" : "Whole book"}
+              {scope === "chapter" ? "This chapter" : "Whole project"}
             </button>
           </div>
         )}
