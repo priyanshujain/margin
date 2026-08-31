@@ -1,0 +1,13 @@
+Margin is a calm, offline writing studio. Write without anything in the way, see your words set in real typography as you go, and keep every one of them on your own machine.
+
+WRITE
+A quiet editor that stays out of the way, with your work down one side and a live page preview down the other, showing your words as they will actually appear rather than as a word processor imagines them.
+
+PROOF
+Spelling and grammar are checked as you write, using the same system engine as the rest of macOS. Your words are never sent anywhere to be checked.
+
+PUBLISH
+When you are ready, export a print-ready PDF set in real typography, with proper margins, page numbers and running heads. Or export EPUB, ready for Apple Books, Kindle, Kobo and the rest.
+
+YOURS
+No account. No sign-up. No subscription. Your work is a single file on your computer that you can copy, rename, back up, or move to another machine. Nothing is locked inside a library you cannot get out of. If you would like a backup, Margin can save one to your own Google Drive, in your account and under your control.
