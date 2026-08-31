@@ -44,6 +44,12 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' src-tauri/tauri.conf.json > "$tmp" && mv "$tmp" src-tauri/tauri.conf.json
           jq --arg v "$VERSION" '.version = $v' package.json > "$tmp" && mv "$tmp" package.json
           sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml
+          # Cargo.lock records margin-app's own version, so bumping only Cargo.toml leaves the
+          # lock a release behind and the next build rewrites it under whoever checked it out.
+          awk -v v="$VERSION" '
+            /^name = "margin-app"$/ { print; getline; sub(/^version = ".*"/, "version = \"" v "\""); print; next }
+            { print }
+          ' src-tauri/Cargo.lock > "$tmp" && mv "$tmp" src-tauri/Cargo.lock
 
       - name: Commit and tag
         env:
@@ -51,7 +57,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src-tauri/tauri.conf.json package.json src-tauri/Cargo.toml
+          git add src-tauri/tauri.conf.json package.json src-tauri/Cargo.toml src-tauri/Cargo.lock
           git commit -m "chore(release): $TAG"
           for attempt in 1 2 3 4 5; do
             git fetch origin main
@@ -147,8 +153,22 @@ jobs:
             echo "Wrote google-credentials.json from GOOGLE_CREDENTIALS secret."
           else
             cp google-credentials.example.json google-credentials.json
-            echo "::warning::GOOGLE_CREDENTIALS secret not set — embedding placeholder credentials; Google Drive backup will be disabled in this release."
+            echo "::warning::GOOGLE_CREDENTIALS secret not set, embedding placeholder credentials; Google Drive backup will be disabled in this release."
           fi
+
+      - name: Provision Apple notarization key
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          if [ -z "$KEY_P8" ]; then
+            echo "::warning::APPLE_API_KEY_P8 is not set, so the macOS bundle will be ad-hoc signed and Gatekeeper will refuse to open it."
+            exit 0
+          fi
+          printf '%s' "$KEY_P8" | base64 --decode > "$RUNNER_TEMP/apple-api-key.p8"
+          chmod 600 "$RUNNER_TEMP/apple-api-key.p8"
+          echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/apple-api-key.p8" >> "$GITHUB_ENV"
 
       - name: Build and upload
         uses: tauri-apps/tauri-action@v0
@@ -156,9 +176,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
         with:
           releaseId: ${{ needs.prepare.outputs.release_id }}
           args: ${{ matrix.args }}
+
+      - name: Verify the bundle is signed and notarized
+        if: runner.os == 'macOS' && env.APPLE_API_KEY_PATH != ''
+        shell: bash
+        run: |
+          app="src-tauri/target/universal-apple-darwin/release/bundle/macos/Margin.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          # Gatekeeper only says "accepted" once the notarization ticket is stapled to the bundle,
+          # so this is the check that a user double-clicking the dmg will actually get past.
+          spctl --assess --type execute --verbose=4 "$app"
+          xcrun stapler validate "$app"
 
   publish:
     needs: [prepare, build]
@@ -175,8 +211,49 @@ jobs:
           jq '.platforms | keys' latest.json
           for key in darwin-aarch64 darwin-x86_64 linux-x86_64 windows-x86_64; do
             if ! jq -e ".platforms[\"$key\"].url" latest.json > /dev/null; then
-              echo "::error::latest.json is missing platform '$key' — refusing to publish a partial update manifest. Re-run the release."
+              echo "::error::latest.json is missing platform '$key'. Refusing to publish a partial update manifest; re-run the release."
               exit 1
             fi
           done
           gh release edit "$TAG" --repo "$REPO" --draft=false --latest
+
+  homebrew:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Point the cask at the release that just went out
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAP: priyanshujain/homebrew-margin
+        run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::warning::HOMEBREW_TAP_DEPLOY_KEY is not set, so $TAG is published but the Homebrew cask still points at the previous version."
+            exit 0
+          fi
+
+          dmg="Margin_${VERSION}_universal.dmg"
+          gh release download "$TAG" --repo "$REPO" --pattern "$dmg" --output "$dmg"
+          sha=$(sha256sum "$dmg" | cut -d' ' -f1)
+
+          # A deploy key rather than a token: it reaches the tap and nothing else, so a leak from
+          # this job cannot touch the app repos.
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/tap_key
+          chmod 600 ~/.ssh/tap_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/tap_key -o IdentitiesOnly=yes"
+
+          git clone --depth 1 "git@github.com:$TAP.git" tap
+          cd tap
+          sed -i -E "s|^  version \".*\"|  version \"$VERSION\"|" Casks/margin.rb
+          sed -i -E "s|^  sha256 \".*\"|  sha256 \"$sha\"|" Casks/margin.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/margin.rb
+          git commit -m "margin $VERSION"
+          git push

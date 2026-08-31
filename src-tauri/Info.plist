@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Margin's only cryptography is TLS for the Google Drive API and the SHA-256 that PKCE
+	     needs, both of which are exempt. Declaring it here rather than in App Store Connect means
+	     the question is not asked again on every submission. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+</dict>
+</plist>

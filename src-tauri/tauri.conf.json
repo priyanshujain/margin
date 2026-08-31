@@ -36,6 +36,14 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "Productivity",
+    "shortDescription": "A calm, offline writing studio for authors",
+    "longDescription": "Write your book, set it in real book typography, and export print-ready PDF and ebook files for every store. Everything happens on your machine.",
+    "copyright": "Copyright © 2026 Priyanshu Jain",
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "hardenedRuntime": true
+    }
   }
 }
