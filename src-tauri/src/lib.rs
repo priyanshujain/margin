@@ -30,8 +30,13 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
     let export_epub = MenuItemBuilder::with_id("export-epub", "Export as EPUB…")
         .accelerator("CmdOrCtrl+Shift+E")
         .build(handle)?;
-    let check_updates =
-        MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(handle)?;
+    let check_updates = handle
+        .config()
+        .plugins
+        .0
+        .contains_key("updater")
+        .then(|| MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(handle))
+        .transpose()?;
     let settings = MenuItemBuilder::with_id("settings", "Settings…")
         .accelerator("CmdOrCtrl+,")
         .build(handle)?;
@@ -93,9 +98,13 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
     #[cfg(target_os = "macos")]
     {
         if let Some(app_submenu) = submenus.first() {
-            app_submenu.insert(&check_updates, 1)?;
-            app_submenu.insert(&settings, 3)?;
-            app_submenu.insert(&PredefinedMenuItem::separator(handle)?, 4)?;
+            let mut settings_at = 2;
+            if let Some(check_updates) = &check_updates {
+                app_submenu.insert(check_updates, 1)?;
+                settings_at += 1;
+            }
+            app_submenu.insert(&settings, settings_at)?;
+            app_submenu.insert(&PredefinedMenuItem::separator(handle)?, settings_at + 1)?;
         }
         if let Some(window) = find_submenu("Window") {
             let show_window = MenuItemBuilder::with_id("show-window", "Open Window")
@@ -126,7 +135,9 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
     #[cfg(not(target_os = "macos"))]
     {
         if let Some(file) = find_submenu("File") {
-            file.append_items(&[&PredefinedMenuItem::separator(handle)?, &check_updates])?;
+            if let Some(check_updates) = &check_updates {
+                file.append_items(&[&PredefinedMenuItem::separator(handle)?, check_updates])?;
+            }
         }
         if let Some(edit) = find_submenu("Edit") {
             edit.append_items(&[&settings])?;

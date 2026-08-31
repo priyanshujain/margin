@@ -33,3 +33,10 @@ src-tauri/target/
 # Screenshots & Playwright MCP artifacts
 .playwright-mcp/
 /*.png
+
+# App Store packaging output
+target-mas/
+
+# Beta app review contact details. Apple requires a real phone number and this repo is public.
+appstore/metadata/review_phone.txt
+appstore/metadata/review_email.txt

@@ -1,0 +1,130 @@
+name: App Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build, e.g. v0.1.18. Defaults to the latest release."
+        required: false
+        type: string
+      upload:
+        description: "Upload to App Store Connect. Off means build and sign only."
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - name: Resolve the tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release view --repo "$REPO" --json tagName --jq .tagName)
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building $TAG for the App Store"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Provision Google credentials
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: |
+          if [ -n "$GOOGLE_CREDENTIALS" ]; then
+            printf '%s' "$GOOGLE_CREDENTIALS" > google-credentials.json
+          else
+            echo "::error::GOOGLE_CREDENTIALS is not set; an App Store build with placeholder credentials would ship a broken backup feature."
+            exit 1
+          fi
+
+      - name: Import the App Store certificates
+        env:
+          APP_CERT: ${{ secrets.MAS_APP_CERTIFICATE }}
+          APP_CERT_PASSWORD: ${{ secrets.MAS_APP_CERTIFICATE_PASSWORD }}
+          INSTALLER_CERT: ${{ secrets.MAS_INSTALLER_CERTIFICATE }}
+          INSTALLER_CERT_PASSWORD: ${{ secrets.MAS_INSTALLER_CERTIFICATE_PASSWORD }}
+          PROFILE: ${{ secrets.MAS_PROVISION_PROFILE }}
+        run: |
+          keychain="$RUNNER_TEMP/appstore.keychain-db"
+          password=$(uuidgen)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+
+          import_p12() {
+            printf '%s' "$1" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+            security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$2" \
+              -T /usr/bin/codesign -T /usr/bin/productbuild
+            rm -f "$RUNNER_TEMP/cert.p12"
+          }
+          import_p12 "$APP_CERT" "$APP_CERT_PASSWORD"
+          import_p12 "$INSTALLER_CERT" "$INSTALLER_CERT_PASSWORD"
+
+          # Without this, codesign on a headless runner blocks on a keychain prompt nobody can
+          # answer and the job hangs until it times out.
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" login.keychain-db
+
+          printf '%s' "$PROFILE" | base64 --decode > "$RUNNER_TEMP/margin.provisionprofile"
+          security find-identity -v "$keychain"
+
+      - name: Build the sandboxed bundle
+        run: |
+          # No APPLE_SIGNING_IDENTITY here on purpose: mas-package.sh signs, because the
+          # provisioning profile has to be inside the bundle before codesign runs.
+          pnpm tauri build --target universal-apple-darwin --config src-tauri/tauri.appstore.conf.json --bundles app
+
+      - name: Sign, package and upload
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          MAS_APP_IDENTITY: ${{ secrets.MAS_APP_IDENTITY }}
+          MAS_INSTALLER_IDENTITY: ${{ secrets.MAS_INSTALLER_IDENTITY }}
+          MAS_PROVISION_PROFILE: ${{ runner.temp }}/margin.provisionprofile
+          MAS_BUILD_NUMBER: ${{ github.run_number }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          MAS_UPLOAD: ${{ inputs.upload && '1' || '' }}
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s' "$APPLE_API_KEY_P8" | base64 --decode > ~/private_keys/AuthKey_$APPLE_API_KEY_ID.p8
+          chmod 600 ~/private_keys/AuthKey_$APPLE_API_KEY_ID.p8
+          ./scripts/mas-package.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: margin-appstore-pkg
+          path: target-mas/*.pkg
+          if-no-files-found: warn
