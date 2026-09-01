@@ -30,10 +30,10 @@ export async function loadBook(id: string): Promise<Book> {
   try {
     book = JSON.parse(contents) as Book;
   } catch {
-    throw new Error("the book file is corrupt or unreadable");
+    throw new Error("the project file is corrupt or unreadable");
   }
   if (schemaVersion(book.schema) > SCHEMA_VERSION) {
-    throw new Error("this book was made with a newer version of Margin; update the app to open it");
+    throw new Error("this project was made with a newer version of Margin; update the app to open it");
   }
   return book;
 }

@@ -1,13 +1,33 @@
-Margin has no accounts, so no demo credentials are needed. Open the app and start writing.
+Margin is a writing app. There are no accounts and no demo credentials are needed: open it and
+start writing.
 
-Two entitlements may look worth questioning, so here is why each is there:
+com.apple.security.network.server
 
-com.apple.security.network.server is for the Google Drive backup. Google's installed-app OAuth flow
-redirects to a loopback listener on 127.0.0.1, which is the only flow Google still supports for a
-desktop app, and the sandbox refuses to bind that socket without this entitlement. Nothing listens
-on a routable interface and nothing accepts a connection from another machine.
+This is for the optional Google Drive backup, and that is the only thing in the app that uses it.
 
-com.apple.security.network.client is used only to reach googleapis.com for that same backup. The
-backup is optional and off until the user connects their own Google account. Nothing else the app
-does uses the network: writing, the page preview, spelling, grammar, and every export run entirely
-on the machine.
+Google's OAuth flow for installed apps returns the authorization code by redirecting the user's
+browser to a loopback address. Margin binds a listener on 127.0.0.1 on an ephemeral port, opens the
+consent page in the default browser, accepts the one redirect that comes back from that local
+browser, reads the code and closes the socket. The App Sandbox refuses that bind without
+com.apple.security.network.server, and sign-in then hangs on a browser tab with nowhere to return
+to. Google withdrew the out-of-band alternative, so loopback is the only flow still available to a
+desktop app.
+
+The socket is bound to 127.0.0.1 only and never to a routable interface, so nothing off this Mac
+can reach it. It exists only while a sign-in is in progress, times out after 120 seconds, and
+rejects any request whose state parameter does not match the one just generated.
+
+To see it: the cloud icon at the top of the opening library screen opens Backup and Sync, and
+"Connect Google Drive" there starts the flow. Finishing it needs a Google account of your own.
+Everything else in the app works without one.
+
+com.apple.security.network.client
+
+Used only to reach googleapis.com for that same backup, which stays off until the user connects
+their own Google account. Nothing else Margin does touches the network: writing, the page preview,
+spelling, grammar and both exports all run on the machine.
+
+com.apple.security.files.user-selected.read-write
+
+Importing an EPUB and exporting a PDF or EPUB go through the standard open and save panels, so the
+app only ever reaches the file the user picked. The library itself lives in the app container.

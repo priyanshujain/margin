@@ -2,7 +2,7 @@ import { save, open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import type { Book } from "./model/book";
 
-const FILTERS = [{ name: "margin book", extensions: ["margin"] }];
+const FILTERS = [{ name: "margin project", extensions: ["margin"] }];
 
 export async function chooseSavePath(book: Book): Promise<string | null> {
   return save({ filters: FILTERS, defaultPath: `${book.metadata.title || "Untitled"}.margin` });

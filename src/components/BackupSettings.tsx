@@ -87,7 +87,7 @@ export function BackupSettings() {
             ) : !connected ? (
               <div className="backup-intro">
                 <p>
-                  Connect Google Drive to keep a private backup of every book. margin only ever sees the files it
+                  Connect Google Drive to keep a private backup of every project. margin only ever sees the files it
                   creates in a <strong>margin</strong> folder, never the rest of your Drive.
                 </p>
                 <button className="btn-primary" disabled={working} onClick={connect}>

@@ -96,6 +96,12 @@ go through Beta App Review, which needs a contact phone number in
 `appstore/metadata/review_phone.txt`; without it the script says so and carries on, because
 internal testing does not need it.
 
+`scripts/appstore-review-detail.rb` writes the store submission's App Review Information: the same
+contact details and the notes in `appstore/metadata/review_notes.txt`. That is a different record
+from the TestFlight one, and the two do not share anything. An explanation that only went to
+TestFlight is invisible both to the reviewer looking at the store submission and to the automated
+check that runs before a human sees it at all, which is how the first submission was rejected.
+
 `scripts/appstore-compliance.rb` answers the age rating questionnaire and declares App Privacy.
 Every content answer is NONE and the privacy answer is that nothing is collected, which is true:
 there is no telemetry, no account and no server. The Drive backup sends bytes to the account of the
@@ -131,7 +137,15 @@ choose. Do not remove that.
 The App Store build declares four entitlements, in `src-tauri/entitlements.mas.plist`, and each one
 is there for a reason worth being able to defend in review. `network.client` is the Google Drive
 API. `network.server` is the loopback listener the Drive OAuth flow redirects to, which is the only
-installed-app flow Google still supports and the entitlement most likely to be asked about.
+installed-app flow Google still supports.
+
+`network.server` is not a theoretical risk. An automated check rejects any submission that declares
+it, before review, unless the App Review Information says what listens and why, so
+`appstore/metadata/review_notes.txt` explains the loopback bind first and at length: that it is on
+127.0.0.1 and never a routable interface, that it lives only for the duration of a sign-in, that it
+times out, and how to reach the feature in the app. A rejection on this also has to be answered in
+Resolution Center by hand, since that is not in the App Store Connect API.
+
 `files.user-selected.read-write` covers EPUB import and PDF and EPUB export, all of which go
 through a panel, so the app only ever reaches the one file that was pointed at. The library needs
 nothing: it lives in the container.
