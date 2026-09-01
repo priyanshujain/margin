@@ -11,6 +11,6 @@
 ## Git Commit Rules
 
   - Do not make branches, commit in main only
-  - Use conventional commit format: `feat|fix|refactor|docs|test|chore|ci(scope): message`
+  - Commit message is one plain lowercase line. No type prefix, no scope, no body.
   - Never use `git add .` or `git add -A`. Always stage specific files by name.
   - Don't batch multiple unrelated changes into one commit.
