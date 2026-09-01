@@ -57,6 +57,30 @@ That secret is an SSH deploy key registered on the tap, not a personal access to
 carry the whole account; the deploy key reaches the tap and nothing else, so a leak from a release
 job cannot touch the app repositories.
 
+## Updates
+
+Both builds check on launch and from the same "Check for Updates…" menu item, and they ask
+different questions. The direct download asks the updater endpoint in `tauri.release.conf.json`,
+downloads the new bundle and restarts. The App Store copy asks `itunes.apple.com/lookup` which
+version is live under the bundle id, and if that is ahead of the one running it offers to open the
+store page, because an App Store app may not install code and would be rejected for trying.
+
+Which of the two runs is decided in `updates.rs` by the marker the config carries: the release
+overlay declares an `updater` plugin, the App Store overlay declares an `appstore` one. A
+`_MASReceipt` inside the bundle overrides both. That is the check that matters, because it means a
+bundle which came from the store cannot self-update even if it was built with the updater in it,
+and the decision does not rest on a config file alone.
+
+The prompt is a native alert rather than a window the app draws, and it appears once per version.
+"Later" means later, not later today: nothing is raised again until there is a new version to raise,
+and the menu item is there in the meantime. Whether to update is the reader's call, and an app that
+asks the same question at every launch is answering it for them.
+
+The store copy trails the direct one by however long review takes, so an App Store user being told
+they are up to date while GitHub has something newer is correct rather than a bug. Each channel
+compares against its own. Apple's lookup endpoint is also edge cached and can sit a few hours behind
+a release going live, which is what the timestamp on the request is for.
+
 ## The Mac App Store
 
 Tauri has no App Store target, so `scripts/mas-package.sh` covers the distance between the `.app`
@@ -136,8 +160,8 @@ choose. Do not remove that.
 
 The App Store build declares four entitlements, in `src-tauri/entitlements.mas.plist`, and each one
 is there for a reason worth being able to defend in review. `network.client` is the Google Drive
-API. `network.server` is the loopback listener the Drive OAuth flow redirects to, which is the only
-installed-app flow Google still supports.
+API and the version lookup above. `network.server` is the loopback listener the Drive OAuth flow
+redirects to, which is the only installed-app flow Google still supports.
 
 `network.server` is not a theoretical risk. An automated check rejects any submission that declares
 it, before review, unless the App Review Information says what listens and why, so
@@ -154,8 +178,8 @@ Three things are different in that build, and all three are Apple's rules rather
 
 The updater is gone. `lib.rs` registers the updater plugin only when the config declares it, and
 only `tauri.release.conf.json` does, so building against `tauri.appstore.conf.json` leaves it out
-by construction. The "Check for Updates" menu item is gated on the same condition, because a menu
-item that errors when clicked is worse than an absent one and is its own rejection risk.
+by construction. The menu item stays, pointed at the App Store instead, which is what the previous
+section is about.
 
 The library moves. Sandboxed, `app_data_dir()` resolves inside
 `~/Library/Containers/studio.margin.app`, not `~/Library/Application Support`. Someone who switches

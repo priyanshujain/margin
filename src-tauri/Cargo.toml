@@ -38,6 +38,7 @@ typst-as-lib = "0.15.5"
 harper-core = { version = "=2.5.0", features = ["concurrent"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 sha2 = "0.10"
+semver = "1"
 rand = "0.8"
 url = "2"
 

@@ -4,7 +4,6 @@ import type { Update } from "@tauri-apps/plugin-updater";
 export type UpdatePhase =
   | "idle"
   | "checking"
-  | "available"
   | "downloading"
   | "installing"
   | "uptodate"
@@ -12,8 +11,6 @@ export type UpdatePhase =
 
 interface UpdaterState {
   phase: UpdatePhase;
-  version: string;
-  notes: string;
   downloaded: number;
   total: number;
   error: string;
@@ -24,8 +21,6 @@ interface UpdaterState {
 
 const initial = {
   phase: "idle" as UpdatePhase,
-  version: "",
-  notes: "",
   downloaded: 0,
   total: 0,
   error: "",

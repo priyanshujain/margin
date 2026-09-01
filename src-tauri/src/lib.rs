@@ -7,6 +7,7 @@ mod macspell;
 mod pdf;
 mod project;
 mod proofing;
+mod updates;
 mod writingtools;
 
 #[cfg(desktop)]
@@ -30,11 +31,7 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
     let export_epub = MenuItemBuilder::with_id("export-epub", "Export as EPUB…")
         .accelerator("CmdOrCtrl+Shift+E")
         .build(handle)?;
-    let check_updates = handle
-        .config()
-        .plugins
-        .0
-        .contains_key("updater")
+    let check_updates = (updates::channel(handle) != "none")
         .then(|| MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(handle))
         .transpose()?;
     let settings = MenuItemBuilder::with_id("settings", "Settings…")
@@ -223,7 +220,10 @@ pub fn run() {
             gdrive::gdrive_backup,
             gdrive::gdrive_sync,
             gdrive::gdrive_restore,
-            gdrive::gdrive_list_backups
+            gdrive::gdrive_list_backups,
+            updates::update_channel,
+            updates::appstore_latest,
+            updates::open_appstore
         ])
         .build(context)
         .expect("error while building margin");

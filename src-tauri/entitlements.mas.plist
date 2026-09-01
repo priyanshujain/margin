@@ -5,7 +5,8 @@
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 
-	<!-- Google Drive backup talks to googleapis.com. Nothing else leaves the machine. -->
+	<!-- Google Drive backup talks to googleapis.com, and the update check asks itunes.apple.com
+	     which version is live on the store. Nothing else leaves the machine. -->
 	<key>com.apple.security.network.client</key>
 	<true/>
 

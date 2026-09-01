@@ -1,13 +1,12 @@
 import { useRef } from "react";
 import { useUpdater } from "../store/useUpdater";
-import { installUpdate, dismissUpdate } from "../updater";
+import { dismissUpdate } from "../updater";
 import { useEscapeLayer } from "../escape";
 import { useFocusTrap } from "../focus";
 import { Icon } from "./Icon";
 
 const TITLES: Record<string, string> = {
   checking: "Check for Updates",
-  available: "Update Available",
   downloading: "Updating margin",
   installing: "Updating margin",
   uptodate: "Check for Updates",
@@ -16,8 +15,6 @@ const TITLES: Record<string, string> = {
 
 export function UpdateDialog() {
   const phase = useUpdater((s) => s.phase);
-  const version = useUpdater((s) => s.version);
-  const notes = useUpdater((s) => s.notes);
   const downloaded = useUpdater((s) => s.downloaded);
   const total = useUpdater((s) => s.total);
   const error = useUpdater((s) => s.error);
@@ -54,15 +51,6 @@ export function UpdateDialog() {
 
           {phase === "uptodate" && <p className="confirm-text">margin is up to date.</p>}
 
-          {phase === "available" && (
-            <>
-              <p className="confirm-text">
-                <strong>margin {version}</strong> is available.
-              </p>
-              {notes && <div className="update-notes">{notes}</div>}
-            </>
-          )}
-
           {phase === "downloading" && (
             <>
               <div className={`update-progress${total > 0 ? "" : " indeterminate"}`}>
@@ -86,17 +74,6 @@ export function UpdateDialog() {
             </>
           )}
         </div>
-
-        {phase === "available" && (
-          <div className="panel-foot">
-            <button className="btn-ghost" onClick={dismissUpdate}>
-              Later
-            </button>
-            <button className="btn-primary" onClick={installUpdate}>
-              Install &amp; Restart
-            </button>
-          </div>
-        )}
 
         {(phase === "uptodate" || phase === "error") && (
           <div className="panel-foot">
