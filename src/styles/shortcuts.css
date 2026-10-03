@@ -1,0 +1,54 @@
+.panel.shortcuts-panel {
+  width: min(900px, calc(100vw - 32px));
+}
+
+.panel-body.shortcuts-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 36px;
+}
+
+.shortcuts-group h3 {
+  margin: 0 0 12px;
+  font-size: var(--t-3);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.shortcuts-group dl {
+  margin: 0;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  font-size: var(--t-2);
+  color: var(--ink-soft);
+}
+
+.shortcut-row dd {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.shortcut-row kbd {
+  min-width: 22px;
+  padding: 3px 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .panel-body.shortcuts-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

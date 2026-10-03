@@ -40,6 +40,9 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
     let find = MenuItemBuilder::with_id("find", "Find…")
         .accelerator("CmdOrCtrl+F")
         .build(handle)?;
+    let keyboard_shortcuts = MenuItemBuilder::with_id("keyboard-shortcuts", "Keyboard Shortcuts…")
+        .accelerator("CmdOrCtrl+Shift+/")
+        .build(handle)?;
     let report_issue =
         MenuItemBuilder::with_id("report-issue", "Report an Issue…").build(handle)?;
 
@@ -87,6 +90,11 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
     if let Some(edit) = find_submenu("Edit") {
         edit.append_items(&[&PredefinedMenuItem::separator(handle)?, &find])?;
     }
+
+    let shortcuts = SubmenuBuilder::new(handle, "Shortcuts")
+        .item(&keyboard_shortcuts)
+        .build()?;
+    menu.append(&shortcuts)?;
 
     if let Some(help) = find_submenu("Help") {
         help.append_items(&[&report_issue])?;
@@ -151,6 +159,7 @@ pub fn run() {
     #[cfg_attr(mobile, allow(unused_mut))]
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init());
 
     #[cfg(desktop)]
@@ -188,6 +197,7 @@ pub fn run() {
                         | "next-chapter"
                         | "prev-chapter"
                         | "report-issue"
+                        | "keyboard-shortcuts"
                 ) {
                     app.emit("menu-action", event.id().0.as_str()).ok();
                 }

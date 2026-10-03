@@ -233,6 +233,18 @@ function blockFromElement(el: Element, depth: number): JSONContent[] {
       return [{ type: "blockquote", content: inner.length ? inner : [{ type: "paragraph" }] }];
     }
     case "ul": {
+      if (el.getAttribute("data-type") === "taskList") {
+        const items = Array.from(el.children).filter((child) => child.localName === "li").map((item) => {
+          const body = item.querySelector(":scope > div") ?? item;
+          const content = blocksFrom(body, depth + 1);
+          return {
+            type: "taskItem",
+            attrs: { checked: item.getAttribute("data-checked") === "true" },
+            content: content.length ? content : [{ type: "paragraph" }],
+          };
+        });
+        return items.length ? [{ type: "taskList", content: items }] : [];
+      }
       const items = listItems(el, depth);
       return items.length ? [{ type: "bulletList", content: items }] : [];
     }
@@ -467,7 +479,7 @@ function buildChapter(
   };
 }
 
-export function filesToBook(files: RawFile[], fallbackName = "Imported book"): Book {
+export function filesToBook(files: RawFile[], fallbackName = "Imported project"): Book {
   const byPath = new Map<string, RawFile>();
   files.forEach((f) => byPath.set(normalize(f.path), f));
 

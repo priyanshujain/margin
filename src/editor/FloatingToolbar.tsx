@@ -1,4 +1,5 @@
-import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/react";
 import { Icon } from "../components/Icon";
 import { useEscapeLayer } from "../escape";
@@ -33,6 +34,7 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
   const alignPopRef = useRef<HTMLDivElement>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
+  const [linkPosition, setLinkPosition] = useState({ left: 0, top: 0 });
   const [alignOpen, setAlignOpen] = useState(false);
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
@@ -44,6 +46,39 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
 
   useFocusTrap(linkPopRef, linkOpen);
   useFocusTrap(alignPopRef, alignOpen);
+
+  useLayoutEffect(() => {
+    if (!editor || !linkOpen) return;
+    const position = () => {
+      const popover = linkPopRef.current;
+      if (!popover) return;
+      const { from, to } = editor.state.selection;
+      const start = editor.view.coordsAtPos(from);
+      const end = editor.view.coordsAtPos(to);
+      const pane = editor.view.dom.closest(".editor-pane")?.getBoundingClientRect();
+      const width = popover.offsetWidth;
+      const height = popover.offsetHeight;
+      const leftEdge = Math.max(12, pane?.left ?? 0);
+      const rightEdge = Math.min(window.innerWidth - 12, pane?.right ?? window.innerWidth);
+      const topEdge = Math.max(12, pane?.top ?? 0);
+      const bottomEdge = Math.min(window.innerHeight - 12, pane?.bottom ?? window.innerHeight);
+      const above = start.top - height - 8;
+      const below = end.bottom + 8;
+      setLinkPosition({
+        left: Math.max(leftEdge, Math.min(start.left, rightEdge - width)),
+        top: Math.max(topEdge, Math.min(above >= topEdge ? above : below, bottomEdge - height)),
+      });
+    };
+    position();
+    window.addEventListener("scroll", position, true);
+    window.addEventListener("resize", position);
+    editor.on("transaction", position);
+    return () => {
+      window.removeEventListener("scroll", position, true);
+      window.removeEventListener("resize", position);
+      editor.off("transaction", position);
+    };
+  }, [editor, linkOpen]);
 
   useEffect(() => {
     if (!editor) return;
@@ -71,7 +106,7 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
 
   useEscapeLayer(linkOpen, () => {
     setLinkOpen(false);
-    editor?.commands.focus();
+    editor?.commands.focus(undefined, { scrollIntoView: false });
   });
   useEscapeLayer(alignOpen, () => setAlignOpen(false));
 
@@ -85,17 +120,17 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
   const applyLink = () => {
     const href = normalizeUrl(linkValue);
     if (!href) {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      editor.chain().focus(undefined, { scrollIntoView: false }).extendMarkRange("link").unsetLink().run();
     } else if (editor.state.selection.empty && !editor.isActive("link")) {
-      editor.chain().focus().insertContent({ type: "text", text: href, marks: [{ type: "link", attrs: { href } }] }).run();
+      editor.chain().focus(undefined, { scrollIntoView: false }).insertContent({ type: "text", text: href, marks: [{ type: "link", attrs: { href } }] }).run();
     } else {
-      editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+      editor.chain().focus(undefined, { scrollIntoView: false }).extendMarkRange("link").setLink({ href }).run();
     }
     setLinkOpen(false);
   };
 
   const removeLink = () => {
-    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    editor.chain().focus(undefined, { scrollIntoView: false }).extendMarkRange("link").unsetLink().run();
     setLinkOpen(false);
   };
 
@@ -126,6 +161,7 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
       {tool(editor.isActive("heading", { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), "Heading", <Icon d="M5 5v14M5 12h8M13 5v14" />)}
       {tool(editor.isActive("blockquote"), () => editor.chain().focus().toggleBlockquote().run(), "Quote", <Icon d="M7 8h4v4a4 4 0 0 1-4 4M14 8h4v4a4 4 0 0 1-4 4" />)}
       {tool(editor.isActive("bulletList"), () => editor.chain().focus().toggleBulletList().run(), "Bulleted list", <Icon d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01" />)}
+      {tool(editor.isActive("taskList"), () => editor.chain().focus().toggleTaskList().run(), "Task list (⌘⇧9)", <Icon d="M4 4h6v6H4zM5 7l1.5 1.5L9 5M14 7h6M4 15h6v6H4zM14 18h6" />)}
       <span className="tool-wrap">
         {tool(alignOpen || align !== "left", () => setAlignOpen((v) => !v), "Align", <Icon d={ALIGN_ICONS[align]} />)}
         {alignOpen && (
@@ -152,11 +188,12 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
       <span className="tool-wrap">
         {tool(editor.isActive("link") || linkOpen, () => (linkOpen ? setLinkOpen(false) : openLink()), "Link (⌘K)", <Icon d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />)}
         {linkOpen && (
-          <>
-            <div className="link-pop-backdrop" onMouseDown={() => setLinkOpen(false)} />
-            <div ref={linkPopRef} className="link-pop" onMouseDown={(e) => e.stopPropagation()}>
+          createPortal(<>
+            <div className="link-pop-backdrop link-editor-backdrop" onMouseDown={() => setLinkOpen(false)} />
+            <div ref={linkPopRef} className="link-pop" style={linkPosition} role="dialog" aria-label="Edit link" onMouseDown={(e) => e.stopPropagation()}>
               <input
                 className="link-input"
+                aria-label="Link URL"
                 value={linkValue}
                 placeholder="https://…"
                 spellCheck={false}
@@ -177,7 +214,7 @@ export function FloatingToolbar({ editor }: { editor: Editor | null }) {
                 </button>
               )}
             </div>
-          </>
+          </>, document.body)
         )}
       </span>
       {tool(false, () => editor.chain().focus().setHorizontalRule().run(), "Scene break", <Icon d="M5 12h5M14 12h5" />)}

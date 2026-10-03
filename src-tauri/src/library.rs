@@ -60,7 +60,7 @@ pub(crate) fn library_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 
 fn book_path(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
     if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
-        return Err("invalid book id".to_string());
+        return Err("invalid project id".to_string());
     }
     Ok(library_dir(app)?.join(format!("{id}.margin")))
 }

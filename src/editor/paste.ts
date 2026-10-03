@@ -1,6 +1,9 @@
 import { Extension } from "@tiptap/core";
-import type { JSONContent } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
+import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import { isDesktop } from "../ipc";
+import { useBook } from "../store/useBook";
 
 function readImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -35,6 +38,17 @@ function plainContent(text: string): JSONContent[] {
     });
 }
 
+async function pastePlain(editor: Editor): Promise<void> {
+  try {
+    const text = await (isDesktop ? readText() : navigator.clipboard.readText());
+    if (text && !editor.isDestroyed) {
+      editor.chain().focus(undefined, { scrollIntoView: false }).insertContent(plainContent(text)).run();
+    }
+  } catch (error) {
+    useBook.getState().setNotice(`Could not paste without formatting: ${error}`);
+  }
+}
+
 export const Paste = Extension.create({
   name: "pasteHandler",
 
@@ -42,12 +56,7 @@ export const Paste = Extension.create({
     const editor = this.editor;
     return {
       "Mod-Shift-v": () => {
-        navigator.clipboard
-          .readText()
-          .then((text) => {
-            if (text) editor.chain().focus().insertContent(plainContent(text)).run();
-          })
-          .catch(() => {});
+        void pastePlain(editor);
         return true;
       },
     };

@@ -22,12 +22,12 @@ export const ParagraphIndent = Extension.create({
   addKeyboardShortcuts() {
     return {
       Tab: () => {
-        if (this.editor.isActive("listItem")) return false;
+        if (this.editor.isActive("listItem") || this.editor.isActive("taskItem")) return false;
         this.editor.commands.updateAttributes("paragraph", { indent: true });
         return true;
       },
       "Shift-Tab": () => {
-        if (this.editor.isActive("listItem")) return false;
+        if (this.editor.isActive("listItem") || this.editor.isActive("taskItem")) return false;
         this.editor.commands.updateAttributes("paragraph", { indent: false });
         return true;
       },

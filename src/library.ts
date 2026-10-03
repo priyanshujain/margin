@@ -82,7 +82,7 @@ export async function createAndOpenBook(
     try {
       await saveBook(book);
     } catch (e) {
-      onError?.(`Could not create book: ${e}`);
+      onError?.(`Could not create project: ${e}`);
     }
   }
   open(book);

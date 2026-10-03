@@ -25,7 +25,7 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true):
     const root = ref.current;
     if (!active || !root) return;
     openTraps++;
-    if (!root.contains(document.activeElement)) focusable(root)[0]?.focus();
+    if (!root.contains(document.activeElement)) focusable(root)[0]?.focus({ preventScroll: true });
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
@@ -36,13 +36,13 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true):
       const current = document.activeElement as HTMLElement | null;
       if (!current || !root.contains(current)) {
         e.preventDefault();
-        (e.shiftKey ? last : first).focus();
+        (e.shiftKey ? last : first).focus({ preventScroll: true });
       } else if (e.shiftKey && current === first) {
         e.preventDefault();
-        last.focus();
+        last.focus({ preventScroll: true });
       } else if (!e.shiftKey && current === last) {
         e.preventDefault();
-        first.focus();
+        first.focus({ preventScroll: true });
       }
     };
 
@@ -50,7 +50,7 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true):
     return () => {
       openTraps--;
       root.removeEventListener("keydown", onKeyDown);
-      if (opener.current?.isConnected) opener.current.focus();
+      if (opener.current?.isConnected) opener.current.focus({ preventScroll: true });
     };
   }, [ref, active]);
 }

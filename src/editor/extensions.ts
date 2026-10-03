@@ -1,6 +1,7 @@
 import type { Extensions } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TaskList, TaskItem } from "@tiptap/extension-list";
 import { Figure } from "./figure";
 import { ParagraphIndent } from "./indent";
 import { TextAlign } from "./align";
@@ -19,6 +20,8 @@ export const editorExtensions: Extensions = [
     placeholder: ({ node }) => (node.type.name === "heading" ? "" : "Begin your chapter…"),
   }),
   Figure,
+  TaskList,
+  TaskItem.configure({ nested: true }),
   ParagraphIndent,
   TextAlign,
   SearchHighlight,

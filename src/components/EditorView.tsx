@@ -473,8 +473,8 @@ export function EditorView() {
           coords={proofPopover.coords}
           onReplace={(suggestion) => {
             const { from, to } = proofPopover.issue;
-            if (suggestion === "") editor.chain().focus().deleteRange({ from, to }).run();
-            else editor.chain().focus().insertContentAt({ from, to }, suggestion).run();
+            if (suggestion === "") editor.chain().focus(undefined, { scrollIntoView: false }).deleteRange({ from, to }).run();
+            else editor.chain().focus(undefined, { scrollIntoView: false }).insertContentAt({ from, to }, suggestion).run();
             setProofPopover(null);
           }}
           onIgnore={() => {

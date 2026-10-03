@@ -162,7 +162,7 @@ export function BackupSettings() {
           title="Restore from Google Drive"
           message={
             <>
-              This replaces your local books with the copies in Google Drive. Any local changes that haven't been backed
+              This replaces your local projects with the copies in Google Drive. Any local changes that haven't been backed
               up will be lost.
             </>
           }

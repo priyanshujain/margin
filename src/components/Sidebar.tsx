@@ -8,6 +8,20 @@ import { RowMenu } from "./RowMenu";
 import { MoveChapterDialog } from "./MoveChapterDialog";
 import { relativeTime } from "../time";
 import { isDesktop } from "../ipc";
+import type { JSONContent } from "@tiptap/core";
+
+function countTasks(content: JSONContent): { completed: number; total: number } {
+  const count = { completed: 0, total: 0 };
+  const visit = (node: JSONContent) => {
+    if (node.type === "taskItem") {
+      count.total++;
+      if (node.attrs?.checked) count.completed++;
+    }
+    node.content?.forEach(visit);
+  };
+  visit(content);
+  return count;
+}
 
 interface Row {
   chapter: Chapter;
@@ -194,6 +208,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <ul className="chapters">
                 {group.rows.map((row, i) => {
                   const isPart = chapterKind(row.chapter) === "part";
+                  const tasks = countTasks(row.chapter.content);
                   const partLabel = `Part ${partRoman(row.part ?? 0)}`;
                   const rowLabel = isPart
                     ? row.chapter.title
@@ -240,6 +255,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                       )}
                       {row.chapter.id === activeChapterId && (
                         <span className="meta">Edited {relativeTime(row.chapter.updatedAt, now)}</span>
+                      )}
+                      {tasks.total > 0 && (
+                        <span className="meta">{tasks.completed} of {tasks.total} tasks completed</span>
                       )}
                     </span>
                     <RowMenu

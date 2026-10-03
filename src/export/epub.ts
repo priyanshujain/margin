@@ -159,6 +159,10 @@ function block(node: JSONContent, paths: Map<string, string>): string {
       return `<ul>${(node.content ?? []).map((li) => listItem(li, paths)).join("")}</ul>`;
     case "orderedList":
       return `<ol>${(node.content ?? []).map((li) => listItem(li, paths)).join("")}</ol>`;
+    case "taskList":
+      return `<ul data-type="taskList">${(node.content ?? []).map((item) =>
+        `<li data-type="taskItem" data-checked="${!!item.attrs?.checked}"><span aria-label="${item.attrs?.checked ? "Completed" : "Incomplete"}">${item.attrs?.checked ? "&#9745;" : "&#9744;"}</span><div>${(item.content ?? []).map((child) => block(child, paths)).join("")}</div></li>`,
+      ).join("")}</ul>`;
     case "horizontalRule":
       return `<hr class="scene-break"/>`;
     case "figure":
@@ -498,6 +502,19 @@ ul, ol {
 
 li {
   text-align: left;
+}
+
+ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+li[data-type="taskItem"] > span {
+  float: left;
+}
+
+li[data-type="taskItem"] > div {
+  margin-left: 1.6em;
 }
 
 hr.scene-break {

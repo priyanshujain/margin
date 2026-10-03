@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -7,6 +7,7 @@ import { EditorView } from "./components/EditorView";
 import { BackupSettings } from "./components/BackupSettings";
 import { ExportPreview } from "./components/ExportPreview";
 import { UpdateDialog } from "./components/UpdateDialog";
+import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { useBook } from "./store/useBook";
 import { useBackup } from "./store/useBackup";
 import { useExportPreview } from "./store/useExportPreview";
@@ -18,6 +19,18 @@ import { checkForUpdates } from "./updater";
 function App() {
   const book = useBook((s) => s.book);
   const openBook = useBook((s) => s.openBook);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && !event.altKey && event.code === "Slash") {
+        event.preventDefault();
+        setShortcutsOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -30,6 +43,7 @@ function App() {
       }
       else if (event.payload === "export-epub") runExport("epub");
       else if (event.payload === "check-updates") checkForUpdates(false);
+      else if (event.payload === "keyboard-shortcuts") setShortcutsOpen(true);
       else if (event.payload === "report-issue")
         openUrl("https://github.com/priyanshujain/margin/issues").catch(() => {});
     });
@@ -105,6 +119,7 @@ function App() {
       {isDesktop && <BackupSettings />}
       {isDesktop && <ExportPreview />}
       {isDesktop && <UpdateDialog />}
+      <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </>
   );
 }

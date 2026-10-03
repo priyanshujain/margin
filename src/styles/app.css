@@ -75,6 +75,8 @@ button {
   padding: 0 14px 0 84px;
   background: var(--shell);
   border-bottom: 1px solid var(--line);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .titlebar .lead {
@@ -547,12 +549,18 @@ body.resizing .sidebar {
   font-weight: 500;
 }
 
-.prose a {
-  color: var(--accent);
+.prose a,
+.page-body a,
+.device-body a {
+  color: #1769c2;
   text-decoration: underline;
-  text-decoration-color: var(--line-strong);
+  text-decoration-color: currentColor;
   text-underline-offset: 2px;
   cursor: pointer;
+}
+
+[data-theme="dark"] .prose a {
+  color: #79b5ff;
 }
 
 .prose blockquote {
@@ -930,11 +938,9 @@ body.resizing .sidebar {
 }
 
 .link-pop {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 7;
+  position: fixed;
+  z-index: 19;
+  max-width: calc(100vw - 24px);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -966,6 +972,7 @@ body.resizing .sidebar {
 }
 
 .link-input {
+  min-width: 0;
   width: 220px;
   height: 28px;
   padding: 0 12px;
@@ -974,6 +981,40 @@ body.resizing .sidebar {
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: var(--t-2);
+}
+
+.link-editor-backdrop {
+  z-index: 18;
+}
+
+:is(.prose, .page-body, .device-body) ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+:is(.prose, .page-body, .device-body) li[data-type="taskItem"] {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65em;
+}
+
+:is(.prose, .page-body, .device-body) li[data-type="taskItem"] > label {
+  flex: none;
+  user-select: none;
+}
+
+.prose li[data-type="taskItem"] input {
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+:is(.prose, .page-body, .device-body) li[data-type="taskItem"] > div {
+  flex: 1;
+  min-width: 0;
+}
+
+:is(.prose, .page-body, .device-body) li[data-type="taskItem"] p {
+  text-align: left;
 }
 
 .link-input::placeholder {
@@ -1501,6 +1542,8 @@ body.resizing .sidebar {
   align-items: center;
   justify-content: flex-end;
   padding: 0 14px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .shelf {
@@ -1514,6 +1557,7 @@ body.resizing .sidebar {
 
 .card {
   position: relative;
+  min-width: 0;
   aspect-ratio: 5 / 7;
   display: flex;
   flex-direction: column;
@@ -1554,6 +1598,8 @@ body.resizing .sidebar {
 }
 
 .card-title {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-family: var(--font-book);
   font-size: 20px;
   font-weight: 500;
@@ -1562,6 +1608,8 @@ body.resizing .sidebar {
 }
 
 .card-author {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-family: var(--font-ui);
   font-size: var(--t-2);
   color: var(--ink-soft);

@@ -146,7 +146,7 @@ export function RowMenu({ label, onDuplicate, onMove, onDelete, onToggleTitle, t
             {onMove && (
               <button className="row-menu-item" onClick={moveOut}>
                 <Icon d="M4 12h13M13 8l4 4-4 4M20 4v16" size={14} />
-                Move to book…
+                Move to project…
               </button>
             )}
             <button className="row-menu-item danger" onClick={remove}>

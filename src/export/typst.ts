@@ -111,6 +111,10 @@ function block(node: JSONContent, paths: Map<string, string>): string {
       return `#list(${(node.content ?? []).map((li) => listItem(li, paths)).join(", ")})`;
     case "orderedList":
       return `#enum(${(node.content ?? []).map((li) => listItem(li, paths)).join(", ")})`;
+    case "taskList":
+      return (node.content ?? []).map((item) =>
+        `#list(marker: [${item.attrs?.checked ? "\\[x\\]" : "\\[ \\]"}], ${listItem(item, paths)})`,
+      ).join("\n\n");
     case "horizontalRule":
       return "#scenebreak";
     case "figure":
