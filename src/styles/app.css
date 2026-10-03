@@ -1599,12 +1599,20 @@ body.resizing .sidebar {
 
 .card-title {
   max-width: 100%;
-  overflow-wrap: anywhere;
   font-family: var(--font-book);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 500;
-  line-height: 1.18;
+  line-height: 1.35;
   color: var(--ink);
+}
+
+.card-title > span {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  vertical-align: bottom;
 }
 
 .card-author {

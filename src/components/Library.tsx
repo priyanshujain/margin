@@ -23,6 +23,16 @@ import { useBackup } from "../store/useBackup";
 import { useBook } from "../store/useBook";
 import { relativeTime } from "../time";
 
+function CardTitle({ title }: { title: string }) {
+  return (
+    <span className="card-title">
+      {title.split(/(\s+)/).map((word, index) =>
+        /\s/.test(word) ? word : <span key={index}>{word}</span>,
+      )}
+    </span>
+  );
+}
+
 export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -117,14 +127,14 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
         </button>
         {loaded && books.length === 0 && (
           <button className="card card-example" onClick={handleExample}>
-            <span className="card-title">The Lighthouse</span>
+            <CardTitle title="The Lighthouse" />
             <span className="card-badge">Example</span>
           </button>
         )}
         {books.map((b) =>
           b.corrupt ? (
             <div key={b.id} className="card card-book card-corrupt">
-              <span className="card-title">{b.title}</span>
+              <CardTitle title={b.title} />
               <span className="card-author">Couldn't be read; a .bak backup may sit beside it.</span>
               <RowMenu label="Project options" className="card-menu" onDelete={() => setPendingDelete(b)} />
             </div>
@@ -142,7 +152,7 @@ export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
                 }
               }}
             >
-              <span className="card-title">{b.title || "Untitled"}</span>
+              <CardTitle title={b.title || "Untitled"} />
               {b.author && <span className="card-author">{b.author}</span>}
               {b.updatedAt > 0 && <span className="card-meta">Edited {relativeTime(b.updatedAt, now)}</span>}
               <RowMenu label="Project options" className="card-menu" onDelete={() => setPendingDelete(b)} />
