@@ -1,3 +1,6 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { isDesktop } from "./ipc";
+
 export type Theme = "light" | "dark";
 
 const KEY = "margin-theme";
@@ -13,4 +16,9 @@ export function initialTheme(): Theme {
 export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem(KEY, theme);
+  syncWindowTheme(theme);
+}
+
+export function syncWindowTheme(theme: Theme) {
+  if (isDesktop) getCurrentWindow().setTheme(theme).catch(() => {});
 }
