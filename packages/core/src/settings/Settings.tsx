@@ -3,8 +3,9 @@ import { useEscapeLayer } from "../hooks/escape";
 import { registerCommands } from "../keys/commands";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
+import { Icon } from "../ui/Icon";
 import { Confirm, Sheet } from "../ui/Sheet";
-import { PLUS } from "../icons";
+import { CHEVRON_LEFT, PLUS } from "../icons";
 import "./settings.css";
 
 export interface SettingsSectionLink {
@@ -17,6 +18,11 @@ export interface SettingsShellProps {
   active: string;
   onSelect: (id: string) => void;
   onClose: () => void;
+  /**
+   * A visible way out at the top of the rail, labelled with where it goes, such as "Back to
+   * Calendar". Escape and the app's own shortcut still close it as well.
+   */
+  back?: { label: string; onBack: () => void };
   title?: string;
   children: ReactNode;
 }
@@ -27,6 +33,7 @@ export function SettingsShell({
   active,
   onSelect,
   onClose,
+  back,
   title = "Settings",
   children,
 }: SettingsShellProps) {
@@ -53,6 +60,12 @@ export function SettingsShell({
   return (
     <section className="settings" aria-label={title}>
       <nav className="settings-rail" aria-label={title} ref={rail}>
+        {back ? (
+          <button type="button" className="settings-back" onClick={back.onBack}>
+            <Icon d={CHEVRON_LEFT} size={14} />
+            {back.label}
+          </button>
+        ) : null}
         <h1>{title}</h1>
         {sections.map((section) => (
           <button

@@ -29,6 +29,30 @@
   letter-spacing: -0.01em;
 }
 
+.settings-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin: 0 0 6px;
+  padding: 5px 8px 5px 4px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  font-size: var(--t-2);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.settings-back:hover {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+:root[data-phone] .settings-back {
+  align-self: center;
+  margin: 0;
+  white-space: nowrap;
+}
+
 .settings-tab {
   padding: 7px 10px;
   border-radius: var(--r-sm);

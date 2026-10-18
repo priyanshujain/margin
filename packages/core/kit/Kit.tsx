@@ -73,7 +73,13 @@ function KitSettings() {
   const [section, setSection] = useState("accounts");
   const [dark, setDark] = useState(false);
   return (
-    <SettingsShell sections={KIT_SECTIONS} active={section} onSelect={setSection} onClose={() => {}}>
+    <SettingsShell
+      sections={KIT_SECTIONS}
+      active={section}
+      onSelect={setSection}
+      onClose={() => {}}
+      back={{ label: "Back to Mail", onBack: () => {} }}
+    >
       {section === "accounts" ? (
         <SettingsSection title="Accounts" note="Two accounts, each with its own calendars.">
           <AccountCard
