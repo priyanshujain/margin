@@ -1,0 +1,83 @@
+.segment {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-md);
+  background: var(--accent-wash);
+}
+
+.segment-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 22px;
+  padding: 0 11px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  font-size: var(--t-2);
+  white-space: nowrap;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.segment-option:hover {
+  color: var(--ink);
+}
+
+.segment-option[data-active] {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.segment-option .key {
+  color: var(--ink-faint);
+}
+
+.segment-count {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--danger);
+  color: var(--danger-contrast);
+  font-size: var(--t-1);
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+}
+
+.segment-dot {
+  width: 6px;
+  height: 6px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.segment-dot[data-tone="strong"] {
+  background: var(--danger);
+}
+
+.segment[data-disabled] .segment-option {
+  color: var(--ink-faint);
+  cursor: default;
+}
+
+.segment[data-disabled] .segment-option[data-active] {
+  color: var(--ink-soft);
+}
+
+:root[data-phone] .segment {
+  display: flex;
+  width: 100%;
+}
+
+:root[data-phone] .segment-option {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+  min-height: var(--touch-h);
+  font-size: var(--t-3);
+}
+
+:root[data-touch] .segment-option {
+  min-height: var(--touch-h);
+}

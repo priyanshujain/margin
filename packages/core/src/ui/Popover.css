@@ -1,0 +1,70 @@
+.popover {
+  position: fixed;
+  left: var(--pop-left);
+  top: var(--pop-top);
+  width: var(--pop-w);
+  z-index: 40;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-pop);
+}
+
+.popover[data-placement="top-end"] {
+  transform: translateY(-100%);
+}
+
+.popover-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+.popover-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  color: var(--ink);
+  font-size: var(--t-2);
+}
+
+.popover-row .lab {
+  flex: none;
+  width: 76px;
+  color: var(--ink-faint);
+}
+
+.popover-row .val {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.popover-name {
+  font-size: var(--t-4);
+  font-weight: 600;
+}
+
+.popover-sub {
+  color: var(--ink-faint);
+  font-size: var(--t-2);
+}
+
+:root[data-phone] .popover {
+  left: 12px;
+  right: 12px;
+  width: auto;
+}

@@ -1,0 +1,83 @@
+/* What mail adds to margin-core's tokens, and nothing that is already in them.
+ *
+ * Everything here is a value that only a mail client has an opinion about: how wide a list of
+ * threads is, how tall a pile is, what a focused card is ringed with. A value the other apps also
+ * use belongs in margin-core, not here.
+ *
+ * Both palettes declare an identical variable set, so a token can never be defined in light and
+ * missing in dark. */
+
+:root {
+  --proof-spelling: #c96c62;
+  --proof-grammar: #699cc6;
+
+  /* The reading size for message bodies, in the text face. A setting rather than a constant: the
+     boot script in index.html writes it from `marginmail-text-size` before the first paint, so it
+     is declared here to give that override something to land on. */
+  --body-size: 15px;
+
+  /* Mail geometry. The list column and margin-core's --row-h are the two numbers the whole layout
+     is built from, which is why the UI suite asserts them rather than trusting them. */
+  --list-w: 420px;
+  --pile-h: 92px;
+  /* The card on top of a pile. What is left of `--pile-h` above it is the room the edges of the
+     cards underneath show through, which is what makes a stack read as a stack. */
+  --pile-card-h: 72px;
+
+  /* Focus & Reply: a message and a reply box side by side, so it is wider than the pane's measure
+     and narrower than the window. */
+  --focus-w: 1080px;
+
+  /* All files is a grid rather than a list, and this is the narrowest a card can be and still
+     print a filename on one line. */
+  --file-card-w: 210px;
+
+  /* The Feed's column of cards. Its own measure rather than the pane's, because a Feed card is a
+     whole page of somebody else's design and the pane's is a thread of ours. */
+  --feed-w: 720px;
+
+  /* The compose card. 600 is the width the mockup pins and it is not arbitrary: it is a measure a
+     paragraph reads on with the list still legible beside it, which is the whole argument for a
+     card over the stage rather than a screen of its own. */
+  --compose-w: 600px;
+  /* Tall enough for a message and short enough that the card never reaches the header. */
+  --compose-max-h: 620px;
+  --compose-body-h: 220px;
+  /* The box in the thread is shorter: what it answers is on the screen above it. */
+  --reply-body-h: 84px;
+
+  /* The date block on an invite card, which is a calendar page and has to stay square. */
+  --invite-date-w: 52px;
+
+  /* How much of a Feed body shows before it fades into Read more. */
+  --feed-clip: 200px;
+}
+
+:root,
+:root[data-theme="light"] {
+  /* The ring on the card the keyboard is on, in the Screener and the Feed. A card is already the
+     widest thing on the page, so where a row takes a wash and an accent edge a card takes a lift
+     and a halo: a tinted card would read as a different kind of card rather than as this one. */
+  --card-ring: 0 1px 2px rgba(35, 32, 27, 0.06), 0 0 0 2px var(--accent-wash);
+}
+
+/* The surface HTML mail renders on, in both palettes.
+ *
+ * Deliberately outside the two theme blocks and deliberately the light palette's values written
+ * again. HTML mail is authored for a white page: a newsletter that sets a dark text colour and no
+ * background is unreadable on a dark surface, and inverting it breaks more than it fixes. Plain
+ * text is different, because this app renders that itself and it follows the theme like everything
+ * else. If the light palette moves, these move with it.
+ *
+ * Only src/screens/MessageBody.tsx reads them, and only for a message that arrived as HTML. */
+:root {
+  --message-paper: #fcfbf7;
+  --message-ink: #23201b;
+  --message-faint: #6e675b;
+  --message-line: #e3ddce;
+  --message-wash: rgba(35, 32, 27, 0.08);
+}
+
+:root[data-theme="dark"] {
+  --card-ring: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 2px var(--accent-wash);
+}

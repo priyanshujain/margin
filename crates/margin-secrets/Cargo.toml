@@ -1,0 +1,17 @@
+[package]
+name = "margin-secrets"
+description = "XChaCha20-Poly1305 sealed secret files bound to the machine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+base64.workspace = true
+chacha20poly1305.workspace = true
+rand.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

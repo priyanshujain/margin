@@ -1,0 +1,34 @@
+[package]
+name = "margin-oauth"
+description = "OAuth2 with PKCE for installed apps: loopback, deep link, single-flight refresh"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+tauri = [
+  "dep:tauri",
+  "dep:tauri-plugin-opener",
+  "dep:objc2",
+  "dep:objc2-foundation",
+  "dep:block2",
+]
+
+[dependencies]
+base64.workspace = true
+margin-http.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+url.workspace = true
+tauri = { workspace = true, optional = true }
+tauri-plugin-opener = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = { workspace = true, optional = true }
+objc2-foundation = { workspace = true, optional = true }
+block2 = { workspace = true, optional = true }

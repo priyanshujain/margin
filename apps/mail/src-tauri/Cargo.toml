@@ -1,0 +1,181 @@
+[package]
+name = "margin-mail"
+version = "0.1.0"
+description = "A calm, keyboard-first mail client for Gmail"
+authors = ["Margin"]
+edition = "2024"
+license = "LicenseRef-FSL-1.1-MIT"
+
+[lib]
+name = "margin_mail_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+margin-google = { path = "../../../crates/margin-google" }
+margin-http = { path = "../../../crates/margin-http" }
+margin-log = { path = "../../../crates/margin-log", features = ["tauri"] }
+margin-oauth = { path = "../../../crates/margin-oauth", features = ["tauri"] }
+margin-secrets = { path = "../../../crates/margin-secrets" }
+margin-shell = { path = "../../../crates/margin-shell" }
+margin-sqlite = { path = "../../../crates/margin-sqlite" }
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-os = "2"
+# Mobile has no loopback listener to catch Google's redirect, so the OAuth answer comes back as a
+# custom URI scheme the OS routes to this app. Registered on desktop too, so both flows are one
+# code path with one difference in it rather than two.
+tauri-plugin-deep-link = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+sha2 = "0.10"
+rand = "0.8"
+url = "2"
+regex = "1"
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["sync", "time", "net", "io-util", "rt"] }
+
+# gzip because Gmail's JSON compresses by an order of magnitude and hydration is thousands of
+# responses; http2 because a batch of 50 and the poll loop share one connection.
+reqwest = { version = "0.13", default-features = false, features = [
+  "rustls",
+  "webpki-roots",
+  "json",
+  "gzip",
+  "http2",
+] }
+
+# `bundled` so FTS5 is compiled in unconditionally rather than depending on what the platform's
+# libsqlite3 was built with. Several accounts share one process and one connection, so the busy
+# timeout in `mirror::open` is not optional.
+rusqlite = { version = "0.40", features = ["bundled"] }
+
+# Bodies are parsed from the raw RFC 2822 bytes, never from Gmail's pre-parsed payload:
+# `full_encoding` is what reads the legacy charsets that still arrive daily.
+mail-parser = { version = "0.11", features = ["full_encoding"] }
+mail-builder = "0.5"
+
+# The sanitiser. `ammonia` is a whitelist, which is the only shape of HTML filter worth trusting,
+# and `css-inline` folds the editor's stylesheet into the markup before a message is built so mail
+# clients that drop <style> still render it.
+ammonia = "4.1"
+css-inline = "0.21"
+
+# Refresh tokens, the backup key and every uploaded journal segment are sealed with
+# XChaCha20-Poly1305. There is no `keyring` here on purpose: it has no Android backend at all, and
+# on macOS it ties the item to the code signature, so every rebuild re-prompts.
+chacha20poly1305 = "0.11"
+# The backup key is derived from the recovery phrase, so the derivation has to be slow.
+argon2 = "0.6"
+bip39 = { version = "2.2", features = ["rand"] }
+
+# The system families the Appearance section offers alongside the six bundled ones.
+fontdb = "0.24"
+
+# The second provider: a mailbox reached over IMAP and SMTP with a password, which is every
+# account that is not Google. Proton is one of these, through Bridge on the loopback.
+#
+# `async-imap` defaults to async-std, so both its default features are off and the tokio pair is
+# named instead: there is one runtime in this process and it is Tauri's.
+async-imap = { version = "0.11", default-features = false, features = ["runtime-tokio", "tokio"] }
+# `async-imap` speaks futures-io and `tokio-rustls` speaks tokio-io, so the stream is bridged.
+tokio-util = { version = "0.7", features = ["compat"] }
+# `async-imap` returns its responses as futures streams, so the combinators come with it.
+futures = "0.3"
+
+# TLS for both, and the seam where a self-signed certificate is decided about.
+#
+# Every `ClientConfig` in this crate must name `rustls::crypto::ring::default_provider()`
+# explicitly. Both crypto providers are in the tree because of what reqwest pulls, so rustls has
+# no process default to fall back on and building a config without one panics at runtime rather
+# than failing to compile.
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+rustls-pki-types = "1"
+webpki-roots = "1"
+# The fingerprint shown in the certificate question, and the hostname check that decides whether
+# there is a question at all rather than a refusal.
+x509-parser = "0.18"
+
+# Sending. Same author as mail-parser and mail-builder, and pinned to ring for the same reason as
+# above. No `dkim`: nothing here signs outgoing mail.
+mail-send = { version = "0.6", default-features = false, features = ["ring", "tls12", "cram-md5", "digest-md5", "md5", "rand"] }
+
+# Autodiscovery. `hickory-resolver` is for the MX rung, which is what recognises a vanity domain
+# sitting on Google Workspace or Fastmail; `roxmltree` reads the clientConfig documents, which are
+# small, read-once and never written.
+hickory-resolver = { version = "0.26", default-features = false, features = ["system-config", "tokio"] }
+roxmltree = "0.21"
+
+# Notifications on macOS are posted through UserNotifications directly (notify/macos.rs says why the
+# plugin's own path shows nothing on macOS 26). These are the versions wry already resolves, so the
+# build keeps a single copy of objc2.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSSpellChecker", "NSApplication", "NSMenu", "NSMenuItem", "NSPasteboard"] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSArray",
+  "NSRange",
+  "NSFileManager",
+  "NSURL",
+  "NSTextCheckingResult",
+  "NSValue",
+  "NSDictionary",
+  "NSError",
+
+  "NSObject",
+  "NSString",
+] }
+objc2-local-authentication = { version = "0.3", default-features = false, features = [
+  "std",
+  "block2",
+  "LAContext",
+] }
+objc2-user-notifications = { version = "0.3", default-features = false, features = [
+  "std",
+  "block2",
+  "UNUserNotificationCenter",
+  "UNNotification",
+  "UNNotificationContent",
+  "UNNotificationRequest",
+  "UNNotificationResponse",
+  "UNNotificationAction",
+  "UNNotificationCategory",
+  "UNNotificationSettings",
+  "UNNotificationSound",
+  "UNNotificationTrigger",
+] }
+block2 = "0.6"
+
+# There is no auto-updater and no process to restart on a phone: the store is the update channel.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
+
+# Two things wry leaves to us: one UIKit property (stop_uikit_shrinking_the_viewport in lib.rs) and
+# the SFSafariViewController that shows the consent page (google/browser.rs). These versions are the
+# ones wry already resolves for its own iOS backend, so matching them keeps a single copy of objc2
+# in the build rather than a second incompatible one.
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+objc2-ui-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "UIResponder",
+  "UIView",
+  "UIScrollView",
+] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSString",
+  "NSURL",
+] }
+block2 = "0.6"
+
+[dev-dependencies]
+tempfile = "3"

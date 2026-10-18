@@ -1,0 +1,10 @@
+[package]
+name = "margin-sqlite"
+description = "SQLite open with pragmas, transactions, versioned migrations and a meta table"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rusqlite.workspace = true

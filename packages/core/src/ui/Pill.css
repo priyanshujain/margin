@@ -1,0 +1,69 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  color: var(--ink);
+  font-size: var(--t-2);
+  white-space: nowrap;
+  transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+
+.pill[data-tone="default"] {
+  border-color: var(--line-strong);
+  background: var(--raised);
+}
+
+button.pill[data-tone="default"]:hover {
+  background: var(--accent-wash);
+}
+
+.pill[data-tone="wash"] {
+  background: var(--accent-wash);
+  color: var(--ink-soft);
+  font-size: var(--t-1);
+  min-height: 22px;
+  padding: 0 8px;
+}
+
+.pill[data-tone="quiet"] {
+  border-color: var(--line);
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+  min-height: 22px;
+  padding: 0 8px;
+}
+
+button.pill[data-tone="quiet"]:hover {
+  border-color: var(--line-strong);
+  color: var(--ink-soft);
+}
+
+.pill .icon {
+  color: var(--ink-faint);
+}
+
+:root[data-touch] button.pill {
+  min-height: var(--touch-h);
+  padding: 0 14px;
+}
+
+.pill[data-tone="accent"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 500;
+}
+
+button.pill[data-tone="accent"]:hover {
+  background: var(--accent-ink);
+}
+
+.pill[data-tone="accent"] .key {
+  border-color: var(--accent-contrast);
+  background: transparent;
+  color: var(--accent-contrast);
+  opacity: 0.8;
+}

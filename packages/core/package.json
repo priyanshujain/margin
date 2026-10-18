@@ -1,0 +1,49 @@
+{
+  "name": "@margin/core",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "The Margin suite's design system, React UI kit, keyboard engine, theme store and IPC helpers, shipped as source.",
+  "exports": {
+    "./tokens.css": "./src/tokens.css",
+    "./fonts.css": "./src/fonts.css",
+    "./fonts": "./src/fonts.ts",
+    "./icons": "./src/icons.ts",
+    "./ui": "./src/ui/index.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./keys": "./src/keys/index.ts",
+    "./keys/bindings": "./src/keys/bindings.ts",
+    "./ipc": "./src/ipc/index.ts"
+  },
+  "bin": {
+    "margin-fonts": "./bin/sync-fonts.mjs"
+  },
+  "files": ["src", "fonts", "bin"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "kit": "vite kit",
+    "test:kit": "playwright test"
+  },
+  "peerDependencies": {
+    "@tauri-apps/api": "^2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@tauri-apps/api": "^2.11.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4",
+    "vitest": "^3.2.4",
+    "zustand": "^5.0.14"
+  }
+}

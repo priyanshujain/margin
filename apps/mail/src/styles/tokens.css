@@ -1,0 +1,7 @@
+/* Layer one. margin-core is the source of the values the suite holds in common, and this file is
+   only the seam: what margin-core decided, then what mail adds on top of it.
+   Nothing else in the app may declare a token, and nothing outside this layer may write a literal
+   colour, radius or size. */
+
+@import "@margin/core/tokens.css";
+@import "./mail.css";

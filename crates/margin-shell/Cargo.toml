@@ -1,0 +1,30 @@
+[package]
+name = "margin-shell"
+description = "Composable Tauri shell pieces: data dirs, plugins, menu, close policy, update channel, title bar"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+reqwest.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri.workspace = true
+tauri-plugin-opener.workspace = true
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process.workspace = true
+tauri-plugin-updater.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-app-kit.workspace = true
+objc2-foundation = { workspace = true, features = ["NSFileManager"] }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2-foundation = { workspace = true, features = ["NSFileManager"] }
+
+[dev-dependencies]
+tempfile.workspace = true

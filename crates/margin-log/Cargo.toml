@@ -1,0 +1,14 @@
+[package]
+name = "margin-log"
+description = "A capped failure log in the app data directory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+tauri = ["dep:tauri"]
+
+[dependencies]
+chrono.workspace = true
+tauri = { workspace = true, optional = true }

@@ -1,0 +1,14 @@
+[package]
+name = "margin-google"
+description = "Google as an OAuth provider, and Google API error mapping"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+margin-http.workspace = true
+margin-oauth.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true

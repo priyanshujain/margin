@@ -1,0 +1,201 @@
+name: Mail CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/mail/**
+      - crates/**
+      - packages/core/**
+      - Cargo.toml
+      - Cargo.lock
+      - .github/workflows/mail-ci.yml
+  pull_request:
+    paths:
+      - apps/mail/**
+      - crates/**
+      - packages/core/**
+      - Cargo.toml
+      - Cargo.lock
+      - .github/workflows/mail-ci.yml
+
+concurrency:
+  group: mail-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mail
+    steps:
+      - uses: actions/checkout@v7
+
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - run: pnpm install --frozen-lockfile
+
+      # The vendored copy under public/fonts is what the bundle serves, and it drifting from the
+      # package is a face that falls back to Georgia in one app and not the other.
+      - run: pnpm fonts:check
+
+      # `pnpm build` is tsc then vite, so this is the typecheck and the bundle in one step.
+      - run: pnpm build
+
+      - run: pnpm test
+
+      - run: node scripts/docs-check.mjs
+
+  # Every desktop the release ships to, because the parts of this crate that differ by platform are
+  # the parts nobody runs by hand: the UserNotifications bridge on macOS, the D-Bus one everywhere
+  # else, the machine id the refresh tokens are sealed against. A break in one of those used to
+  # surface at release time on a runner nobody was watching.
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu 22.04 is the glibc baseline the release builds on, so it is what CI tests on.
+          - os: ubuntu-22.04
+          - os: macos-26
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: apps/mail
+    steps:
+      - uses: actions/checkout@v7
+
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            libssl-dev \
+            build-essential
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/mail/src-tauri -> target
+          key: ${{ matrix.os }}
+
+      # tauri_build::build() wants a frontendDist that exists, and build.rs wants credentials to
+      # embed. The example file is what a fresh clone compiles against, so that is what CI uses.
+      - name: Stub the build inputs
+        shell: bash
+        run: |
+          mkdir -p dist && touch dist/index.html
+          cp google-credentials.example.json google-credentials.json
+
+      # The test suites and clippy are the gate. `cargo fmt --check` still fails on the tree as it
+      # stands and is not enforced.
+      - name: Test
+        working-directory: apps/mail/src-tauri
+        run: cargo test
+
+      - name: Clippy
+        working-directory: apps/mail/src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+  # The flake at whatever release nix/release.json pins. A broken flake, or a deb that no longer
+  # patches against current nixpkgs, shows up here rather than at the next release. Before the
+  # first release there is nothing pinned and nothing to build.
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: pin
+        run: echo "version=$(jq -r '.version // ""' nix/release.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: cachix/install-nix-action@v31
+        if: steps.pin.outputs.version != ''
+
+      # --impure with the environment variable because the licence is FSL rather than MIT, so
+      # nixpkgs treats the package as unfree and refuses to build it otherwise.
+      - if: steps.pin.outputs.version != ''
+        run: NIXPKGS_ALLOW_UNFREE=1 nix build --impure .#margin-mail --print-build-logs
+
+      - if: steps.pin.outputs.version == ''
+        run: echo "nix/release.json pins no release yet, so there is nothing to build."
+
+  # The flatpak manifest is hand-written rather than produced by Tauri, so nothing else would catch
+  # a runtime that stopped carrying webkit2gtk-4.1 or a permission the app needs and does not ask
+  # for. The release job repackages the published deb; this one builds the same manifest against a
+  # deb built here, which is the only difference between them.
+  #
+  # On main rather than on every pull request: it is a full release-mode build plus a runtime
+  # download, the manifest changes about once a year, and a break in it is worth finding within the
+  # day rather than within the minute.
+  flatpak:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: apps/mail
+    steps:
+      - uses: actions/checkout@v7
+
+
+      - name: Install Linux dependencies
+        run: |
+          sudo add-apt-repository -y ppa:flatpak/stable
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            libssl-dev \
+            build-essential \
+            flatpak \
+            flatpak-builder
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/mail/src-tauri -> target
+          key: flatpak
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: cp google-credentials.example.json google-credentials.json
+
+      - run: pnpm tauri build --bundles deb
+
+      - name: Build the flatpak
+        run: |
+          mv src-tauri/target/release/bundle/deb/*.deb flatpak/margin-mail.deb
+          flatpak/build.sh
