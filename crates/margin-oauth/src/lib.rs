@@ -1,3 +1,4 @@
+mod cancel;
 mod flow;
 mod loopback;
 mod session;
@@ -6,6 +7,7 @@ mod token;
 #[cfg(all(feature = "tauri", any(target_os = "ios", target_os = "android")))]
 pub mod browser;
 
+pub use cancel::{Attempt, Attempts};
 pub use flow::{
     Callback, Pending, auth_url, callback_scheme, granted_scopes, parse_callback, pkce_challenge,
     random_b64, resolve_callback, scope_string, take_pending,

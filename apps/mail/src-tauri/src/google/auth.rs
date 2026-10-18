@@ -55,6 +55,8 @@ pub fn load_credentials() -> Result<margin_oauth::Client, String> {
 #[derive(Default)]
 pub struct AuthState {
     pub sessions: Sessions,
+    /// The sign-in in flight, which closing the add-account sheet cancels.
+    pub attempts: margin_oauth::Attempts,
     #[cfg(mobile)]
     pub pending: Mutex<Option<margin_oauth::Pending>>,
 }
@@ -191,11 +193,23 @@ async fn start(
 ) -> Result<String, String> {
     let client = load_credentials()?;
     let scopes = scope_string(&extra_scopes);
+    let attempt = app.state::<AuthState>().attempts.begin();
     #[cfg(mobile)]
     if client.platform_client {
         return connect_by_deep_link(app, client, scopes, hint).await;
     }
-    connect_by_loopback(app, client, scopes, hint).await
+    connect_by_loopback(app, client, scopes, hint, attempt).await
+}
+
+/// Ends the sign-in in flight: the loopback listener stops, a deep link waiting for its answer is
+/// forgotten, and a code that already arrived is never exchanged into an account.
+pub async fn cancel(app: &tauri::AppHandle) {
+    let state = app.state::<AuthState>();
+    state.attempts.cancel();
+    #[cfg(mobile)]
+    {
+        state.pending.lock().await.take();
+    }
 }
 
 async fn connect_by_loopback(
@@ -203,6 +217,7 @@ async fn connect_by_loopback(
     client: margin_oauth::Client,
     scopes: String,
     hint: Option<String>,
+    attempt: margin_oauth::Attempt,
 ) -> Result<String, String> {
     let verifier = margin_oauth::random_b64(64);
     let challenge = margin_oauth::pkce_challenge(&verifier);
@@ -218,7 +233,8 @@ async fn connect_by_loopback(
 
     let app_bg = app.clone();
     tauri::async_runtime::spawn(async move {
-        let outcome = complete_auth(&app_bg, listener, csrf, verifier, redirect, client).await;
+        let outcome =
+            complete_auth(&app_bg, listener, csrf, verifier, redirect, client, &attempt).await;
         emit_auth(&app_bg, outcome);
     });
 
@@ -325,7 +341,9 @@ pub async fn handle_redirect(app: tauri::AppHandle, incoming: &url::Url) {
     let outcome = match load_credentials().and_then(|client| {
         margin_oauth::resolve_callback(&pending, callback, &client.provider).map(|code| (client, code))
     }) {
-        Ok((client, code)) => finish(&app, &client, &code, &pending.redirect, &pending.verifier).await,
+        Ok((client, code)) => {
+            finish(&app, &client, &code, &pending.redirect, &pending.verifier, || false).await
+        }
         Err(e) => Err(e),
     };
     emit_auth(&app, outcome);
@@ -338,10 +356,14 @@ async fn complete_auth(
     verifier: String,
     redirect: String,
     client: margin_oauth::Client,
+    attempt: &margin_oauth::Attempt,
 ) -> Result<Granted, String> {
+    let waiting = attempt.clone();
     let code = tauri::async_runtime::spawn_blocking(move || {
         let deadline = Instant::now() + Duration::from_secs(margin_oauth::AUTH_TIMEOUT_SECS);
-        margin_oauth::await_code(listener, &csrf, deadline, PAGES, consent_closed)
+        margin_oauth::await_code(listener, &csrf, deadline, PAGES, || {
+            waiting.is_cancelled() || consent_closed()
+        })
     })
     .await
     .map_err(|e| e.to_string())?;
@@ -353,7 +375,11 @@ async fn complete_auth(
     #[cfg(mobile)]
     margin_oauth::browser::close(app);
 
-    finish(app, &client, &code?, &redirect, &verifier).await
+    let code = code?;
+    if attempt.is_cancelled() {
+        return Err(CANCELLED.to_string());
+    }
+    finish(app, &client, &code, &redirect, &verifier, || attempt.is_cancelled()).await
 }
 
 #[cfg(desktop)]
@@ -373,8 +399,13 @@ async fn finish(
     code: &str,
     redirect: &str,
     verifier: &str,
+    cancelled: impl Fn() -> bool,
 ) -> Result<Granted, String> {
     let tokens = margin_oauth::exchange_code(client, code, redirect, verifier).await?;
+    // The exchange takes a round trip, and the sheet may have been closed during it.
+    if cancelled() {
+        return Err(CANCELLED.to_string());
+    }
     let refresh = tokens
         .refresh_token
         .clone()

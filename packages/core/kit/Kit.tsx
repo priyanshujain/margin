@@ -35,6 +35,7 @@ import {
 import {
   AccountCard,
   AccountsFoot,
+  AddAccountSheet,
   SettingRow,
   SettingsFact,
   SettingsQuiet,
@@ -707,6 +708,38 @@ export default function Kit() {
       <Section title="SettingsShell" note="The settings stage: a rail of sections and one section at a 640px measure.">
         <Stage label="Accounts section" size="tall">
           <KitSettings />
+        </Stage>
+        <Stage label="Add account, waiting for the browser">
+          <AddAccountSheet
+            open
+            title="Add account"
+            onClose={() => {}}
+            oauth={{
+              provider: "Google",
+              link: "https://accounts.example.test/consent",
+              note: "Margin's apps share one Google client, so revoking it revokes all of them.",
+              onReopen: () => {},
+              onCopy: () => {},
+              onRetry: () => {},
+              onCancel: () => {},
+            }}
+          />
+        </Stage>
+        <Stage label="Add account, sign-in failed">
+          <AddAccountSheet
+            open
+            title="Add account"
+            onClose={() => {}}
+            oauth={{
+              provider: "Google",
+              link: null,
+              error: "Google authorization failed: access_denied",
+              onReopen: () => {},
+              onCopy: () => {},
+              onRetry: () => {},
+              onCancel: () => {},
+            }}
+          />
         </Stage>
       </Section>
 

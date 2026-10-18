@@ -312,6 +312,7 @@ pub fn run() {
             accounts::account_set_color,
             accounts::account_set_name,
             google::account_connect,
+            google::account_connect_cancel,
             google::account_grant,
             google::account_remove,
             // Reading

@@ -180,6 +180,25 @@ export function AccountsFoot({ onAdd, onRemove, disabled, addLabel = "Add accoun
   );
 }
 
+/**
+ * The wait while a provider's sign-in page is open in the browser. Closing the sheet in any way is
+ * the same as Cancel, which must stop the app's listener so a late answer adds nothing.
+ */
+export interface OAuthStep {
+  /** The provider as people know it, such as "Google". */
+  provider: string;
+  /** The consent link, once there is one. */
+  link: string | null;
+  /** Set when the sign-in failed; the step then offers Try again. */
+  error?: string | null;
+  /** A footnote about what signing in with this provider means. */
+  note?: ReactNode;
+  onReopen: () => void;
+  onCopy: () => void;
+  onRetry: () => void;
+  onCancel: () => void;
+}
+
 export interface AddAccountSheetProps {
   open: boolean;
   title: string;
@@ -187,14 +206,69 @@ export interface AddAccountSheetProps {
   backLabel?: string;
   onClose: () => void;
   busy?: boolean;
-  children: ReactNode;
+  /** When set, the sheet shows the browser wait instead of its children. */
+  oauth?: OAuthStep | null;
+  children?: ReactNode;
 }
 
-export function AddAccountSheet({ open, title, onBack, backLabel = "the providers", onClose, busy, children }: AddAccountSheetProps) {
+export function AddAccountSheet({
+  open,
+  title,
+  onBack,
+  backLabel = "the providers",
+  onClose,
+  busy,
+  oauth,
+  children,
+}: AddAccountSheetProps) {
+  if (oauth) {
+    return (
+      <Sheet open={open} title={`Sign in with ${oauth.provider}`} onClose={oauth.onCancel}>
+        <OAuthWait step={oauth} />
+      </Sheet>
+    );
+  }
   return (
     <Sheet open={open} title={title} onBack={onBack} backLabel={backLabel} onClose={onClose} busy={busy}>
       {children}
     </Sheet>
+  );
+}
+
+function OAuthWait({ step }: { step: OAuthStep }) {
+  return (
+    <div className="oauth-wait">
+      {step.error ? (
+        <p className="oauth-wait-error" role="alert">
+          {step.error}
+        </p>
+      ) : (
+        <p className="oauth-wait-line">
+          Waiting for {step.provider} in your browser. Finish signing in there and this comes back on
+          its own.
+        </p>
+      )}
+      <div className="oauth-wait-actions">
+        {step.error ? (
+          <Button variant="primary" onClick={step.onRetry}>
+            Try again
+          </Button>
+        ) : (
+          <>
+            <Button disabled={!step.link} onClick={step.onReopen}>
+              Open link again
+            </Button>
+            <Button disabled={!step.link} onClick={step.onCopy}>
+              Copy link
+            </Button>
+          </>
+        )}
+        <Button variant="ghost" onClick={step.onCancel}>
+          Cancel
+        </Button>
+      </div>
+      {step.note ? <p className="oauth-wait-note">{step.note}</p> : null}
+    </div>
   );
 }
 

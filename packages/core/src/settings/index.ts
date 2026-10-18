@@ -14,6 +14,7 @@ export type {
   AccountCardProps,
   AccountsFootProps,
   AddAccountSheetProps,
+  OAuthStep,
   RemoveAccountSheetProps,
   SettingRowProps,
   SettingsAccount,

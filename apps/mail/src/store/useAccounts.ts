@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { accountConnect, accountGrant, accountsList, accountStart } from "../api/accounts";
+import {
+  accountConnect,
+  accountConnectCancel,
+  accountGrant,
+  accountsList,
+  accountStart,
+} from "../api/accounts";
 import { screenerSeed } from "../api/screener";
 import { live, type Account, type AuthEvent } from "../ipc";
 import { notify } from "@margin/core/hooks";
@@ -55,6 +61,7 @@ interface AccountsState {
    */
   seeding: string | null;
   resolveConnect: ((ok: boolean) => void) | null;
+  lastConsent: (() => Promise<boolean>) | null;
 
   refresh: () => Promise<void>;
   /**
@@ -69,6 +76,8 @@ interface AccountsState {
   /** Re-runs consent for a linked account to pick up a scope that was withheld. */
   grant: (accountId: string, extraScopes: string[]) => Promise<boolean>;
   cancelConnect: () => void;
+  /** Runs the last consent again, for the Try again in the add-account sheet. */
+  retryConnect: () => void;
   handleAuthEvent: (event: AuthEvent) => Promise<void>;
   openAuthUrl: () => void;
   copyAuthUrl: () => Promise<void>;
@@ -106,6 +115,7 @@ export const useAccounts = create<AccountsState>((set, get) => {
   /** The three entry points differ only in which command builds the URL and who is watching. */
   const consent = (url: () => Promise<string>, origin: Origin): Promise<boolean> =>
     new Promise<boolean>((resolve) => {
+      set({ lastConsent: () => consent(url, origin) });
       get().resolveConnect?.(false);
       set({
         phase: "connecting",
@@ -124,7 +134,8 @@ export const useAccounts = create<AccountsState>((set, get) => {
         })
         .catch((e) => {
           set({ phase: "error", error: String(e), resolveConnect: null });
-          notify(`Could not connect your Google account: ${e}`);
+          // From Settings the add-account sheet shows it, with a way to try again.
+          if (origin !== "settings") notify(`Could not connect your Google account: ${e}`);
           resolve(false);
         });
     });
@@ -144,6 +155,7 @@ export const useAccounts = create<AccountsState>((set, get) => {
     onboarding: null,
     seeding: null,
     resolveConnect: null,
+    lastConsent: null,
 
     // Deliberately does not touch `phase`: a background refresh from `store-changed` arriving while
     // the consent browser is open must not clear the screen that is waiting for it.
@@ -174,8 +186,14 @@ export const useAccounts = create<AccountsState>((set, get) => {
 
     cancelConnect: () => {
       const resolve = get().resolveConnect;
-      set({ phase: "idle", origin: null, authUrl: null, resolveConnect: null });
+      set({ phase: "idle", origin: null, authUrl: null, error: null, resolveConnect: null });
+      // The listener in Rust stops too, so a browser that answers late adds nothing.
+      void accountConnectCancel().catch(() => {});
       resolve?.(false);
+    },
+
+    retryConnect: () => {
+      void get().lastConsent?.();
     },
 
     handleAuthEvent: async (event) => {
@@ -223,7 +241,7 @@ export const useAccounts = create<AccountsState>((set, get) => {
       } else {
         const message = event.error ?? "authorization failed";
         set({ phase: "error", authUrl: null, error: message, resolveConnect: null });
-        notify(`Could not connect your Google account: ${message}`);
+        if (origin !== "settings") notify(`Could not connect your Google account: ${message}`);
       }
       resolve?.(event.ok);
     },

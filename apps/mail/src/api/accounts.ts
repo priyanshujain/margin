@@ -22,6 +22,9 @@ export const accountConnect = (extraScopes?: string[], loginHint?: string) =>
 export const accountStart = (accountId: string, windowDays: number) =>
   call<void>("account_start", { accountId, windowDays });
 
+/** Stops the sign-in in flight. A late answer from the browser then adds nothing. */
+export const accountConnectCancel = () => call<void>("account_connect_cancel");
+
 /** Re-runs consent for an account that is already linked, to pick up a scope that was withheld. */
 export const accountGrant = (accountId: string, extraScopes?: string[]) =>
   call<string>("account_grant", { accountId, extraScopes: extraScopes ?? [] });

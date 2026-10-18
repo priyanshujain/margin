@@ -686,6 +686,9 @@ export async function mockCall<T>(command: string, args?: Record<string, unknown
       // store that is handed its own array back cannot see that a colour or a name has changed.
       return done(empty ? [] : accounts.map((account) => ({ ...account })));
 
+    case "account_connect_cancel":
+      return done(null);
+
     case "account_connect":
     case "account_grant": {
       const extras = arg<string[] | undefined>("extraScopes") ?? [];

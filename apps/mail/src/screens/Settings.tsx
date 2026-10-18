@@ -37,6 +37,7 @@ import { threadsList } from "../api/threads";
 import { applyFonts, applyTextSize } from "../appearance";
 import { useEscapeLayer, type ThemeChoice } from "@margin/core/hooks";
 import { registerCommands } from "@margin/core/keys";
+import { AddAccountSheet } from "@margin/core/settings";
 import {
   CALENDAR_SCOPE,
   DRIVE_SCOPE,
@@ -294,6 +295,9 @@ function AccountsSection() {
   const openAuthUrl = useAccounts((s) => s.openAuthUrl);
   const copyAuthUrl = useAccounts((s) => s.copyAuthUrl);
   const cancelConnect = useAccounts((s) => s.cancelConnect);
+  const retryConnect = useAccounts((s) => s.retryConnect);
+  const origin = useAccounts((s) => s.origin);
+  const authError = useAccounts((s) => s.error);
   const mailPhase = useImapConnect((s) => s.phase);
   const mailConfig = useImapConnect((s) => s.config);
   const mailEmail = useImapConnect((s) => s.email);
@@ -305,6 +309,7 @@ function AccountsSection() {
 
   const [removing, setRemoving] = useState(false);
   const waiting = phase === "connecting";
+  const oauthOpen = origin === "settings" && (waiting || phase === "error");
 
   const rowFor = (accountId: string) =>
     settings?.accounts.find((row) => row.accountId === accountId) ?? null;
@@ -471,81 +476,46 @@ function AccountsSection() {
         ) : null}
       </div>
 
-      {waiting ? (
-        <div className="settings-waiting">
-          <span>Waiting for Google in your browser.</span>
-          <Button size="sm" disabled={!authUrl} onClick={openAuthUrl}>
-            Open link again
-          </Button>
-          <Button size="sm" disabled={!authUrl} onClick={() => void copyAuthUrl()}>
-            Copy link
-          </Button>
-          <Button size="sm" variant="ghost" onClick={cancelConnect}>
-            Cancel
-          </Button>
-        </div>
-      ) : null}
-
-      {/* True of a Google account and of nothing else. On a machine where every account is an IMAP
-          one there is no Google account page for it to be about, and a footnote explaining the
-          consequences of revoking a grant nobody made is a paragraph that reads as though the app
-          has quietly signed you in to something. */}
-      {accounts.some((account) => account.kind === "google") ? (
-        <p className="settings-quiet">
-          Margin Mail, Margin and Margin Calendar share one Google client, so your Google account
-          lists them once, as Margin, and revoking it revokes all three.
-        </p>
-      ) : null}
-
-      <AddSheet
-        open={mailPhase === "address" || mailPhase === "password" || mailPhase === "unsupported"}
+      {/* One sheet for the whole of Add account. Once Google has the flow the same sheet waits for the
+          browser, which is also where a permission grant waits, and closing it in any way is Cancel:
+          the listener in Rust stops, so a consent answered late adds nothing. */}
+      <AddAccountSheet
+        open={
+          mailPhase === "address" ||
+          mailPhase === "password" ||
+          mailPhase === "unsupported" ||
+          oauthOpen
+        }
         title={connectMailTitle(mailPhase, mailConfig, mailEmail, mailBlocked)}
+        backLabel="the address"
         onBack={mailPhase === "address" ? undefined : backMail}
         onClose={leaveMail}
+        oauth={
+          oauthOpen
+            ? {
+                provider: "Google",
+                link: authUrl,
+                error: phase === "error" ? authError : null,
+                note: "Margin Mail, Margin and Margin Calendar share one Google client, so your Google account lists them once, as Margin, and revoking it revokes all three.",
+                onReopen: openAuthUrl,
+                onCopy: () => void copyAuthUrl(),
+                onRetry: retryConnect,
+                onCancel: cancelConnect,
+              }
+            : null
+        }
       >
         <ConnectMail
           host="sheet"
           onGoogle={(email) => {
-            // The browser has the flow from here, and the strip above the account list is what
-            // waits for it: a sheet left open over that would be two things waiting for one answer.
             leaveMail();
             void addAccount(email);
           }}
         />
-      </AddSheet>
+      </AddAccountSheet>
 
       <RemoveSheet open={removing} accounts={accounts} onClose={() => setRemoving(false)} />
     </>
-  );
-}
-
-/**
- * Add account, which is the welcome screen's flow in a panel.
- *
- * The same `ConnectMail` renders here with its head left to this panel, so a sentence reworded on
- * one screen is reworded on both, and the panel's own back control retraces the flow's steps. The
- * servers and the certificate hang off the stage rather than off this sheet, because they are a
- * wider panel than this one and going back from them comes back here: the sheet gives the window
- * up entirely while those are open, which is why `open` names the phases it draws rather than
- * every phase that is not off.
- */
-function AddSheet({
-  open,
-  title,
-  onBack,
-  onClose,
-  children,
-}: {
-  open: boolean;
-  title: string;
-  onBack?: () => void;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Sheet open={open} title={title} onBack={onBack} backLabel="the address" onClose={onClose}>
-      {children}
-    </Sheet>
   );
 }
 

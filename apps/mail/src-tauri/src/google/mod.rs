@@ -46,6 +46,13 @@ pub async fn account_grant(
     auth::grant(app, account_id, extra_scopes).await
 }
 
+/// Stops the sign-in in flight, for an add-account sheet closed before the browser answered.
+#[tauri::command]
+pub async fn account_connect_cancel(app: tauri::AppHandle) -> Result<(), String> {
+    auth::cancel(&app).await;
+    Ok(())
+}
+
 /// Takes Margin's access away at Google and forgets the account here, in that order. One OAuth
 /// client covers the whole suite, so the revoke signs the person out of every Margin app; the
 /// settings screen says so before it offers the button. `keep_data` leaves the account's mail and

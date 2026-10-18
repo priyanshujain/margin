@@ -215,11 +215,15 @@ test("Add account asks for the address and works the rest out", async ({ page })
   await page.screenshot({ path: join(shots, "settings-add-account.png") });
 
   // A Google address is still one press past the address and no typing, and it still hands the
-  // flow to the browser. The sheet gives the window up: the strip above the list is what waits.
+  // flow to the browser. The same popup then waits for it, with the shared-client footnote, and
+  // closes once the account lands. Nothing waits under the account list any more.
   await sheet.getByLabel("Email address").fill("pj@gmail.com");
   await page.keyboard.press("Enter");
-  await expect(sheet).toHaveCount(0);
-  await expect(page.locator(".settings-waiting")).toContainText("Waiting for Google in your browser");
+  const waiting = page.getByRole("dialog", { name: "Sign in with Google" });
+  await expect(waiting).toContainText("Waiting for Google in your browser");
+  await expect(waiting).toContainText("share one Google client");
+  await expect(page.locator(".settings-waiting")).toHaveCount(0);
+  await expect(waiting).toHaveCount(0);
 });
 
 test("Add account holds a panel over the window until the mail is in, then opens that Inbox", async ({
@@ -338,8 +342,8 @@ test("an IMAP account is its servers, and a Google account is still its permissi
   await expect(google.getByRole("button", { name: "Grant" })).toHaveCount(1);
   await expect(google.locator(".acct-servers")).toHaveCount(0);
 
-  // There is a Google account here, so the footnote about the shared client is about something.
-  await expect(page.getByText("share one Google client")).toBeVisible();
+  // The footnote about the shared client lives in the Google sign-in popup now, not under the list.
+  await expect(page.getByText("share one Google client")).toHaveCount(0);
 });
 
 test("the shared Google client footnote is gone when no account is Google", async ({ page }) => {

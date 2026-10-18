@@ -215,6 +215,37 @@
 }
 
 
+.oauth-wait {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.oauth-wait-line {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.oauth-wait-error {
+  margin: 0;
+  color: var(--danger-ink);
+  line-height: 1.5;
+}
+
+.oauth-wait-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.oauth-wait-note {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: var(--t-2);
+  line-height: 1.5;
+}
+
 /* On a phone the rail is a strip along the top: 210px of section names beside a 640px measure is
    the whole screen twice over. */
 :root[data-phone] .settings {
