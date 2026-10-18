@@ -10,16 +10,33 @@ export interface ShortcutsSheetProps {
   bindings?: readonly Binding[];
   groups?: readonly string[];
   note?: ReactNode;
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 const NOTE =
   "Nothing is modal and nothing is chorded. Keys stand back while a text field has the focus, except the palette, which is how you get out of anywhere.";
 
-export function ShortcutsSheet({ open, onClose, bindings, groups, note = NOTE }: ShortcutsSheetProps) {
+export function ShortcutsSheet({
+  open,
+  onClose,
+  bindings,
+  groups,
+  note = NOTE,
+  onBack,
+  backLabel,
+}: ShortcutsSheetProps) {
   const table = bindings ?? allBindings();
   const order = groups ?? groupsOf(table);
   return (
-    <Sheet open={open} title="Keyboard shortcuts" size="wide" onClose={onClose}>
+    <Sheet
+      open={open}
+      title="Keyboard shortcuts"
+      size="wide"
+      onClose={onClose}
+      onBack={onBack}
+      backLabel={backLabel}
+    >
       <div className="shortcuts">
         {order.map((group) => {
           const rows = table.filter((binding) => binding.group === group && binding.keys.length > 0);

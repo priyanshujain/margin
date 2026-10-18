@@ -93,6 +93,7 @@ export interface ConfirmProps {
   confirmLabel: string;
   busy?: boolean;
   busyLabel?: string;
+  variant?: "danger" | "primary";
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -103,6 +104,7 @@ export function Confirm({
   confirmLabel,
   busy,
   busyLabel,
+  variant = "danger",
   onConfirm,
   onCancel,
 }: ConfirmProps) {
@@ -121,7 +123,7 @@ export function Confirm({
         <Button disabled={busy} onClick={onCancel}>
           Cancel
         </Button>
-        <Button variant="danger" disabled={busy} onClick={onConfirm}>
+        <Button variant={variant} disabled={busy} onClick={onConfirm}>
           {busy ? (busyLabel ?? `${confirmLabel}…`) : confirmLabel}
         </Button>
       </div>
