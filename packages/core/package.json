@@ -14,12 +14,17 @@
     "./hooks": "./src/hooks/index.ts",
     "./keys": "./src/keys/index.ts",
     "./keys/bindings": "./src/keys/bindings.ts",
-    "./ipc": "./src/ipc/index.ts"
+    "./ipc": "./src/ipc/index.ts",
+    "./settings": "./src/settings/index.ts"
   },
   "bin": {
     "margin-fonts": "./bin/sync-fonts.mjs"
   },
-  "files": ["src", "fonts", "bin"],
+  "files": [
+    "src",
+    "fonts",
+    "bin"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

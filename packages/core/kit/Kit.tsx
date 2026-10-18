@@ -32,6 +32,15 @@ import {
   useKeymap,
   type Binding,
 } from "../src/keys";
+import {
+  AccountCard,
+  AccountsFoot,
+  SettingRow,
+  SettingsFact,
+  SettingsQuiet,
+  SettingsSection,
+  SettingsShell,
+} from "../src/settings";
 import "./kit.css";
 
 function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
@@ -50,6 +59,41 @@ function Bench({ label, children }: { label: string; children: ReactNode }) {
       <span className="kit-label">{label}</span>
       <div className="kit-items">{children}</div>
     </div>
+  );
+}
+
+const KIT_SECTIONS = [
+  { id: "accounts", label: "Accounts" },
+  { id: "appearance", label: "Appearance" },
+  { id: "about", label: "About" },
+];
+
+function KitSettings() {
+  const [section, setSection] = useState("accounts");
+  const [dark, setDark] = useState(false);
+  return (
+    <SettingsShell sections={KIT_SECTIONS} active={section} onSelect={setSection} onClose={() => {}}>
+      {section === "accounts" ? (
+        <SettingsSection title="Accounts" note="Two accounts, each with its own calendars.">
+          <AccountCard
+            account={{ id: "a", name: "Google, sam@example.com", detail: "4 calendars", address: "sam@example.com" }}
+          />
+          <AccountCard
+            account={{ id: "b", name: "Fastmail, sam@fastmail.test", detail: "2 calendars", address: "sam@fastmail.test", hue: 3 }}
+          >
+            <SettingsFact label="Server">caldav.fastmail.com</SettingsFact>
+          </AccountCard>
+          <AccountsFoot onAdd={() => {}} onRemove={() => {}} />
+          <SettingsQuiet>A footnote that only applies to some accounts.</SettingsQuiet>
+        </SettingsSection>
+      ) : (
+        <SettingsSection title={section === "appearance" ? "Appearance" : "About"}>
+          <SettingRow label="Dark mode" note="Follows the system until you choose.">
+            <Toggle checked={dark} onChange={setDark} />
+          </SettingRow>
+        </SettingsSection>
+      )}
+    </SettingsShell>
   );
 }
 
@@ -657,6 +701,12 @@ export default function Kit() {
               </>
             }
           />
+        </Stage>
+      </Section>
+
+      <Section title="SettingsShell" note="The settings stage: a rail of sections and one section at a 640px measure.">
+        <Stage label="Accounts section" size="tall">
+          <KitSettings />
         </Stage>
       </Section>
 
