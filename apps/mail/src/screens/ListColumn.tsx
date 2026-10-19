@@ -24,11 +24,11 @@ import { returnTime, SnoozePicker, snoozeAnchor } from "./SnoozePicker";
 import * as triage from "./triage";
 import "./list.css";
 
-/** The place's name, in the text face, at the head of its column. */
-const TITLES: Record<Place, string> = {
-  inbox: "Inbox",
-  feed: "Feed",
-  "paper-trail": "Paper Trail",
+/** The place's name at the head of its column, left out where the title bar tabs already name it. */
+const TITLES: Record<Place, string | null> = {
+  inbox: null,
+  feed: null,
+  "paper-trail": null,
   "reply-later": "Reply later",
   "set-aside": "Set aside",
   screener: "Screener",
@@ -420,7 +420,9 @@ export function ListColumn() {
   return (
     <section className="list-col">
       <div className="list-head">
-        <h1 className="list-title">{place === "label" ? (labelName ?? "Label") : TITLES[place]}</h1>
+        {TITLES[place] === null ? null : (
+          <h1 className="list-title">{place === "label" ? (labelName ?? "Label") : TITLES[place]}</h1>
+        )}
         {searching ? <QueryTerms query={query} /> : null}
         {/* Held back while the account is still arriving: until the crawl finishes and the seed
             has screened in everyone it already knows, the count is every sender it has met so far,

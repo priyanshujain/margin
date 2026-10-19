@@ -38,7 +38,7 @@ test("y writes a note, and it is in the pane and under the row", async ({ page }
   // away and coming back proves. The dev fixture lives in the page and cannot outlive a reload of
   // it, so this is as far as the browser build can be asked.
   await page.keyboard.press("3");
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
   await page.keyboard.press("1");
   await page.locator(".row", { hasText: "Dinner on Thursday?" }).click();
   await expect(page.locator(".thread-inner .note")).toContainText(
@@ -122,7 +122,7 @@ test("Clips lists what was saved and goes back to the thread", async ({ page }) 
   // Each one links back, which is the only thing a clip is for.
   await clips.nth(1).locator(".clip-open").click();
   await expect(page.locator(".thread-subject")).toHaveText("Pumpkin bread recipe");
-  await expect(page.locator(".list-title")).toHaveText("Inbox");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Inbox");
 });
 
 test("All files is a grid that filters by type and by sender", async ({ page }) => {

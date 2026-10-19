@@ -145,7 +145,7 @@ test("Shift+F is one item per Reply later thread, Tab moves and Escape leaves", 
 
   await page.keyboard.press("Escape");
   await expect(page.locator(".focus")).toHaveCount(0);
-  await expect(page.locator(".list-title")).toHaveText("Inbox");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Inbox");
 
   // And a thread that was skipped is still on the pile, which is the whole promise of skipping.
   await expect(pile(page, 0).locator(".pile-who")).toHaveText("Jeff Wolfe, and 2 more");

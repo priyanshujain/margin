@@ -65,7 +65,7 @@ test("b opens the six choices with their keys and the moment each of them means"
   // The picker is in front, so the number keys mean these six rather than the places.
   await page.keyboard.press("Escape");
   await expect(page.locator(".snooze-picker")).toHaveCount(0);
-  await expect(page.locator(".list-title")).toHaveText("Inbox");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Inbox");
 });
 
 test("b comes up before the four times are here, and says it is reading them", async ({ page }) => {

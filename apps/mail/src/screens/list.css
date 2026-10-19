@@ -42,6 +42,14 @@
   border-bottom: 1px solid var(--line);
 }
 
+.list-head:empty {
+  display: none;
+}
+
+.list-head > :first-child:not(.list-title) {
+  margin-left: auto;
+}
+
 .list-title {
   margin: 0;
   font-family: var(--font-heading);

@@ -348,7 +348,7 @@ test("Paper Trail groups by week and reads in the interface face", async ({ page
   await openApp(page, { now: MIDDAY() });
   await listReady(page);
   await page.keyboard.press("3");
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
   await openRow(page, 1);
 
   await expect(page.locator(".thread-subject")).toHaveText("Bill payment pending");

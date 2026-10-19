@@ -35,9 +35,8 @@ import {
 } from "../api/settings";
 import { threadsList } from "../api/threads";
 import { applyFonts, applyTextSize } from "../appearance";
-import { useEscapeLayer, type ThemeChoice } from "@margin/core/hooks";
-import { registerCommands } from "@margin/core/keys";
-import { AddAccountSheet } from "@margin/core/settings";
+import type { ThemeChoice } from "@margin/core/hooks";
+import { AddAccountSheet, SettingsShell } from "@margin/core/settings";
 import {
   CALENDAR_SCOPE,
   DRIVE_SCOPE,
@@ -219,54 +218,24 @@ export function Settings() {
   const [section, setSection] = useState<Section>("Accounts");
   const View = VIEWS[section];
 
-  useEscapeLayer(true, close);
-
   // Again when an account is added or removed, because the settings file grows and loses a row with
   // the account list and nothing else would tell this screen that its copy is a row short.
   useEffect(() => {
     void load();
   }, [load, linked]);
 
-  // The rail is the list while settings has the stage, so it answers to the same two keys. The
-  // list column is not mounted, so its handlers are not in the way.
-  useEffect(() => {
-    const step = (delta: number) =>
-      setSection((was) => {
-        const at = SECTIONS.indexOf(was) + delta;
-        return SECTIONS[Math.min(Math.max(at, 0), SECTIONS.length - 1)];
-      });
-    return registerCommands({
-      "select-next": () => step(1),
-      "select-prev": () => step(-1),
-    });
-  }, []);
-
   return (
     <>
       <main className="stage">
-        <section className="settings">
-          <nav className="settings-rail" aria-label="Settings">
-            <h1>Settings</h1>
-            {SECTIONS.map((name) => (
-              <button
-                key={name}
-                type="button"
-                className="settings-tab"
-                data-active={name === section ? "" : undefined}
-                aria-current={name === section ? "page" : undefined}
-                onClick={() => setSection(name)}
-              >
-                {name}
-              </button>
-            ))}
-          </nav>
-
-          <div className="settings-panel">
-            <div className="settings-inner">
-              <View />
-            </div>
-          </div>
-        </section>
+        <SettingsShell
+          sections={SECTIONS.map((name) => ({ id: name, label: name }))}
+          active={section}
+          onSelect={(id) => setSection(id as Section)}
+          onClose={close}
+          back={{ label: "Back to Mail", onBack: close }}
+        >
+          <View />
+        </SettingsShell>
       </main>
 
       {/* The servers and the certificate question take the window rather than a place in the

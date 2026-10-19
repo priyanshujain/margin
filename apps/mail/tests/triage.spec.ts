@@ -124,10 +124,10 @@ test("# in Trash puts a thread back where it was, and ! in Spam takes the mark o
 
   // Back where it was, which is the Paper Trail its sender is routed to and not the Inbox.
   await page.keyboard.press("1");
-  await expect(page.locator(".list-title")).toHaveText("Inbox");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Inbox");
   await expect(parcel).toHaveCount(0);
   await page.keyboard.press("3");
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
   await expect(parcel).toHaveCount(1);
 
   const phish = page.locator(".row", { hasText: "Account verification required" });

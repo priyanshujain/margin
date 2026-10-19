@@ -251,7 +251,7 @@ test("the close control and Escape both put back what was underneath", async ({ 
   await listReady(page);
 
   await page.keyboard.press("3");
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
   await openRow(page, 0);
   const subject = await page.locator(".thread-subject").textContent();
 
@@ -259,7 +259,7 @@ test("the close control and Escape both put back what was underneath", async ({ 
   await page.getByRole("button", { name: "Close" }).click();
   expect(await dialog(page)).toBeNull();
   // Not merely the place: the thread that was open is still open, at the scroll it was at.
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
   expect(await place(page)).toBe("paper-trail");
   await expect(page.locator(".thread-subject")).toHaveText(subject!);
 

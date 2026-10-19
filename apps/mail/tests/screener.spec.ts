@@ -345,7 +345,7 @@ test("Clear all asks before it screens everybody out", async ({ page }) => {
   await page.locator(".screen-tools .button", { hasText: "Clear all" }).click();
   await page.locator(".confirm-actions .button", { hasText: "Screen them out" }).click();
   await expect(page.locator(".screen-card")).toHaveCount(0);
-  await expect(page.locator(".list-title")).toHaveText("Inbox");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Inbox");
   await expect.poll(async () => (await toast(page))?.text).toBe("3 senders screened out");
 });
 

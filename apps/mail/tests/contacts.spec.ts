@@ -53,7 +53,7 @@ test("changing Delivers to writes it and moves the mail that is already here", a
   await page.keyboard.press("Escape");
   await expect(card(page)).toBeHidden();
   await page.keyboard.press("3");
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
   const moved = page.locator(".row", { hasText: "Piano on Wednesdays" });
   await expect(moved).toBeVisible();
 

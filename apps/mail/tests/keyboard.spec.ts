@@ -54,9 +54,9 @@ test("1, 2 and 3 change place", async ({ page }) => {
   await page.keyboard.press("2");
   await expect.poll(() => place(page)).toBe("feed");
   await page.keyboard.press("3");
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
   await page.keyboard.press("1");
-  await expect(page.locator(".list-title")).toHaveText("Inbox");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Inbox");
   await expect.poll(() => place(page)).toBe("inbox");
 
   // The header's segment says the same thing the list head does.
@@ -119,7 +119,7 @@ test("the palette opens on Cmd+K, filters, and prints the key of every row that 
   expect(filtered.map((row) => row.label)).toEqual(["Paper Trail"]);
 
   await page.keyboard.press("Enter");
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
   expect(await openDialog(page)).toBeNull();
 });
 
@@ -142,11 +142,11 @@ test("an open panel shadows the view's keys", async ({ page }) => {
   await page.keyboard.press("?");
   expect(await openDialog(page)).toBe("Keyboard shortcuts");
   await page.keyboard.press("3");
-  await expect(page.locator(".list-title")).toHaveText("Inbox");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Inbox");
 
   await page.keyboard.press("Escape");
   await page.keyboard.press("3");
-  await expect(page.locator(".list-title")).toHaveText("Paper Trail");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Paper Trail");
 });
 
 test("n and p walk the messages and o folds one away", async ({ page }) => {

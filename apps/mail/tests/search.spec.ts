@@ -48,7 +48,7 @@ test("/ focuses search, and Escape gives the Inbox back with its scroll and its 
   await expect(page.locator(".thread-subject")).toHaveText("Your reservation in Lisbon is confirmed");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator(".list-title")).toHaveText("Inbox");
+  await expect(page.locator(".segment-option[data-active]")).toContainText("Inbox");
   await expect.poll(() => listScroll(page)).toBeGreaterThan(parked - 4);
   expect(await listScroll(page)).toBeLessThan(parked + 4);
   expect(await checkedRows(page)).toEqual(["Karthik Rao"]);
