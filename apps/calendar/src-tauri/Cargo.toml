@@ -1,0 +1,67 @@
+[package]
+name = "margin-calendar"
+version = "0.0.6"
+description = "A calendar that works on its own, with Google, CalDAV and iCalendar feeds"
+authors = ["Margin"]
+edition = "2024"
+license = "MIT"
+
+[lib]
+name = "margin_calendar_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+margin-google = { path = "../../../crates/margin-google" }
+margin-http = { path = "../../../crates/margin-http" }
+margin-log = { path = "../../../crates/margin-log", features = ["tauri"] }
+margin-oauth = { path = "../../../crates/margin-oauth", features = ["tauri"] }
+margin-secrets = { path = "../../../crates/margin-secrets" }
+margin-shell = { path = "../../../crates/margin-shell" }
+margin-sqlite = { path = "../../../crates/margin-sqlite" }
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+# Mobile has no loopback listener to catch Google's redirect, so the OAuth answer comes back as a
+# custom URI scheme the OS routes to this app. Registered on desktop too, so both flows are one
+# code path with one difference in it rather than two.
+tauri-plugin-deep-link = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rand = "0.8"
+url = "2"
+reqwest = { version = "0.13", default-features = false, features = [
+  "rustls",
+  "webpki-roots",
+  "json",
+  "gzip",
+  "http2",
+] }
+rusqlite = { version = "0.40", features = ["bundled"] }
+rrule = "0.14"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+tokio = { version = "1", features = ["sync", "time"] }
+# CalDAV answers in WebDAV multistatus XML, read once and never written. Mail's version.
+roxmltree = "0.21"
+
+# There is no auto-updater and no process to restart on a phone: the store is the update channel.
+# margin-shell registers both; they are named here so the capability files can grant them.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
+
+# The one UIKit property wry leaves to us (stop_uikit_shrinking_the_viewport in lib.rs). These are
+# the versions wry already resolves for its own iOS backend, so the build keeps a single objc2.
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+objc2-ui-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "UIResponder",
+  "UIView",
+  "UIScrollView",
+] }
+
+[dev-dependencies]
+tempfile = "3"

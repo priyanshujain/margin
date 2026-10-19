@@ -1,0 +1,273 @@
+/* margin-core's titlebar, out of the way of a status bar or a notch the same way the phone bars
+   are. A desktop reads the inset as zero; an iPad gets this header rather than those bars. */
+.titlebar {
+  height: calc(var(--titlebar-h) + var(--safe-top));
+  padding-top: var(--safe-top);
+}
+
+.titlebar-lead {
+  overflow: hidden;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.icon-button:hover {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.icon-button[data-active="true"] {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+/* 28px is a pointer's target. A finger is nearer 44, and a tablet gets the desktop layout with
+   none of the desktop's aim. */
+:root[data-touch] .icon-button {
+  width: var(--touch-h);
+  height: var(--touch-h);
+}
+
+/* Phone chrome
+   ----------------------------------------------------------------------------------------------
+   The header's three groups do not fit a 390px row, so they split: where you are goes to the top,
+   what you are looking at goes to the bottom where the thumb already is, and the rest goes behind
+   the overflow. Both bars are sized for a finger whether or not the pointer says it is one, since
+   a phone-width window is a phone-shaped layout either way. */
+
+.phonebar {
+  flex: none;
+  position: relative;
+  z-index: 45;
+  height: calc(var(--phonebar-h) + var(--safe-top));
+  padding: var(--safe-top) 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--shell);
+  border-bottom: 1px solid var(--line);
+}
+
+.phonebar .icon-button {
+  flex: none;
+  width: var(--touch-h);
+  height: var(--touch-h);
+  color: var(--ink);
+}
+
+/* Takes what the fixed controls leave and trims the range rather than pushing them off the edge. */
+.phonebar-range {
+  flex: 1;
+  min-width: 0;
+  height: var(--touch-h);
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+  font-size: var(--t-4);
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.phonebar-today {
+  flex: none;
+  min-width: var(--touch-h);
+  height: var(--touch-h);
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* There is no hover to light up, so the press itself is the feedback. */
+.phonebar-range:active,
+.phonebar-today:active,
+.tabbar-view:active {
+  background: var(--accent-wash);
+}
+
+.tabbar {
+  flex: none;
+  position: relative;
+  z-index: 45;
+  height: calc(var(--tabbar-h) + var(--safe-bottom));
+  padding: 0 10px var(--safe-bottom);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--shell);
+  border-top: 1px solid var(--line);
+}
+
+.tabbar-views {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-md);
+  background: var(--accent-wash);
+}
+
+.tabbar-view {
+  flex: 1;
+  min-width: 0;
+  height: var(--touch-h);
+  border-radius: var(--r-sm);
+  font-size: var(--t-3);
+  color: var(--ink-soft);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.tabbar-view[data-active="true"] {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* The only action with a permanent button of its own. Everything else is a row in the overflow. */
+.tabbar-new {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--touch-h);
+  height: var(--touch-h);
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  transition: background 120ms var(--ease);
+}
+
+.tabbar-new:active {
+  background: var(--accent-ink);
+}
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* The first-run note lays itself over whatever is here, so this is the box it covers. */
+  position: relative;
+  background: var(--paper);
+}
+
+/* Above every part of the grid, which stacks up to 15, and under the overlays, which start at 20:
+   the panel this opens has to come up in front of it. */
+.first-run {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--paper);
+}
+
+.first-run-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 320px;
+  text-align: center;
+}
+
+.first-run-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 18px;
+}
+
+.first-run-note {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.first-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Search is the one overlay child that is not a `.panel`: it brings its own surface and its own
+   width, so all it wants from the phone is to be clear of the home indicator. */
+:root[data-phone] .overlay > :not(.panel) {
+  margin-bottom: var(--safe-bottom);
+}
+
+/* Header. The grid owns the window, so this row is the only persistent chrome there is. */
+.header-today,
+.header-range {
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.header-today:hover,
+.header-range:hover {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+/* At the minimum window size the agenda's range is long enough to overrun its 1fr column and
+   paint under the view switcher, so it ellipsizes rather than collides. */
+.header-range {
+  font-size: var(--t-4);
+  color: var(--ink);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.view-switch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-md);
+  background: var(--accent-wash);
+}
+
+.view-option {
+  height: 22px;
+  padding: 0 11px;
+  border-radius: var(--r-sm);
+  font-size: var(--t-2);
+  color: var(--ink-soft);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.view-option:hover {
+  color: var(--ink);
+}
+
+.view-option[data-active="true"] {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.header-hours {
+  font-size: var(--t-1);
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+:root[data-compact] .header-hours {
+  display: none;
+}

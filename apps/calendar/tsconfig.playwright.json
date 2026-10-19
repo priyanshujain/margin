@@ -1,0 +1,9 @@
+{
+  "extends": "./tests/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@margin/core/*": ["../../packages/core/src/*"]
+    }
+  }
+}

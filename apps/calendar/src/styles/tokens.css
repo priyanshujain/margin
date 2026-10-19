@@ -1,0 +1,62 @@
+/* Layer one. margin-core is the source of the values the suite holds in common, including the
+   eight calendar hues as --hue-1..8; this file adds only what the calendar's grid owns. */
+
+@import "@margin/core/tokens.css";
+
+:root {
+  /* Grid geometry. --row-h is written by the fit engine on every layout pass; the rest are
+     fixed and the fit maths reads them back. */
+  --gutter-w: 58px;
+  --daybar-h: 40px;
+  --allday-h: 26px;
+  --strip-h: 22px;
+  --row-h: 48px;
+  --row-h-min: 22px;
+
+  /* Event blocks and agenda rows. --event-min-h is mirrored as MIN_BLOCK_H in GridModel.tsx the
+     way --strip-h is mirrored in fit.ts, so the two must move together. */
+  --qc-w: 292px;
+  --event-min-h: 12px;
+  --event-gap: 3px;
+  --edge-w: 2px;
+  --grip-h: 7px;
+}
+
+:root[data-compact] {
+  --gutter-w: 44px;
+  --daybar-h: 34px;
+  --qc-w: 236px;
+}
+
+:root,
+:root[data-theme="light"] {
+  --link: #1f5fbf;
+
+  --grid-hour: #e6e0d1;
+  --grid-half: #efeade;
+  --grid-now: #b4453a;
+  --grid-past: rgba(35, 32, 27, 0.03);
+  --grid-today: rgba(35, 32, 27, 0.035);
+  --fold-surface: #ece6da;
+  --fold-line: #ddd6c6;
+
+  --event-surface: #f6f2e8;
+  --event-surface-strong: #efe9dc;
+  --event-ink: #23201b;
+}
+
+:root[data-theme="dark"] {
+  --link: #7fb0ff;
+
+  --grid-hour: #2e2a24;
+  --grid-half: #24211c;
+  --grid-now: #d97a6f;
+  --grid-past: rgba(0, 0, 0, 0.16);
+  --grid-today: rgba(239, 233, 220, 0.04);
+  --fold-surface: #1a1713;
+  --fold-line: #302b24;
+
+  --event-surface: #272319;
+  --event-surface-strong: #2f2a20;
+  --event-ink: #ece6da;
+}
