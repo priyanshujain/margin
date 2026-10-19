@@ -1,0 +1,1160 @@
+/* Document typography: everything inside the editable surface.
+ *
+ * Almost every selector here matches DOM that a node's own toDOM in src/model/schema.ts already
+ * produces, so this file styles the document that will really be on screen rather than a hoped for
+ * one. The contenteditable carries class="prose"; nothing else in the app does.
+ *
+ * Four hooks are not in the schema, and a node view or a decoration has to supply them: .table-wrap
+ * around a table (optional, and better than the bare fallback, see the table section), .figure and
+ * .figure-caption around an image the user has captioned, and .search-match with
+ * .search-match-current on find's inline decorations.
+ *
+ * The blocks with a lane of their own answer for themselves in a sheet of their own, next to this
+ * one in src/main.tsx: syntax colour inside a fence in code.css, the formula and its source field
+ * in math.css, the diagram and its fence in mermaid.css. What is here for those three is only what
+ * the schema's own toDOM puts on the page, which is the element the lane then fills.
+ *
+ * Import this after any ProseMirror stylesheet. The library sheets are written as `.ProseMirror x`
+ * and tie with `.prose x` on specificity, so source order is what decides, and a few of them
+ * (pre wrapping, table layout, a hardcoded blue selection) are wrong for this app.
+ *
+ * There is no `.prose h1 { }` for a title and no first line indent. Filenames and H1s are
+ * unrelated here, so an H1 is an ordinary heading that happens to be first. */
+
+/* --------------------------------------------------------------------------------------------
+   The surface
+   -------------------------------------------------------------------------------------------- */
+
+.prose {
+  position: relative;
+  font-family: var(--font-book);
+  font-size: var(--doc-size);
+  line-height: var(--doc-lead);
+  color: var(--ink);
+  font-optical-sizing: auto;
+  caret-color: var(--accent);
+  outline: none;
+
+  /* Margin justifies with hyphenation, which is right for a printed novel and wrong here. A
+     justified line has to stretch its word spaces, and this document is full of things that
+     cannot be stretched or broken: an inline code span, a file path, a long URL, an identifier
+     with no vowel to hyphenate on. One of those in a narrow measure opens a river across three
+     lines. Ragged right also survives the width menu, which the same paragraph has to look right
+     at all three settings of. */
+  text-align: left;
+  hyphens: none;
+  -webkit-hyphens: none;
+
+  /* ProseMirror needs preserved whitespace to map positions, and needs ligatures off because a
+     ligature is one glyph over two document positions and the caret lands in the middle of it. */
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  overflow-wrap: break-word;
+  font-variant-ligatures: none;
+  -webkit-font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+.prose:focus,
+.prose:focus-visible {
+  outline: none;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose > :last-child {
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------------------------
+   Headings
+
+   Six levels in one typeface will not come from six sizes: by the fourth step the difference is a
+   point and a half and the reader stops seeing a hierarchy at all. So the scale spends size on the
+   first three, a weight step on the fourth, and switches to the UI face for the last two, where a
+   heading has stopped being a title and become a label on a paragraph. Size, then weight, then
+   family, then case: four different signals, and no two adjacent levels lean on the same one.
+   -------------------------------------------------------------------------------------------- */
+
+.prose :is(h1, h2, h3, h4, h5, h6) {
+  color: var(--ink);
+  font-optical-sizing: auto;
+}
+
+.prose :is(h1, h2, h3) {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  /* Two or three words dangling on the second line of a heading is the most visible bad break on
+     the page, and headings are short enough that balancing them costs nothing. */
+  text-wrap: balance;
+}
+
+.prose h1 {
+  font-size: var(--doc-h1);
+  line-height: 1.16;
+  letter-spacing: -0.016em;
+  margin: 2em 0 0.6em;
+}
+
+.prose h2 {
+  font-size: var(--doc-h2);
+  line-height: 1.24;
+  letter-spacing: -0.008em;
+  margin: 2em 0 0.55em;
+}
+
+.prose h3 {
+  font-size: var(--doc-h3);
+  line-height: 1.34;
+  margin: 2em 0 0.5em;
+}
+
+.prose h4 {
+  font-family: var(--font-heading);
+  font-size: var(--doc-h4);
+  font-weight: 700;
+  line-height: 1.42;
+  margin: 1.9em 0 0.4em;
+}
+
+.prose :is(h5, h6) {
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+
+.prose h5 {
+  font-size: var(--doc-h5);
+  line-height: 1.45;
+  letter-spacing: 0.005em;
+  margin: 2em 0 0.35em;
+}
+
+.prose h6 {
+  font-size: var(--doc-h6);
+  line-height: 1.5;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 2.1em 0 0.3em;
+}
+
+/* Bold inside a heading has to out-weigh a heading that is already semibold. */
+.prose :is(h1, h2, h3, h4) strong {
+  font-weight: 800;
+}
+
+/* --------------------------------------------------------------------------------------------
+   Paragraphs and inline
+   -------------------------------------------------------------------------------------------- */
+
+.prose p {
+  margin: 0 0 1.05em;
+}
+
+.prose strong {
+  font-weight: 700;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose s {
+  text-decoration-line: line-through;
+  text-decoration-thickness: 1px;
+  color: var(--ink-soft);
+}
+
+/* The two colour marks are the one piece of formatting that comes out of the document rather than
+   out of the palette. The hex is in the user's file, src/model/schema.ts writes it into the
+   element's own style attribute, and there is deliberately no colour here for either of them: a
+   token would be this app's opinion overriding what the file says, and a span with a rule of its
+   own would need a selector per swatch.
+
+   So a text colour gets no rule at all, and what is left for a highlight is its shape. The colour
+   is the only thing a <mark> can be told, since the user agent also gives it black text, which is
+   black text on a mid tone under the dark theme; box-decoration-break is what makes a highlight
+   that wraps two lines two shapes rather than one box drawn behind both. */
+.prose mark[data-highlight] {
+  color: inherit;
+  border-radius: var(--r-sm);
+  padding: 0.06em 0.18em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* This palette has no link colour, because the book it came from had no links. Rather than invent
+   a hue for it, a link is body text with a permanent underline: unmistakable in a scan, identical
+   in both themes, and it keeps its surroundings' colour so a link inside a quote or a callout
+   still reads as part of that block. */
+.prose a {
+  color: inherit;
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--ink-faint);
+  text-underline-offset: 0.16em;
+  transition: text-decoration-color 120ms var(--ease);
+}
+
+.prose a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Small enough that its background fits inside the line box, so a paragraph with code in it keeps
+   the same leading as the one above it. */
+.prose code {
+  font-family: var(--font-mono);
+  font-size: var(--doc-mono-inline);
+  background: var(--code-wash);
+  border-radius: var(--r-sm);
+  padding: 0.12em 0.32em;
+  overflow-wrap: break-word;
+}
+
+.prose a code {
+  background: none;
+  padding: 0;
+}
+
+.prose .math-inline {
+  font-family: var(--font-mono);
+  font-size: var(--doc-mono-inline);
+  color: var(--ink-soft);
+  background: var(--code-wash);
+  border-radius: var(--r-sm);
+  padding: 0.12em 0.32em;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+  border-radius: var(--r-sm);
+}
+
+/* Markdown has no block image, so a picture on its own line is a paragraph with one child, and
+   that paragraph is the figure. A caption cannot come from CSS: attr() only reads the element the
+   pseudo hangs off, and an <img> cannot carry one. So .figure and .figure-caption are hooks for
+   the image node view, and a bare image still gets the figure treatment without them. */
+.prose p:has(> img:only-child),
+.prose p:has(> .figure:only-child) {
+  margin: 1.8em 0;
+  text-align: center;
+}
+
+/* Both the figure and the image inside it are blocks, so the paragraph builds no line box around
+   them: an inline image sits on the baseline and drags a line's worth of leading and a descender
+   gap along with it, which reads as a random 30px of air under every picture. */
+.prose .figure {
+  display: block;
+}
+
+.prose p:has(> img:only-child) > img,
+.prose .figure > img {
+  display: block;
+  margin: 0 auto;
+  border: 1px solid var(--doc-rule);
+  border-radius: var(--r-md);
+}
+
+.prose .figure-caption {
+  display: block;
+  margin-top: 0.65em;
+  font-family: var(--font-ui);
+  font-size: var(--t-3);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------------------------
+   Lists
+   -------------------------------------------------------------------------------------------- */
+
+.prose :is(ul, ol) {
+  margin: 1.1em 0;
+  padding-left: var(--doc-indent);
+}
+
+.prose li {
+  position: relative;
+  padding-left: 0.2em;
+}
+
+.prose li::marker {
+  color: var(--ink-soft);
+}
+
+/* Five levels of indent at 1.35em each is 115px, which still leaves the deepest item most of a
+   narrow measure to write in. */
+.prose ul {
+  list-style-type: disc;
+}
+
+.prose ul ul {
+  list-style-type: circle;
+}
+
+.prose ul ul ul {
+  list-style-type: square;
+}
+
+.prose ul ul ul ul {
+  list-style-type: disc;
+}
+
+.prose ul ul ul ul ul {
+  list-style-type: circle;
+}
+
+/* Nested ordered lists stay decimal at every depth. Rendering level two as a. b. c. would show the
+   user a marker the file does not contain and this editor never writes, and in a WYSIWYG editor
+   the marker on screen is a claim about the bytes on disk. */
+.prose ol {
+  list-style-type: decimal;
+}
+
+.prose ol > li::marker {
+  font-size: 0.92em;
+  font-variant-numeric: tabular-nums;
+}
+
+.prose li > :is(ul, ol) {
+  margin: 0.2em 0 0;
+}
+
+.prose li > :first-child {
+  margin-top: 0;
+}
+
+.prose li > :last-child {
+  margin-bottom: 0;
+}
+
+.prose li + li {
+  margin-top: 0.18em;
+}
+
+/* Tight and loose is a real distinction in the source: a blank line between items makes every item
+   a paragraph, and a file that had that spacing should still look like it has it. The attribute is
+   present only on loose lists, and the child combinators keep a tight list nested inside a loose
+   one tight. */
+.prose :is(ul, ol)[data-loose] > li {
+  margin-top: 0;
+  margin-bottom: 0.75em;
+}
+
+.prose :is(ul, ol)[data-loose] > li:last-child {
+  margin-bottom: 0;
+}
+
+.prose :is(ul, ol)[data-loose] > li > * + * {
+  margin-top: 0.65em;
+}
+
+.prose :is(ul, ol)[data-loose] > li > :is(ul, ol) {
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------------------------
+   Task lists
+
+   The box is a pseudo element rather than an <input>, because the schema's toDOM emits a plain
+   <li> and a real checkbox inside a contenteditable is a focus trap that steals the caret. It
+   hangs in the marker gutter instead of pushing the text right, so a GFM list that mixes checked
+   items with ordinary ones keeps one text edge.
+   -------------------------------------------------------------------------------------------- */
+
+.prose .task-list {
+  list-style: none;
+}
+
+.prose .task-item {
+  --check-x: calc(-1 * (var(--doc-check) + 0.42em));
+  --check-y: calc((var(--doc-lead) * 1em - var(--doc-check)) / 2);
+  list-style: none;
+}
+
+.prose .task-item::before {
+  content: "";
+  position: absolute;
+  left: var(--check-x);
+  top: var(--check-y);
+  width: var(--doc-check);
+  height: var(--doc-check);
+  border: 1.5px solid var(--doc-rule-strong);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+
+.prose .task-item::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--check-x) + var(--doc-check) * 0.34);
+  top: calc(var(--check-y) + var(--doc-check) * 0.2);
+  width: calc(var(--doc-check) * 0.28);
+  height: calc(var(--doc-check) * 0.52);
+  border: solid var(--accent-contrast);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  opacity: 0;
+  transition: opacity 100ms var(--ease);
+}
+
+.prose .task-item[data-checked="true"]::before {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.prose .task-item[data-checked="true"]::after {
+  opacity: 1;
+}
+
+/* A done item drops to the secondary ink and stops there. No strikethrough: ~~text~~ is a mark the
+   user can actually write, so spending it on "checked" would make two different things look the
+   same, and a struck through paragraph of real content is unreadable besides. */
+.prose .task-item[data-checked="true"] {
+  color: var(--ink-soft);
+}
+
+/* --------------------------------------------------------------------------------------------
+   Code blocks
+
+   The <pre> holds the surface and the label; the <code> inside it is the scroller. Scrolling the
+   pre itself would carry the language label away with the text, since an absolutely positioned
+   child of a scroll container scrolls with its content.
+
+   A fence's top strip is chrome rather than code, which is what the padding below reserves. The
+   label at the left of it is drawn here, off the attribute the schema's own toDOM writes. The copy
+   control at the right of it is not: that one is a widget decoration from the code lane and it is
+   dressed in src/styles/code.css, the way the diagram a mermaid fence draws is dressed in
+   mermaid.css. What is here for either is only the room they stand in.
+   -------------------------------------------------------------------------------------------- */
+
+/* The font-size is the document's, not the code's: the user agent gives a bare <pre> the monospace
+   default size, which would quietly shrink every margin and label offset measured in em here. The
+   monospace size belongs on the <code> that actually holds the text. */
+.prose pre {
+  position: relative;
+  margin: 1.5em 0;
+  font-family: var(--font-mono);
+  font-size: var(--doc-size);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.prose pre:not([data-raw]) {
+  background: var(--code-surface);
+  border: 1px solid var(--code-line);
+}
+
+.prose pre > code {
+  display: block;
+  padding: var(--doc-code-pad) var(--doc-code-inset);
+  background: none;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: var(--doc-mono);
+  line-height: 1.55;
+  tab-size: 2;
+  /* Long lines scroll. Wrapping a fence rewraps code at a column the file knows nothing about,
+     and an 80 column block reflowed to 58 stops being readable as code at all. */
+  white-space: pre;
+  overflow-x: auto;
+  overflow-wrap: normal;
+}
+
+/* Room for a label, on the two fences that have one. A bare fence buys none of it: the copy button
+   is the only other thing up there, it is drawn on hover, and reserving a band of empty surface
+   above a single line of code to hold it made the block read as misaligned rather than as roomy. */
+.prose pre[data-language] > code,
+.prose pre[data-raw] > code {
+  padding-top: var(--doc-code-strip);
+}
+
+/* The info string as the file spells it. Not upper cased, which it was: `TYPESCRIPT` is louder than
+   the code it labels and is not what the fence on disk says either. ::after rather than ::before,
+   because ::before is where a placeholder lands and a fence needs both at once. */
+.prose pre[data-language]::after {
+  content: attr(data-language);
+  position: absolute;
+  top: 0;
+  left: var(--doc-code-inset);
+  height: var(--doc-code-strip);
+  line-height: var(--doc-code-strip);
+  z-index: 1;
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --------------------------------------------------------------------------------------------
+   The raw block
+
+   Markdown this editor cannot model, kept byte for byte. It has to be legible as source and it has
+   to be obviously not a code block, or the user cannot tell "the editor gave up on this" from "I
+   wrote a fence here". So: no fill, a dashed fence, secondary ink, and it says so.
+   -------------------------------------------------------------------------------------------- */
+
+.prose pre[data-raw] {
+  background: none;
+  border: 1px dashed var(--doc-rule-strong);
+  border-radius: var(--r-sm);
+}
+
+.prose pre[data-raw]::after {
+  content: "not modelled";
+  position: absolute;
+  top: 0;
+  right: var(--doc-code-inset);
+  height: var(--doc-code-strip);
+  line-height: var(--doc-code-strip);
+  z-index: 1;
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --------------------------------------------------------------------------------------------
+   Blockquotes, callouts, toggles
+   -------------------------------------------------------------------------------------------- */
+
+/* Not italic, unlike margin's. A quote in a technical document is as likely to be a paragraph of a
+   spec, a shell transcript or somebody's bug report as it is an epigraph, and none of those want
+   to be set in italic. The bar and the ink carry it instead, which is also what lets a quote hold
+   a fenced block or a list without the italic leaking into them. */
+.prose blockquote {
+  margin: 1.5em 0;
+  padding-left: var(--doc-gutter);
+  border-left: 2px solid var(--doc-rule-strong);
+  color: var(--ink-soft);
+}
+
+/* Depth is the second bar and the second indent, never a fainter ink: three levels of fading would
+   have the innermost quote, which is usually the one being replied to, at the edge of legible. */
+.prose blockquote blockquote {
+  margin: 0.9em 0;
+}
+
+.prose :is(blockquote, .callout) > :first-child {
+  margin-top: 0;
+}
+
+.prose :is(blockquote, .callout) > :last-child {
+  margin-bottom: 0;
+}
+
+/* A callout is one shape in five kinds, and each kind now says which it is twice: in the word on
+   the label and in the mark beside it.
+
+   The five used to share two treatments. Warning and caution took --danger and the other three were
+   the same grey box with a different word on top, and the comment here defended that: the palette
+   had one warning colour, and inventing four more would have forked the visual language for a
+   construct nothing else had designed yet. Two things changed. The document grew a code surface
+   with six hues of its own, chosen per palette to be legible ink on that palette's paper, so a tip
+   and an important are not new colours, they are two of that six put to a second use, and
+   tokens.css says which and why. And an icon per kind is what GitHub itself renders for these same
+   five alerts, so the mark below is not this app's invention either.
+
+   There is no emoji picker and there will not be one. AppFlowy's callout carries an arbitrary emoji
+   because its callout is its own block with somewhere to keep one. Ours is a GitHub alert: the kind
+   is one of exactly five words the file can spell, per CALLOUT_KINDS, and a glyph the user picked
+   would have nowhere in the bytes to live. The mark is per kind for that reason, drawn from this
+   sheet, and it costs the document nothing.
+
+   Each kind sets three custom properties and the rules below spend them, so a kind is one block of
+   four lines rather than four rules in four places. The glyph is a mask rather than an image: a
+   background image cannot be recoloured, and a data URI with the colour written into it would be a
+   literal hex outside the token layer, which is the one thing the CSS conventions rule out. What is
+   in the URI is a black stroke, and that black is the mask's alpha rather than a colour anybody
+   ever sees. */
+.prose .callout {
+  --callout-edge: var(--ink-faint);
+  --callout-ink: var(--ink-soft);
+  --callout-wash: var(--doc-wash);
+  --callout-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11.2v5'/%3E%3Cpath d='M12 7.8h.01'/%3E%3C/svg%3E");
+
+  position: relative;
+  margin: 1.5em 0;
+  padding: 0.95em 1.15em;
+  background: var(--callout-wash);
+  border: 1px solid var(--doc-rule);
+  border-left: 3px solid var(--callout-edge);
+  border-radius: var(--r-md);
+}
+
+/* The label's line box is exactly the glyph's square, which is what lets the mark below be placed
+   at the callout's own padding rather than measured against a line height. */
+.prose .callout::before {
+  content: "Note";
+  display: block;
+  margin-bottom: 0.5em;
+  padding-left: calc(var(--doc-callout-icon) + 0.5em);
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  line-height: var(--doc-callout-icon);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--callout-ink);
+}
+
+.prose .callout::after {
+  content: "";
+  position: absolute;
+  top: 0.95em;
+  left: 1.15em;
+  width: var(--doc-callout-icon);
+  height: var(--doc-callout-icon);
+  background-color: var(--callout-ink);
+  -webkit-mask: var(--callout-mark) center / contain no-repeat;
+  mask: var(--callout-mark) center / contain no-repeat;
+}
+
+.prose .callout[data-callout="tip"] {
+  --callout-edge: var(--callout-tip);
+  --callout-ink: var(--callout-tip);
+  --callout-wash: var(--callout-tip-wash);
+  --callout-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 14.2c.2-1 .7-1.8 1.5-2.6A5.9 5.9 0 0 0 18 7.9 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.6.8.8 1.3 1.6 1.5 2.6'/%3E%3Cpath d='M9.2 17.6h5.6'/%3E%3Cpath d='M10.4 21h3.2'/%3E%3C/svg%3E");
+}
+
+.prose .callout[data-callout="tip"]::before {
+  content: "Tip";
+}
+
+.prose .callout[data-callout="important"] {
+  --callout-edge: var(--callout-important);
+  --callout-ink: var(--callout-important);
+  --callout-wash: var(--callout-important-wash);
+  --callout-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 14.5a2 2 0 0 1-2 2H7.8L3 21V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3Cpath d='M12 6.9v4.2'/%3E%3Cpath d='M12 13.9h.01'/%3E%3C/svg%3E");
+}
+
+.prose .callout[data-callout="important"]::before {
+  content: "Important";
+}
+
+/* Warning and caution keep the one alarm colour the palette has always had. They are the two kinds
+   that mean stop, they are the two GitHub also draws in one family, and a third and a fourth red
+   would say nothing the word above them does not. */
+.prose .callout:is([data-callout="warning"], [data-callout="caution"]) {
+  --callout-edge: var(--danger);
+  --callout-ink: var(--danger-ink);
+  --callout-wash: var(--danger-wash);
+}
+
+.prose .callout[data-callout="warning"] {
+  --callout-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9.2v4'/%3E%3Cpath d='M12 16.9h.01'/%3E%3C/svg%3E");
+}
+
+.prose .callout[data-callout="warning"]::before {
+  content: "Warning";
+}
+
+.prose .callout[data-callout="caution"] {
+  --callout-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z'/%3E%3Cpath d='M12 8.2v4'/%3E%3Cpath d='M12 15.9h.01'/%3E%3C/svg%3E");
+}
+
+.prose .callout[data-callout="caution"]::before {
+  content: "Caution";
+}
+
+.prose .toggle {
+  margin: 1.4em 0;
+  padding: 0 1.1em;
+  border: 1px solid var(--doc-rule);
+  border-radius: var(--r-md);
+}
+
+.prose .toggle > summary {
+  padding: 0.7em 0;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.prose .toggle > summary::-webkit-details-marker {
+  display: none;
+}
+
+.prose .toggle > summary::before {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-right: 0.6em;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  color: var(--ink-faint);
+  transition: transform 140ms var(--ease);
+}
+
+.prose .toggle[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.prose .toggle > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
+}
+
+/* The summary is two things in one row and they want two different cursors. Everything in it opens
+   and closes the toggle, except the title, which is an attribute on the node made editable in place
+   by the node view in src/editor/blocks/toggle.ts and is typed into like any other text. */
+.prose .toggle > summary > [data-toggle-summary] {
+  cursor: text;
+}
+
+/* A toggle made from the toolbar starts untitled, and an empty inline element is nothing to aim a
+   click at. Not the [data-placeholder] rule further down: that one floats out of its line, which is
+   what an empty paragraph wants and what an empty word in the middle of a row does not, and it lets
+   clicks through to what is underneath, which here is the chrome that would open the toggle instead
+   of putting the caret where it was aimed. */
+.prose .toggle > summary > [data-toggle-summary][data-empty]::before {
+  content: "Summary";
+  color: var(--ink-faint);
+}
+
+.prose .toggle > [data-toggle-body] {
+  padding-bottom: 0.9em;
+}
+
+.prose .toggle > [data-toggle-body] > :first-child {
+  margin-top: 0;
+}
+
+.prose .toggle > [data-toggle-body] > :last-child {
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------------------------
+   Tables
+
+   A grid, laid out the way a spreadsheet is rather than the way HTML lays a table out by default.
+   Every column is the same width until somebody drags one, and the widths are fixed: a keystroke
+   in a cell never moves the column beside it. Under table-layout: auto every character typed
+   re-measured the whole table, and the columns shuffled under the caret while a word went into
+   one of them, which is the wrong thing for an editor even where it is the right thing for a page.
+
+   The node view prosemirror-tables installs wraps the table in .tableWrapper and writes a <col>
+   per column, with a width on each one that has been dragged, and puts the table's own min-width
+   inline: one column's minimum for every column that has not, see COLUMN_MIN in
+   src/editor/blocks/tables.ts. So the table fills the measure, the undragged columns share what
+   the dragged ones leave, and a table with more columns than the measure holds scrolls inside its
+   wrapper instead of squashing them. It must never widen the sheet, since a document that scrolls
+   sideways as a whole has lost its measure for every paragraph in it.
+
+   The bare shape underneath is for a table drawn with no node view around it, which the editor
+   never does but a preview might: it becomes its own scroll box and sizes to its content.
+   -------------------------------------------------------------------------------------------- */
+
+.prose table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 1.6em 0;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: var(--doc-table);
+  line-height: 1.5;
+}
+
+.prose :is(.table-wrap, .tableWrapper) {
+  max-width: 100%;
+  margin: 1.6em 0;
+  overflow-x: auto;
+}
+
+.prose :is(.table-wrap, .tableWrapper) > table {
+  display: table;
+  width: 100%;
+  margin: 0;
+  overflow: visible;
+  table-layout: fixed;
+}
+
+/* The bars that grow the table, and the gutter they are drawn in.
+
+   A widget decoration from src/editor/blocks/tables.ts puts them inside the <tbody>, after the
+   last row, which is the only place inside the table a decoration can land: the wrapper above is a
+   node view's element and nothing else may put a child in it. So they are taken out of flow, and
+   an absolutely positioned box among the rows is not wrapped in an anonymous cell and adds nothing
+   to the table's height. They resolve against the table rather than against the wrapper, which is
+   why the table is positioned here: the wrapper is the scroll box and the table is what scrolls
+   inside it, so a bar measured against the wrapper would sit at the edge of the window while the
+   column it appends after was somewhere off to the right.
+
+   The room they take is the sheet's own margin rather than the measure. The wrapper reserves a bar
+   on each of the two sides in padding and gives the same back in margin, so the table is still
+   exactly as wide as every other block on the page and the bar hangs in the gutter beside it,
+   which is the same trade the outline rail makes for the same space. Below the table there is
+   already a line of clearance to take it out of, so only what is left of it is still margin.
+
+   Both bars have to be inside the wrapper rather than beside it, because a scroll box clips on
+   both axes: overflow-x: auto computes the other axis to auto as well, so a bar hanging below the
+   table or past its right edge from outside would be cut off rather than drawn. */
+
+.prose .tableWrapper {
+  max-width: calc(100% + var(--doc-table-bar));
+  margin-right: calc(var(--doc-table-bar) * -1);
+  margin-bottom: calc(1.6em - var(--doc-table-bar));
+  padding-right: var(--doc-table-bar);
+  padding-bottom: var(--doc-table-bar);
+}
+
+.prose .tableWrapper > table {
+  position: relative;
+}
+
+/* The wrapper the two bars hang off. It draws nothing and takes no pointer events of its own,
+   since a box over the whole table would otherwise be the thing every click in every cell hit. */
+.prose .table-bars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.prose :is(.table-add-row, .table-add-col) {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--doc-rule);
+  /* The em the glyph is measured in. A button does not inherit the document's type, and without
+     this one the browser's own 13.333px would size it. */
+  font-size: var(--doc-table);
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+  /* Nothing at rest, and nothing under the pointer either: the strip under a table is a place
+     somebody clicks to put the caret past it, and an invisible button there would answer that
+     click by growing their table. The reveal below is what makes it pressable, so it can only ever
+     be pressed once it has said it is there. */
+  pointer-events: none;
+  transition: opacity 120ms var(--ease), background-color 120ms var(--ease), color 120ms var(--ease);
+}
+
+.prose :is(.table-add-row, .table-add-col) svg {
+  width: 0.75em;
+  height: 0.75em;
+}
+
+.prose .table-add-row {
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: var(--doc-table-bar);
+}
+
+.prose .table-add-col {
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: var(--doc-table-bar);
+}
+
+/* Revealed for the last row and the last column rather than for the table, which is the quieter
+   half of the same idea: a pointer resting anywhere in a long table is not a pointer asking to
+   grow it, and the row and the column each bar appends after are the two places the question
+   arises. `last-of-type` and not `:last-child`, because the widget above is the last child of the
+   <tbody> and the last row is no longer it.
+
+   The reveal is tree.css's, at the same two steps: the container's hover brings it up to a
+   presence, its own brings it the rest of the way. Its own hover is also what holds it there once
+   the pointer has left the row for the bar, and it cannot start it, since a bar nothing has
+   revealed takes no pointer events to be hovered with. */
+.prose table:has(> tbody > tr:last-of-type:hover) .table-add-row,
+.prose .table-add-row:is(:hover, :focus-visible),
+.prose table:has(> tbody > tr > :last-child:hover) .table-add-col,
+.prose .table-add-col:is(:hover, :focus-visible) {
+  opacity: 0.7;
+  pointer-events: auto;
+}
+
+.prose :is(.table-add-row, .table-add-col):is(:hover, :focus-visible) {
+  opacity: 1;
+  background: var(--doc-rule-strong);
+  color: var(--ink);
+}
+
+.prose :is(.table-add-row, .table-add-col):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Positioned because three things are drawn inside a cell against its box: the focus ring, the
+   cell selection wash and the column resize handle. Without it they resolve against .prose, which
+   is the whole document surface, and selecting two cells paints over the page.
+
+   Every edge of every cell is a rule, so the grid is drawn as a grid rather than as a header
+   underline over a set of row rules; with the borders collapsed a shared edge is one hairline. A
+   long word wraps rather than running under the next column, because a fixed column does not grow
+   to fit it. */
+.prose :is(th, td) {
+  position: relative;
+  padding: 0.45em 0.65em;
+  border: 1px solid var(--doc-rule);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.prose th {
+  font-weight: 650;
+  color: var(--ink);
+  background: var(--doc-wash);
+}
+
+/* Code in a cell wraps wherever it has to rather than claiming the width it needs. The column is
+   fixed, and an identifier broken across two lines is readable where an identifier run under the
+   next column is not. Dragging the column wider is the way to have both. */
+.prose :is(th, td) code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* GFM's per column alignment, carried on every cell so a cell never has to look upwards. A right
+   aligned column is a numeric column often enough to be worth the figures lining up. */
+
+.prose :is(th, td)[data-align="center"] {
+  text-align: center;
+}
+
+.prose :is(th, td)[data-align="right"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------------------------
+   Rules and maths
+   -------------------------------------------------------------------------------------------- */
+
+.prose hr {
+  height: 1px;
+  margin: 2.6em 0;
+  border: 0;
+  background: var(--doc-rule-strong);
+}
+
+.prose .math-block {
+  display: block;
+  margin: 1.5em 0;
+  padding: 0.9em 1.1em;
+  background: var(--code-surface);
+  border: 1px solid var(--code-line);
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
+  font-size: var(--doc-mono);
+  line-height: 1.55;
+  color: var(--ink-soft);
+  text-align: center;
+  overflow-x: auto;
+}
+
+/* --------------------------------------------------------------------------------------------
+   Editing affordances
+
+   The ProseMirror stylesheets ship hardcoded blues and a wrapping <pre>, and the app may not even
+   import them, so the parts that matter are restated here against tokens.
+   -------------------------------------------------------------------------------------------- */
+
+.prose ::selection {
+  background: var(--selection);
+}
+
+.prose .ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+.prose hr.ProseMirror-selectednode {
+  outline-offset: 3px;
+  background: var(--accent);
+}
+
+.prose .selectedCell::after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  inset: 0;
+  background: var(--selection);
+  pointer-events: none;
+}
+
+/* The cell taking the keys, ringed in the accent the way a spreadsheet does it. The class is a
+   node decoration from src/editor/blocks/tables.ts. Drawn a hairline outside the cell's box so the
+   ring sits over the grid lines rather than inside them, and only while the document itself holds
+   the keyboard: a ring on a cell in a document nobody is typing into is a lie about where the next
+   keystroke goes. */
+.prose.ProseMirror-focused :is(th, td).cell-focus::before {
+  z-index: 3;
+  position: absolute;
+  content: "";
+  inset: -1px;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+}
+
+/* A widget decoration prosemirror-tables puts inside the cell the pointer is near, so it needs its
+   geometry here or it lays out as a block and fills the cell with an accent bar. Half of it hangs
+   over the border it is drawn on, and it takes no pointer events of its own: the plugin is watching
+   the cell, not the handle. */
+.prose .column-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: calc(var(--doc-resize-handle) / -2);
+  width: var(--doc-resize-handle);
+  z-index: 2;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+/* columnResizing puts this on the contenteditable itself while a handle is hot, and the
+   contenteditable is the element carrying class="prose". */
+.prose.resize-cursor {
+  cursor: col-resize;
+}
+
+.prose .ProseMirror-gapcursor::after {
+  border-top-color: var(--accent);
+}
+
+/* Attribute driven rather than class driven, so the empty node's own data-placeholder is the whole
+   contract and there is no `is-` class in the stylesheet. It is a pseudo element because anything
+   in the document tree would be content, and the one thing a placeholder must never do is end up
+   in the file.
+
+   The words are the attribute's for every block whose own element is the one the caret stands in,
+   which is every block bar a fence. The four rules under this one are the exceptions, and each is
+   an exception for the same reason: what an empty block should prompt with is sometimes a fact
+   about where it sits rather than about what it is, and the decoration is handed a node without a
+   parent. A CSS descendant selector knows the ancestry for free, so it answers instead. */
+.prose [data-placeholder]::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+/* An empty paragraph that is the whole of a list item is the item, and "Start writing…" reads as a
+   second thing under a bullet rather than as the bullet's own line. */
+.prose li:not(.task-item) > p[data-placeholder]:first-child::before {
+  content: "List item";
+}
+
+.prose li.task-item > p[data-placeholder]:first-child::before {
+  content: "To-do";
+}
+
+.prose blockquote > p[data-placeholder]::before {
+  content: "Quote";
+}
+
+/* Nothing in a cell. A prompt is a hint about what a block is for, and a cell of a table the user
+   has just made is already unambiguous; the words are also wider than most columns, and floated out
+   of the line they would hang across the cell beside them. */
+.prose :is(th, td) > p[data-placeholder]::before {
+  content: "";
+}
+
+/* A fence is the one block whose own element is not where its caret is. TipTap writes
+   data-placeholder onto the empty node's element, which for a code block is the <pre>, and the rule
+   above floats the words out of the line at that element's content origin. A fence keeps its
+   padding on the <code> inside, so left to the general rule they landed on the top left corner of
+   the box, over the border, above and left of every character the block will ever hold, and in the
+   document's serif rather than the fence's mono. Placed against the <code>'s content box instead,
+   and set in the type the block is really in.
+
+   The second selector is the same block wearing a node view. A lane that draws a code block as
+   something bigger than a <pre> is handed the attribute on its own wrapper, and mermaid's is a div
+   holding the fence plus a picture it hides while there is nothing to draw. Matched structurally
+   rather than by that lane's class name, since what makes the offsets right is the fence being the
+   wrapper's first box and not which lane put it there. */
+.prose pre[data-placeholder]::before,
+.prose [data-placeholder]:has(> pre)::before {
+  position: absolute;
+  top: var(--doc-code-pad);
+  left: var(--doc-code-inset);
+  /* Over the fence rather than under it. A pseudo element is drawn before its own element's
+     children, and on the wrapper that means before the `<pre>`, whose fill is opaque. */
+  z-index: 1;
+  height: auto;
+  font-family: var(--font-mono);
+  font-size: var(--doc-mono);
+  line-height: 1.55;
+}
+
+/* And down onto the strip on the fence that bought one. Mermaid is the case that reaches here: its
+   lane draws the block through a node view, so the language is on a <pre> the placeholder's own
+   element only contains. */
+.prose pre[data-language][data-placeholder]::before,
+.prose [data-placeholder]:has(> pre[data-language])::before {
+  top: var(--doc-code-strip);
+}
+
+.prose [data-placeholder]:has(> pre) {
+  position: relative;
+}
+
+/* Find and replace paints inline decorations over live text, so a match cannot use --selection:
+   the real selection has to stay readable on top of one. A wash for every match, the ink inverted
+   for the one the caret is on. */
+.prose .search-match {
+  background: var(--accent-wash);
+  border-radius: var(--r-sm);
+}
+
+.prose .search-match-current {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* --------------------------------------------------------------------------------------------
+   The plain text surface
+
+   A .txt file is not prose and is never parsed as markdown, so it is a textarea rather than a
+   document. It still belongs to the same page: same paper, same measure, same clearance under the
+   toolbar, set in the monospace face because nothing in it is styled and its line breaks are real.
+   -------------------------------------------------------------------------------------------- */
+
+.plain-text {
+  display: block;
+  width: 100%;
+  min-height: 60vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--doc-mono);
+  line-height: 1.65;
+  tab-size: 2;
+  resize: none;
+  outline: none;
+  caret-color: var(--accent);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}

@@ -1,0 +1,159 @@
+.find-bar {
+  position: fixed;
+  top: calc(var(--titlebar-h) + 10px);
+  right: 18px;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 7px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-pop);
+  animation: find-drop 140ms var(--ease);
+}
+
+@keyframes find-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.find-expand {
+  flex: none;
+  width: 20px;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  color: var(--ink-faint);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.find-expand:hover {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.find-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.find-input {
+  width: 196px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+}
+
+.find-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.find-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.find-count {
+  min-width: 66px;
+  padding: 0 4px;
+  font-size: var(--t-1);
+  color: var(--ink-faint);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.find-btn {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.find-btn:hover:not(:disabled) {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.find-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.find-toggle {
+  height: 26px;
+  min-width: 28px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  font-weight: 600;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.find-toggle:hover {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.find-toggle[data-on="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.find-ww {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.find-action {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: var(--t-2);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.find-action:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.find-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

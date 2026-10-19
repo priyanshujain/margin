@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDREMUY1QThCOUMwNEEzMjYKUldRbW93U2NpMW9mVGEzak10dlZuNlVxaEw2cm9pbHFSRFZwdFBqMEc0cmJVVTZmdjR4L3YweXQK",
+      "endpoints": [
+        "https://github.com/priyanshujain/margin-docs/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

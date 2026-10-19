@@ -1,4 +1,4 @@
-.toggle {
+button.toggle {
   flex: none;
   position: relative;
   width: 34px;
@@ -19,23 +19,23 @@
   transition: transform 120ms var(--ease), background 120ms var(--ease);
 }
 
-.toggle[data-on] {
+button.toggle[data-on] {
   border-color: var(--accent);
   background: var(--accent);
 }
 
-.toggle[data-on] .toggle-knob {
+button.toggle[data-on] .toggle-knob {
   background: var(--accent-contrast);
   transform: translateX(14px);
 }
 
-.toggle:disabled {
+button.toggle:disabled {
   cursor: default;
   border-color: var(--line);
   background: var(--raised);
 }
 
-.toggle:disabled .toggle-knob {
+button.toggle:disabled .toggle-knob {
   background: var(--line-strong);
 }
 
@@ -65,7 +65,7 @@
   line-height: 1.45;
 }
 
-:root[data-touch] .toggle {
+:root[data-touch] button.toggle {
   width: 46px;
   height: 28px;
 }
@@ -75,6 +75,6 @@
   height: 22px;
 }
 
-:root[data-touch] .toggle[data-on] .toggle-knob {
+:root[data-touch] button.toggle[data-on] .toggle-knob {
   transform: translateX(18px);
 }

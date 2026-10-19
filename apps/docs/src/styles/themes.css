@@ -1,0 +1,65 @@
+/* The picker's preview tiles. A palette only ever matches the root element, so each tile carries
+   the six colours it draws, copied from @margin/core/tokens.css. */
+
+.theme-swatch[data-theme="light"] {
+  --paper: #fcfbf7;
+  --shell: #f1ece2;
+  --sidebar: #ece6da;
+  --ink: #23201b;
+  --line: #e3ddce;
+  --accent: #2a2622;
+}
+
+.theme-swatch[data-theme="sepia"] {
+  --paper: #f4e9d8;
+  --shell: #ece0c9;
+  --sidebar: #e7d9bf;
+  --ink: #453425;
+  --line: #dccdb1;
+  --accent: #6b4423;
+}
+
+.theme-swatch[data-theme="mist"] {
+  --paper: #ffffff;
+  --shell: #f3f4f6;
+  --sidebar: #eef0f3;
+  --ink: #21242a;
+  --line: #e5e7eb;
+  --accent: #2d3138;
+}
+
+.theme-swatch[data-theme="contrast"] {
+  --paper: #fffdf7;
+  --shell: #f3ede0;
+  --sidebar: #eee7d7;
+  --ink: #16130d;
+  --line: #cdc4ad;
+  --accent: #1a170f;
+}
+
+.theme-swatch[data-theme="dark"] {
+  --paper: #1d1a16;
+  --shell: #151310;
+  --sidebar: #1a1713;
+  --ink: #ece6da;
+  --line: #2c2823;
+  --accent: #efe9dc;
+}
+
+.theme-swatch[data-theme="graphite"] {
+  --paper: #1f1f1f;
+  --shell: #171717;
+  --sidebar: #1b1b1b;
+  --ink: #e4e4e4;
+  --line: #2e2e2e;
+  --accent: #e8e8e8;
+}
+
+.theme-swatch[data-theme="midnight"] {
+  --paper: #0f1218;
+  --shell: #090b0f;
+  --sidebar: #0c0f14;
+  --ink: #e6e9f0;
+  --line: #1f2530;
+  --accent: #6f8dff;
+}

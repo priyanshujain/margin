@@ -15,7 +15,8 @@
     "./keys": "./src/keys/index.ts",
     "./keys/bindings": "./src/keys/bindings.ts",
     "./ipc": "./src/ipc/index.ts",
-    "./settings": "./src/settings/index.ts"
+    "./settings": "./src/settings/index.ts",
+    "./editor": "./src/editor/index.ts"
   },
   "bin": {
     "margin-fonts": "./bin/sync-fonts.mjs"
@@ -33,6 +34,14 @@
   },
   "peerDependencies": {
     "@tauri-apps/api": "^2",
+    "@tiptap/core": "3.31.2",
+    "@tiptap/extension-placeholder": "3.31.2",
+    "@tiptap/pm": "3.31.2",
+    "@tiptap/starter-kit": "3.31.2",
+    "highlight.js": "^11.12.0",
+    "katex": "^0.18.4",
+    "lowlight": "^3.3.0",
+    "mermaid": "^11.17.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zustand": "^5.0.14"
@@ -40,15 +49,56 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@tauri-apps/api": "^2.11.1",
+    "@tiptap/core": "3.31.2",
+    "@tiptap/extension-placeholder": "3.31.2",
+    "@tiptap/pm": "3.31.2",
+    "@tiptap/starter-kit": "3.31.2",
+    "@types/katex": "^0.16.8",
     "@types/node": "^24.0.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "highlight.js": "^11.12.0",
+    "katex": "^0.18.4",
+    "lowlight": "^3.3.0",
+    "mermaid": "^11.17.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
     "vitest": "^3.2.4",
     "zustand": "^5.0.14"
+  },
+  "peerDependenciesMeta": {
+    "@tiptap/core": {
+      "optional": true
+    },
+    "@tiptap/extension-placeholder": {
+      "optional": true
+    },
+    "@tiptap/pm": {
+      "optional": true
+    },
+    "@tiptap/starter-kit": {
+      "optional": true
+    },
+    "highlight.js": {
+      "optional": true
+    },
+    "katex": {
+      "optional": true
+    },
+    "lowlight": {
+      "optional": true
+    },
+    "mermaid": {
+      "optional": true
+    }
+  },
+  "pnpm": {
+    "overrides": {
+      "prosemirror-model": "1.25.12",
+      "prosemirror-view": "1.42.6"
+    }
   }
 }

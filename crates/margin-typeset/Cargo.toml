@@ -1,0 +1,17 @@
+[package]
+name = "margin-typeset"
+description = "Typst PDF compile with bundled and system font catalogue"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+base64.workspace = true
+# typst and typst-pdf move together and are pinned to the same minor, because typst-as-lib links
+# against a particular pair.
+typst = "0.14.2"
+typst-pdf = "0.14.2"
+typst-as-lib = "0.15.5"
+fontdb = "0.23"

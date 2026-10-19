@@ -1,0 +1,540 @@
+import { Schema } from "@tiptap/pm/model";
+import type { AttributeSpec, Attrs, MarkSpec, Node as ProseMirrorNode, NodeSpec } from "@tiptap/pm/model";
+import { isDocumentColor } from "./colors";
+
+// This schema is the contract between the markdown bridge and the editor. The bridge may only
+// produce nodes declared here, and the serializer must be able to write every one of them back to
+// disk, so the set is closed: anything markdown can express that has no node becomes `raw`.
+//
+// Names are camelCase to match TipTap, so an M2 extension can adopt a spec from this file rather
+// than restating it. The order of the entries is the schema order, and it matters: the first node
+// in the `block` group is what ProseMirror fills empty content with, so `paragraph` comes first.
+
+export const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
+
+export type NodeName =
+  | "doc"
+  | "paragraph"
+  | "heading"
+  | "text"
+  | "hardBreak"
+  | "image"
+  | "mathInline"
+  | "blockquote"
+  | "bulletList"
+  | "orderedList"
+  | "listItem"
+  | "taskList"
+  | "taskItem"
+  | "codeBlock"
+  | "horizontalRule"
+  | "table"
+  | "tableRow"
+  | "tableHeader"
+  | "tableCell"
+  | "callout"
+  | "toggle"
+  | "mathBlock"
+  | "raw";
+
+export type MarkName = "link" | "strong" | "em" | "strikethrough" | "code" | "textColor" | "highlight";
+
+function validateColwidth(value: unknown): void {
+  if (value === null) return;
+  if (Array.isArray(value) && value.every((n) => typeof n === "number")) return;
+  throw new RangeError("colwidth must be null or an array of numbers");
+}
+
+// colspan, rowspan and colwidth exist for prosemirror-tables, which reads those exact names.
+// GFM has no spanning cells, so a table where either span is not 1 cannot be serialized and the
+// bridge has to fall back to a raw block. align is the GFM per column alignment from the delimiter
+// row; it is carried on every cell in the column so a cell can be styled without walking upwards.
+const cellAttrs: Record<string, AttributeSpec> = {
+  colspan: { default: 1, validate: "number" },
+  rowspan: { default: 1, validate: "number" },
+  colwidth: { default: null, validate: validateColwidth },
+  align: { default: null, validate: "string|null" },
+};
+
+function cellAttrsFromDOM(dom: HTMLElement): Attrs {
+  const widths = dom.getAttribute("data-colwidth");
+  return {
+    colspan: Number(dom.getAttribute("colspan") ?? 1),
+    rowspan: Number(dom.getAttribute("rowspan") ?? 1),
+    colwidth: widths && /^\d+(,\d+)*$/.test(widths) ? widths.split(",").map(Number) : null,
+    align: dom.getAttribute("data-align") || null,
+  };
+}
+
+function cellAttrsToDOM(node: ProseMirrorNode): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (node.attrs.colspan !== 1) out.colspan = String(node.attrs.colspan);
+  if (node.attrs.rowspan !== 1) out.rowspan = String(node.attrs.rowspan);
+  if (node.attrs.colwidth) out["data-colwidth"] = (node.attrs.colwidth as number[]).join(",");
+  if (node.attrs.align) out["data-align"] = String(node.attrs.align);
+  return out;
+}
+
+export const nodes: { [name in NodeName]: NodeSpec } = {
+  doc: {
+    content: "block+",
+  },
+
+  // `whitespace: "pre"` because a newline inside a paragraph is the author's own line wrap and not
+  // a space this editor may reflow. src/markdown/parse.ts keeps the soft breaks mdast gives it
+  // inside the text so a hand wrapped file is written back wrapped where it was, and prose.css
+  // draws a paragraph pre-wrap so those newlines are on screen exactly where the author put them.
+  // This field is the third part of that sentence, and it was the missing one: prosemirror-view
+  // reads it to decide how to parse the editor's own DOM back after a keystroke, and left at the
+  // default every soft wrap in the paragraph being typed into came back as a `hardBreak`, so one
+  // character typed into a hand wrapped paragraph put a backslash at every wrap point in it. It is
+  // also what lets Backspace join two hand wrapped paragraphs without rewriting both their wraps
+  // as breaks, since prosemirror-transform asks the same field before it joins.
+  //
+  // The parse rule says the opposite on purpose, and a rule's own answer outranks the node's:
+  // whitespace is significant in a paragraph THIS editor rendered, and meaningless in a `<p>` off
+  // somebody else's page, where the newlines are the html source's own indentation and keeping
+  // them would put line breaks and runs of spaces through the middle of a pasted sentence.
+  paragraph: {
+    content: "inline*",
+    group: "block",
+    whitespace: "pre",
+    parseDOM: [{ tag: "p", preserveWhitespace: false }],
+    toDOM: () => ["p", 0],
+  },
+
+  // `whitespace: "pre"` is the same three part sentence as the paragraph's, for the same reason: a
+  // setext heading is the one heading markdown lets an author wrap by hand, and the wrap is theirs.
+  // src/markdown/parse.ts builds a heading through the same call a paragraph goes through, so the
+  // soft break stays a newline in the text, and prose.css draws the whole surface pre-wrap, so the
+  // newline is on screen where the author put it. Left at the default, prosemirror-view read every
+  // one of those wraps back out of the editor's own DOM as a `hardBreak` on the next keystroke, and
+  // mdast writes a break inside a setext heading as a backslash and a line ending, so one character
+  // typed into a two line heading put a backslash into the user's own words.
+  //
+  // It holds at every level and not only at the two underlined ones. The deeper four have no setext
+  // spelling and so no hand wrap to keep, but they can still hold a line ending, spelled `&#xA;` on
+  // disk, and it round trips; left at the default a keystroke turned that into a break, which those
+  // levels write out as a space. On screen until the next save, and gone after it.
+  //
+  // The parse rules say the opposite on purpose, and a rule's own answer outranks the node's, which
+  // is the paragraph's reasoning verbatim: whitespace is significant in a heading THIS editor
+  // rendered, and meaningless in an `<h2>` off somebody else's page, where the newlines and the
+  // runs of spaces are the html source's own indentation.
+  heading: {
+    content: "inline*",
+    group: "block",
+    defining: true,
+    whitespace: "pre",
+    attrs: { level: { default: 1, validate: "number" } },
+    parseDOM: HEADING_LEVELS.map((level) => ({ tag: `h${level}`, attrs: { level }, preserveWhitespace: false })),
+    toDOM: (node) => [`h${node.attrs.level}`, 0],
+  },
+
+  text: {
+    group: "inline",
+  },
+
+  hardBreak: {
+    inline: true,
+    group: "inline",
+    selectable: false,
+    linebreakReplacement: true,
+    parseDOM: [{ tag: "br" }],
+    toDOM: () => ["br"],
+  },
+
+  // Markdown has no block image: ![alt](src) is phrasing content, and a picture on its own line is
+  // a paragraph whose only child is this node. Modelling it as a block would rewrite the file.
+  image: {
+    inline: true,
+    group: "inline",
+    draggable: true,
+    attrs: {
+      src: { default: "", validate: "string" },
+      alt: { default: null, validate: "string|null" },
+      title: { default: null, validate: "string|null" },
+    },
+    parseDOM: [
+      {
+        tag: "img[src]",
+        getAttrs: (dom) => ({
+          src: dom.getAttribute("src") ?? "",
+          alt: dom.getAttribute("alt"),
+          title: dom.getAttribute("title"),
+        }),
+      },
+    ],
+    toDOM: (node) => ["img", { src: node.attrs.src, alt: node.attrs.alt, title: node.attrs.title }],
+  },
+
+  mathInline: {
+    inline: true,
+    group: "inline",
+    atom: true,
+    attrs: { latex: { default: "", validate: "string" } },
+    parseDOM: [
+      {
+        tag: "span[data-latex]",
+        getAttrs: (dom) => ({ latex: dom.getAttribute("data-latex") ?? "" }),
+      },
+    ],
+    toDOM: (node) => ["span", { class: "math-inline", "data-latex": node.attrs.latex }, node.attrs.latex],
+  },
+
+  blockquote: {
+    content: "block+",
+    group: "block",
+    defining: true,
+    parseDOM: [{ tag: "blockquote" }],
+    toDOM: () => ["blockquote", 0],
+  },
+
+  // Task items are allowed in the plain lists as well as in taskList, because GFM lets a single
+  // list mix "- [ ] done" items with ordinary ones. The bridge emits taskList only when every item
+  // carries a checkbox; a mixed list is a bulletList or orderedList holding both kinds of item.
+  //
+  // The three lists are in a second group, and it is the one place a group here is read by
+  // something other than a content expression. TipTap decides whether a node is a list by looking
+  // for the word in this field and nothing else, so with `block` alone `toggleList` never found the
+  // list the caret was in: it fell through to the branch that wraps a new one, and the second press
+  // of the Bulleted list tool, which is the documented way back to a paragraph, lifted the item out
+  // and put it straight back. The tool did nothing and stayed lit over a list it could not take
+  // off, and Mod-Shift-7, 8 and 9 in src/editor/shortcuts.ts did nothing for the same reason.
+  // Adding a group takes nothing away: every content expression in this file asks for `block` and
+  // still gets these three, and no node here is called `list` for the name to collide with.
+  bulletList: {
+    content: "(listItem | taskItem)+",
+    group: "block list",
+    attrs: { tight: { default: true, validate: "boolean" } },
+    parseDOM: [{ tag: "ul", getAttrs: (dom) => ({ tight: !dom.hasAttribute("data-loose") }) }],
+    toDOM: (node) => ["ul", { "data-loose": node.attrs.tight ? null : "" }, 0],
+  },
+
+  orderedList: {
+    content: "(listItem | taskItem)+",
+    group: "block list",
+    attrs: {
+      start: { default: 1, validate: "number" },
+      tight: { default: true, validate: "boolean" },
+    },
+    parseDOM: [
+      {
+        tag: "ol",
+        getAttrs: (dom) => ({
+          start: Number(dom.getAttribute("start") ?? 1),
+          tight: !dom.hasAttribute("data-loose"),
+        }),
+      },
+    ],
+    toDOM: (node) => [
+      "ol",
+      { start: node.attrs.start === 1 ? null : node.attrs.start, "data-loose": node.attrs.tight ? null : "" },
+      0,
+    ],
+  },
+
+  // An item opens with a paragraph, which is what makes Enter, Tab and Backspace behave and what
+  // the TipTap list commands assume. Markdown does allow an item that starts with a nested list or
+  // a fence, so the bridge writes those items' list out as a raw block instead of mangling it.
+  listItem: {
+    content: "paragraph block*",
+    defining: true,
+    parseDOM: [{ tag: "li" }],
+    toDOM: () => ["li", 0],
+  },
+
+  taskList: {
+    content: "taskItem+",
+    group: "block list",
+    attrs: { tight: { default: true, validate: "boolean" } },
+    parseDOM: [
+      {
+        tag: "ul[data-task-list]",
+        priority: 60,
+        getAttrs: (dom) => ({ tight: !dom.hasAttribute("data-loose") }),
+      },
+    ],
+    toDOM: (node) => ["ul", { class: "task-list", "data-task-list": "", "data-loose": node.attrs.tight ? null : "" }, 0],
+  },
+
+  taskItem: {
+    content: "paragraph block*",
+    defining: true,
+    attrs: { checked: { default: false, validate: "boolean" } },
+    parseDOM: [
+      {
+        tag: "li[data-checked]",
+        priority: 60,
+        getAttrs: (dom) => ({ checked: dom.getAttribute("data-checked") !== "false" }),
+      },
+    ],
+    toDOM: (node) => ["li", { class: "task-item", "data-checked": node.attrs.checked ? "true" : "false" }, 0],
+  },
+
+  // meta is everything after the language on the opening fence, ```ts twoslash. Dropping it would
+  // silently rewrite the file, so it rides along even though nothing reads it yet.
+  codeBlock: {
+    content: "text*",
+    marks: "",
+    group: "block",
+    code: true,
+    defining: true,
+    whitespace: "pre",
+    attrs: {
+      language: { default: null, validate: "string|null" },
+      meta: { default: null, validate: "string|null" },
+    },
+    parseDOM: [
+      {
+        tag: "pre",
+        preserveWhitespace: "full",
+        getAttrs: (dom) => ({ language: dom.getAttribute("data-language"), meta: null }),
+      },
+    ],
+    toDOM: (node) => ["pre", { "data-language": node.attrs.language }, ["code", 0]],
+  },
+
+  horizontalRule: {
+    group: "block",
+    parseDOM: [{ tag: "hr" }],
+    toDOM: () => ["hr"],
+  },
+
+  table: {
+    content: "tableRow+",
+    group: "block",
+    tableRole: "table",
+    isolating: true,
+    parseDOM: [{ tag: "table" }],
+    toDOM: () => ["table", ["tbody", 0]],
+  },
+
+  tableRow: {
+    content: "(tableCell | tableHeader)*",
+    tableRole: "row",
+    parseDOM: [{ tag: "tr" }],
+    toDOM: () => ["tr", 0],
+  },
+
+  // Cells hold inline content, not blocks: a GFM cell cannot contain a paragraph, a list or a
+  // fenced block, and allowing them would let the editor build a table that cannot be written out.
+  tableHeader: {
+    content: "inline*",
+    attrs: cellAttrs,
+    tableRole: "header_cell",
+    isolating: true,
+    parseDOM: [{ tag: "th", getAttrs: (dom) => cellAttrsFromDOM(dom) }],
+    toDOM: (node) => ["th", cellAttrsToDOM(node), 0],
+  },
+
+  tableCell: {
+    content: "inline*",
+    attrs: cellAttrs,
+    tableRole: "cell",
+    isolating: true,
+    parseDOM: [{ tag: "td", getAttrs: (dom) => cellAttrsFromDOM(dom) }],
+    toDOM: (node) => ["td", cellAttrsToDOM(node), 0],
+  },
+
+  // A GitHub alert: a blockquote whose first line is "> [!NOTE]".
+  callout: {
+    content: "block+",
+    group: "block",
+    defining: true,
+    attrs: { kind: { default: "note", validate: "string" } },
+    parseDOM: [
+      {
+        tag: "div[data-callout]",
+        getAttrs: (dom) => ({ kind: dom.getAttribute("data-callout") || "note" }),
+      },
+    ],
+    toDOM: (node) => ["div", { class: "callout", "data-callout": node.attrs.kind }, 0],
+  },
+
+  // <details> on disk. The summary is an attribute rather than a child node, so it is plain text:
+  // a <summary> carrying markup is not modellable and belongs in a raw block.
+  toggle: {
+    content: "block+",
+    group: "block",
+    defining: true,
+    attrs: {
+      summary: { default: "", validate: "string" },
+      open: { default: false, validate: "boolean" },
+    },
+    parseDOM: [
+      {
+        tag: "details",
+        contentElement: (dom) => dom.querySelector<HTMLElement>("[data-toggle-body]") ?? dom,
+        getAttrs: (dom) => ({
+          summary: dom.querySelector("summary")?.textContent ?? "",
+          open: dom.hasAttribute("open"),
+        }),
+      },
+    ],
+    toDOM: (node) => [
+      "details",
+      { class: "toggle", open: node.attrs.open ? "" : null },
+      ["summary", {}, node.attrs.summary],
+      ["div", { "data-toggle-body": "" }, 0],
+    ],
+  },
+
+  mathBlock: {
+    group: "block",
+    atom: true,
+    attrs: { latex: { default: "", validate: "string" } },
+    parseDOM: [
+      {
+        tag: "div[data-math-block]",
+        getAttrs: (dom) => ({ latex: dom.getAttribute("data-latex") ?? "" }),
+      },
+    ],
+    toDOM: (node) => [
+      "div",
+      { class: "math-block", "data-math-block": "", "data-latex": node.attrs.latex },
+      node.attrs.latex,
+    ],
+  },
+
+  // The safety net. Anything the bridge cannot model, an HTML block, a footnote definition, a
+  // table with spanning cells, a construct nobody thought of, becomes one of these and MUST round
+  // trip byte identical: the serializer writes the text content out verbatim, with no escaping, no
+  // reflowing and no trailing newline of its own.
+  //
+  // The node holds the source twice on purpose. `source` is the slice exactly as it was read from
+  // disk and never changes; the text content is the same string, but editable, because the block
+  // is shown as a monospace field the user can type in. While the two are equal the block is
+  // provably untouched and the bytes are the file's own. Once they differ the user has edited it
+  // and the text content wins. Never write to `source` after parsing.
+  raw: {
+    content: "text*",
+    marks: "",
+    group: "block",
+    atom: false,
+    code: true,
+    defining: true,
+    isolating: true,
+    whitespace: "pre",
+    attrs: { source: { default: "", validate: "string" } },
+    parseDOM: [
+      {
+        tag: "pre[data-raw]",
+        priority: 60,
+        preserveWhitespace: "full",
+        getAttrs: (dom) => ({ source: dom.textContent ?? "" }),
+      },
+    ],
+    toDOM: () => ["pre", { class: "raw-block", "data-raw": "" }, ["code", 0]],
+  },
+};
+
+export const marks: { [name in MarkName]: MarkSpec } = {
+  // `run` is not a property of the link, it is what tells one link from the one beside it. Marks
+  // compare by type and attributes, and a document has no way to hold two adjacent leaves whose
+  // marks compare equal: `Fragment.fromArray` welds the text nodes into one and the serializer's
+  // own fold groups by the same equality, so `[a](/)[b](/)` was a single link before anything in
+  // the app could see it was two. It alternates between 0 and 1 rather than counting, so it leaves
+  // the default on every link that has no neighbour to be told apart from, which is every link in
+  // very nearly every file, and so a block re-parsed on its own gives the same number back.
+  //
+  // The DOM half is not decoration. prosemirror-view re-parses the editor's own DOM after some
+  // input, and a pair that came out of that parse without `data-run` is a pair merged back into
+  // one between the keystroke and the save.
+  link: {
+    inclusive: false,
+    attrs: {
+      href: { default: null, validate: "string|null" },
+      title: { default: null, validate: "string|null" },
+      run: { default: 0, validate: "number" },
+    },
+    parseDOM: [
+      {
+        tag: "a[href]",
+        getAttrs: (dom) => ({ href: dom.getAttribute("href"), title: dom.getAttribute("title"), run: dom.getAttribute("data-run") === "1" ? 1 : 0 }),
+      },
+    ],
+    toDOM: (mark) => ["a", { href: mark.attrs.href, title: mark.attrs.title, "data-run": mark.attrs.run ? "1" : null }, 0],
+  },
+
+  strong: {
+    group: "formatting",
+    parseDOM: [{ tag: "strong" }, { tag: "b" }],
+    toDOM: () => ["strong", 0],
+  },
+
+  em: {
+    group: "formatting",
+    parseDOM: [{ tag: "em" }, { tag: "i" }],
+    toDOM: () => ["em", 0],
+  },
+
+  strikethrough: {
+    group: "formatting",
+    parseDOM: [{ tag: "s" }, { tag: "del" }, { tag: "strike" }],
+    toDOM: () => ["s", 0],
+  },
+
+  // A code span's own content is literal, so nothing can be emphasised inside one, but a code span
+  // can itself be emphasised or linked: `**\`x\`**` and `[\`x\`](y)` are both ordinary markdown and
+  // both render on GitHub. Marks are a flat set here, so those two readings are the same set and
+  // the direction is decided once, by the serializer: src/markdown/serialize.ts puts code innermost
+  // and writes the emphasis around it. Excluding the formatting group instead, which this mark did
+  // until a document holding `**\`x\`**` could not be opened at all, is not a narrower rule but a
+  // wrong one: the bridge kept building the set the file described and every such document failed
+  // `doc.check()` on the way into the editor.
+  code: {
+    code: true,
+    parseDOM: [{ tag: "code" }],
+    toDOM: () => ["code", 0],
+  },
+
+  // Markdown has no colour, so these two are spelled as the inline html src/markdown writes and
+  // reads back: `<span style="color: #rrggbb">` and `<mark style="background-color: #rrggbb">`,
+  // and nothing else. The attribute is the hex out of the file, which is why the style is built
+  // here from the attribute rather than the attribute being inferred from a style the app found
+  // somewhere: the file decides what colour this is and the DOM is only where it is drawn.
+  //
+  // The data attribute is what makes both of these survive being read back out of the editor's own
+  // DOM, which is the same reason the link mark carries `data-run`: prosemirror-view re-parses the
+  // surface after some input, and a rule matching on the style attribute would have to re-read a
+  // string the browser has already normalised (`color: rgb(196, 69, 58)` on the way back out), so
+  // the colour is put somewhere the browser has no opinion about. A rule that finds no six digit
+  // hex there refuses the element outright rather than inventing a default, because a colour mark
+  // with no colour is a mark with nothing to say and one the serializer would have to drop.
+  textColor: {
+    attrs: { color: { default: null, validate: "string|null" } },
+    parseDOM: [
+      {
+        tag: "span[data-text-color]",
+        getAttrs: (dom) => {
+          const color = dom.getAttribute("data-text-color");
+          return isDocumentColor(color) ? { color } : false;
+        },
+      },
+    ],
+    toDOM: (mark) =>
+      isDocumentColor(mark.attrs.color)
+        ? ["span", { style: `color: ${mark.attrs.color}`, "data-text-color": mark.attrs.color }, 0]
+        : ["span", {}, 0],
+  },
+
+  highlight: {
+    attrs: { color: { default: null, validate: "string|null" } },
+    parseDOM: [
+      {
+        tag: "mark[data-highlight]",
+        getAttrs: (dom) => {
+          const color = dom.getAttribute("data-highlight");
+          return isDocumentColor(color) ? { color } : false;
+        },
+      },
+    ],
+    toDOM: (mark) =>
+      isDocumentColor(mark.attrs.color)
+        ? ["mark", { style: `background-color: ${mark.attrs.color}`, "data-highlight": mark.attrs.color }, 0]
+        : ["mark", {}, 0],
+  },
+};
+
+export const schema = new Schema<NodeName, MarkName>({ nodes, marks, topNode: "doc" });

@@ -1,0 +1,165 @@
+// Cmd+P: every file the index knows about in the open folder, matched against the path it sits at
+// relative to that folder.
+//
+// The query lives in the store rather than here because the store is also what asks SQLite, and the
+// two have to be able to disagree for a moment: the field shows the letter that was just typed
+// while the index is still answering the word before it. What sits in between is the debounce
+// below, so a typist crosses the IPC boundary once for a word rather than once for a letter.
+//
+// A slow answer landing after a fast one is already handled on the other side of that boundary, by
+// the sequence number in src/store/useSearch.ts, and this file deliberately does not grow a second
+// guard for the same race: two of them would have to agree forever, and the day they stopped the
+// symptom would be a row from a query nobody can see any more.
+//
+// An empty field is not an empty palette. Cmd+P with nothing typed offers the documents this
+// session has already been in, which is the other half of what people reach for the key for.
+
+import { useEffect, useState } from "react";
+import { notify, useEscapeLayer } from "@margin/core/hooks";
+import type { MatchRange } from "../ipc";
+import { onCommand } from "../keys/commands";
+import { useKeyContext } from "@margin/core/keys";
+import { useDocument } from "../store/useDocument";
+import { useIndex } from "../store/useIndex";
+import { useSearch } from "../store/useSearch";
+import { useWorkspace, type WorkspaceRoot } from "../store/useWorkspace";
+import { openDocumentHere } from "../windows";
+import { Palette, highlight, type PaletteRow, type PaletteStatus } from "./Palette";
+
+/** Long enough that a word is one query rather than five, short enough that the pause between two
+ * words already has an answer waiting in it. */
+const DEBOUNCE_MS = 90;
+
+/** How many already-visited documents an empty field offers before it stops being a shortlist. */
+const RECENT_LIMIT = 8;
+
+interface FileRow extends PaletteRow {
+  path: string;
+  name: string;
+  /** The path relative to the open folder, whole, because that is the string the index counted its
+   * match offsets against and a trimmed version of it would highlight the wrong characters. */
+  where: string;
+  ranges: readonly MatchRange[];
+}
+
+const baseName = (path: string): string => path.slice(path.lastIndexOf("/") + 1) || path;
+
+/** The absolute path a visited document is remembered by, shown the way a hit off the index is. */
+function relativeTo(path: string, root: WorkspaceRoot | null): string {
+  if (root !== null && path.startsWith(`${root.path}/`)) return path.slice(root.path.length + 1);
+  return path;
+}
+
+export function QuickOpen() {
+  const [open, setOpen] = useState(false);
+
+  const query = useSearch((s) => s.quickOpenQuery);
+  const setQuery = useSearch((s) => s.setQuickOpenQuery);
+  const runQuickOpen = useSearch((s) => s.runQuickOpen);
+  const hits = useSearch((s) => s.quickOpenHits);
+  const phase = useSearch((s) => s.quickOpenPhase);
+  const error = useSearch((s) => s.quickOpenError);
+  const indexPhase = useIndex((s) => s.phase);
+  const root = useWorkspace((s) => s.root);
+  const select = useWorkspace((s) => s.select);
+  const history = useDocument((s) => s.history);
+  const openPath = useDocument((s) => s.path);
+
+  useEffect(
+    () =>
+      onCommand("quick-open", () => {
+        // The field starts empty every time and last time's rows go with it. `runQuickOpen("")` is
+        // what clears them, and going through the store rather than reaching for the array directly
+        // is also what bumps its sequence number, so an answer to the query this palette was closed
+        // on cannot arrive inside the one it was just opened for.
+        setQuery("");
+        void runQuickOpen("");
+        setOpen(true);
+      }),
+    [setQuery, runQuickOpen],
+  );
+
+  useEscapeLayer(open, () => setOpen(false));
+  useKeyContext("overlay", open);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => void runQuickOpen(query), DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [open, query, runQuickOpen]);
+
+  if (!open) return null;
+
+  const choose = (path: string) => {
+    // Selected as well as opened, so the tree, and every command that acts on the selection, agree
+    // with the document that is now on screen. Opening a file from here and renaming it with the
+    // next key otherwise renames whatever was last clicked in the sidebar.
+    select(path);
+    openDocumentHere(path).catch((e) => notify(`Could not open: ${String(e)}`));
+  };
+
+  const searching = query.trim() !== "";
+
+  const recent = () => {
+    const seen = new Set<string>();
+    const rows: FileRow[] = [];
+    for (let i = history.length - 1; i >= 0 && rows.length < RECENT_LIMIT; i -= 1) {
+      const path = history[i];
+      // The document already on screen is not somewhere to go.
+      if (path === openPath || seen.has(path)) continue;
+      seen.add(path);
+      rows.push({
+        key: path,
+        path,
+        name: baseName(path),
+        where: relativeTo(path, root),
+        ranges: [],
+        run: () => choose(path),
+      });
+    }
+    return rows;
+  };
+
+  const rows: FileRow[] = searching
+    ? hits.map((hit) => ({
+        key: hit.path,
+        path: hit.path,
+        name: hit.name,
+        where: hit.relPath,
+        ranges: hit.ranges,
+        run: () => choose(hit.path),
+      }))
+    : recent();
+
+  const status = (): PaletteStatus => {
+    if (phase === "error") {
+      return { text: error ?? "The search index could not be read.", error: true };
+    }
+    if (!searching) {
+      return {
+        text: root === null ? "Open a folder first." : "Type to find a file by name or path.",
+      };
+    }
+    if (phase === "loading") return { text: "Searching…" };
+    if (indexPhase === "indexing") return { text: "Still indexing. Try again in a moment." };
+    return { text: "No file matches." };
+  };
+
+  return (
+    <Palette
+      label="Quick open"
+      placeholder="Go to file"
+      query={query}
+      onQuery={setQuery}
+      rows={rows}
+      status={status()}
+      onClose={() => setOpen(false)}
+      renderRow={(row) => (
+        <span className="palette-main" title={row.path}>
+          <span className="palette-name">{row.name}</span>
+          <span className="palette-where">{highlight(row.where, row.ranges)}</span>
+        </span>
+      )}
+    />
+  );
+}

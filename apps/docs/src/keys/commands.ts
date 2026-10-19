@@ -1,0 +1,466 @@
+// Every action the app can be asked to perform, in one table.
+//
+// A key, a menu item and a palette row all end up here, which is the point: the native menu emits
+// an id and that id is a command, not a second code path. The label lives on the command rather
+// than on the binding so the shortcut sheet, the palette and the menu cannot describe the same
+// thing in three different ways.
+//
+// A command whose result is a panel on screen (quick open, find, find in files, the command
+// palette, settings, the shortcuts sheet, the setup panel New Document opens) does not own a
+// visibility flag here: nothing in this module renders anything. Whichever component ends up
+// drawing that panel subscribes with `onCommand`, so the panel existing is not a precondition for
+// this table to compile and dispatch correctly.
+
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { cliInstall, defaultAppSet } from "../api/windows";
+import { runWritingTool, writingBridge } from "@margin/core/editor";
+import { canExport } from "../export/run";
+import { call } from "../ipc";
+import { checkForUpdates } from "../update";
+import { useDocument } from "../store/useDocument";
+import { useProofing } from "../store/useProofing";
+import { useTheme } from "../store/useTheme";
+import { notify } from "@margin/core/hooks";
+import { useWindow } from "../store/useWindow";
+import { useWorkspace, type TreeNode } from "../store/useWorkspace";
+import { claimDocument, leaveDocument, openFolderInNewWindow } from "../windows";
+
+const writing = writingBridge(call);
+
+const ISSUES_URL = "https://github.com/priyanshujain/margin-docs/issues";
+
+export type CommandId =
+  | "open-folder"
+  | "new-doc"
+  | "new-folder"
+  | "close-folder"
+  | "save"
+  | "export-pdf"
+  | "rename-file"
+  | "duplicate-file"
+  | "delete-file"
+  | "reveal-in-finder"
+  | "quick-open"
+  | "find"
+  | "find-in-files"
+  | "command-palette"
+  | "toggle-sidebar"
+  | "toggle-outline"
+  | "toggle-theme"
+  | "previous-document"
+  | "next-document"
+  | "insert-link"
+  | "underline-unsupported"
+  | "editor-width-tight"
+  | "editor-width-narrow"
+  | "editor-width-normal"
+  | "editor-width-wide"
+  | "editor-width-full"
+  | "toggle-spelling"
+  | "toggle-grammar"
+  | "correct-spelling"
+  | "writing-proofread"
+  | "writing-rewrite"
+  | "shortcuts"
+  | "settings"
+  | "check-updates"
+  | "report-issue"
+  | "install-cli"
+  | "make-default-app";
+
+export interface Command {
+  id: CommandId;
+  /** The words the shortcut sheet, the palette and any tooltip all use. */
+  label: string;
+  /** Whether the palette lists it. An action that needs a target the palette cannot show, or one
+   * fine-grained enough that fuzzy search would only add noise, is a key or a menu row instead. */
+  palette: boolean;
+  run: () => void;
+}
+
+const workspace = () => useWorkspace.getState();
+const doc = () => useDocument.getState();
+
+function findNode(nodes: readonly TreeNode[], path: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.path === path) return node;
+    if (node.children) {
+      const found = findNode(node.children, path);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * A folder to create into: the selection itself if it is one, its parent if it is a file, and the
+ * open folder when nothing is selected. Null only when no folder is open at all.
+ *
+ * Exported because New Document is a panel now rather than a file appearing in the tree, and the
+ * panel has to be told where the file it is about to write will land.
+ */
+export function targetDir(): string | null {
+  const { root, selectedPath } = workspace();
+  if (root === null) return null;
+  if (selectedPath) {
+    const node = findNode(root.tree, selectedPath);
+    if (node) return node.isDir ? node.path : node.path.slice(0, node.path.lastIndexOf("/"));
+  }
+  return root.path;
+}
+
+function requireSelection(): string | null {
+  const { selectedPath } = workspace();
+  if (!selectedPath) {
+    notify("Select a file or folder first");
+    return null;
+  }
+  return selectedPath;
+}
+
+async function openFolder(): Promise<void> {
+  try {
+    // A standalone document keeps its window, so the folder gets one of its own.
+    if (useWindow.getState().standalone) await openFolderInNewWindow();
+    else await workspace().openFolder();
+  } catch (e) {
+    notify(`Could not open folder: ${String(e)}`);
+  }
+}
+
+/**
+ * Dispatched rather than run, because what New Document produces first is the setup panel: the
+ * name and the faces are chosen there and the file is written when Save is pressed. Same shape as
+ * Export below, and the guard stays here for the same reason, since a panel that opens onto
+ * nowhere to put the file is a worse answer than one that never opens.
+ */
+function createDocument(): void {
+  if (targetDir() === null) {
+    notify("Open a folder first");
+    return;
+  }
+  dispatch("new-doc");
+}
+
+async function createFolder(): Promise<void> {
+  const dir = targetDir();
+  if (!dir) {
+    notify("Open a folder first");
+    return;
+  }
+  try {
+    await workspace().newFolder(dir);
+  } catch (e) {
+    notify(`Could not create the folder: ${String(e)}`);
+  }
+}
+
+/** For the panels that only ever search a folder. */
+function dispatchInFolder(id: CommandId): void {
+  if (workspace().root === null) {
+    notify("Open a folder first");
+    return;
+  }
+  dispatch(id);
+}
+
+function closeActiveFolder(): void {
+  if (workspace().root === null) {
+    notify("No folder is open");
+    return;
+  }
+  workspace().closeFolder();
+}
+
+async function saveDocument(): Promise<void> {
+  try {
+    await doc().save();
+  } catch (e) {
+    notify(`Could not save: ${String(e)}`);
+  }
+}
+
+async function renameSelected(): Promise<void> {
+  const path = requireSelection();
+  if (!path) return;
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  const next = window.prompt("Rename to", name);
+  if (!next || next === name) return;
+  try {
+    await workspace().renameEntry(path, next);
+  } catch (e) {
+    notify(`Could not rename: ${String(e)}`);
+  }
+}
+
+async function duplicateSelected(): Promise<void> {
+  const path = requireSelection();
+  if (!path) return;
+  try {
+    await workspace().duplicateEntry(path);
+  } catch (e) {
+    notify(`Could not duplicate: ${String(e)}`);
+  }
+}
+
+async function deleteSelected(): Promise<void> {
+  const path = requireSelection();
+  if (!path) return;
+  try {
+    await workspace().deleteEntry(path);
+  } catch (e) {
+    notify(`Could not delete: ${String(e)}`);
+  }
+}
+
+async function revealSelected(): Promise<void> {
+  const path = requireSelection();
+  if (!path) return;
+  try {
+    await workspace().revealInFinder(path);
+  } catch (e) {
+    notify(`Could not reveal in Finder: ${String(e)}`);
+  }
+}
+
+/** The history entry `step` away, if this window can switch to it. */
+async function canWalk(step: number): Promise<boolean> {
+  const { history, historyIndex } = doc();
+  const next = history[historyIndex + step];
+  if (next === undefined) return false;
+  return (await leaveDocument(next)) && (await claimDocument(next));
+}
+
+async function goBack(): Promise<void> {
+  try {
+    if (await canWalk(-1)) await doc().back();
+  } catch (e) {
+    notify(`Could not go back: ${String(e)}`);
+  }
+}
+
+async function goForward(): Promise<void> {
+  try {
+    if (await canWalk(1)) await doc().forward();
+  } catch (e) {
+    notify(`Could not go forward: ${String(e)}`);
+  }
+}
+
+/** Both answer with a sentence for any outcome the user should hear about, cancelling included. */
+async function reportIntegration(run: () => Promise<string>, failed: string): Promise<void> {
+  try {
+    notify(await run());
+  } catch (e) {
+    notify(`${failed}: ${String(e)}`);
+  }
+}
+
+const listeners = new Map<CommandId, Set<() => void>>();
+
+/**
+ * Lets a not-yet-built panel react to its own command without this module owning that panel's
+ * visibility. The quick open palette, for instance, calls `onCommand("quick-open", () =>
+ * setOpen(true))` once, on mount, rather than this table reaching into a store it does not own.
+ */
+export function onCommand(id: CommandId, listener: () => void): () => void {
+  const set = listeners.get(id) ?? new Set<() => void>();
+  set.add(listener);
+  listeners.set(id, set);
+  return () => {
+    set.delete(listener);
+  };
+}
+
+function dispatch(id: CommandId): void {
+  listeners.get(id)?.forEach((listener) => listener());
+}
+
+const TABLE: Record<CommandId, Omit<Command, "id">> = {
+  "open-folder": { label: "Open Folder…", palette: true, run: () => void openFolder() },
+  "new-doc": { label: "New Document", palette: true, run: createDocument },
+  "new-folder": { label: "New Folder", palette: true, run: () => void createFolder() },
+  "close-folder": { label: "Close Folder", palette: false, run: closeActiveFolder },
+  save: { label: "Save", palette: true, run: () => void saveDocument() },
+  // Dispatched rather than run, because what Export produces first is a panel: the pages go on
+  // screen and the save panel is a button on that panel. The guard stays here, because a preview
+  // that opens onto "no document open" is a worse answer than one that never opens.
+  "export-pdf": {
+    label: "Export as PDF…",
+    palette: true,
+    run: () => {
+      if (canExport()) dispatch("export-pdf");
+    },
+  },
+  "rename-file": { label: "Rename", palette: false, run: () => void renameSelected() },
+  "duplicate-file": { label: "Duplicate", palette: false, run: () => void duplicateSelected() },
+  "delete-file": { label: "Delete", palette: false, run: () => void deleteSelected() },
+  "reveal-in-finder": {
+    label: "Reveal in Finder",
+    palette: false,
+    run: () => void revealSelected(),
+  },
+
+  "quick-open": { label: "Quick Open…", palette: true, run: () => dispatchInFolder("quick-open") },
+  find: { label: "Find…", palette: true, run: () => dispatch("find") },
+  "find-in-files": {
+    label: "Find in Files…",
+    palette: true,
+    run: () => dispatchInFolder("find-in-files"),
+  },
+  "command-palette": {
+    label: "Command Palette…",
+    palette: false,
+    run: () => dispatch("command-palette"),
+  },
+
+  "toggle-sidebar": {
+    label: "Toggle Sidebar",
+    palette: true,
+    run: () => dispatch("toggle-sidebar"),
+  },
+  // The headings list under the tree, which src/components/Outline.tsx draws and is subscribed
+  // to. Dispatched for the same reason the sidebar is: the flag is the panel's own.
+  "toggle-outline": {
+    label: "Toggle Outline",
+    palette: true,
+    run: () => dispatch("toggle-outline"),
+  },
+  "toggle-theme": { label: "Toggle Theme", palette: true, run: () => useTheme.getState().toggle() },
+
+  "previous-document": { label: "Previous Document", palette: false, run: () => void goBack() },
+  "next-document": { label: "Next Document", palette: false, run: () => void goForward() },
+
+  // The one thing the formatting pill does that is also a command, and it is here because it needs
+  // a chord: Cmd+K is what a Google Docs user presses for a link, and a chord this table does not
+  // own is a chord that has to be fished out of a window listener, which is what src/editor/
+  // Toolbar.tsx was doing before this row existed. Bold, italic and the headings stay TipTap's
+  // own, since nothing outside the editor ever has to reach them.
+  //
+  // Not in the palette. Its target is the selection, which is a thing the palette cannot show a
+  // row about, and one formatting entry in a list of application commands would read as the other
+  // ten being missing rather than as the only one that has a command id.
+  "insert-link": { label: "Insert Link…", palette: false, run: () => dispatch("insert-link") },
+
+  // Cmd+U, answered rather than left alone. Markdown has no underline, so there is nothing to
+  // toggle and nothing this app is willing to approximate it with, and conventions.md's rule for
+  // an edit with no spelling is that it is declined out loud. Leaving the chord unbound would not
+  // be leaving it alone either: the document is contenteditable, and WebKit's own answer to Cmd+U
+  // is to wrap the selection in a `<u>` the schema cannot hold and the writer would drop on the
+  // next save. Taking the key is how that is prevented, so this row is a refusal and a guard at
+  // once.
+  "underline-unsupported": {
+    label: "Underline (markdown has none)",
+    palette: false,
+    run: () => notify("Markdown has no underline. Bold or italic is as close as it spells."),
+  },
+
+  "editor-width-tight": {
+    label: "Tight Editor Width",
+    palette: true,
+    run: () => dispatch("editor-width-tight"),
+  },
+  "editor-width-narrow": {
+    label: "Narrow Editor Width",
+    palette: true,
+    run: () => dispatch("editor-width-narrow"),
+  },
+  "editor-width-normal": {
+    label: "Normal Editor Width",
+    palette: true,
+    run: () => dispatch("editor-width-normal"),
+  },
+  "editor-width-wide": {
+    label: "Wide Editor Width",
+    palette: true,
+    run: () => dispatch("editor-width-wide"),
+  },
+  "editor-width-full": {
+    label: "Full Editor Width",
+    palette: true,
+    run: () => dispatch("editor-width-full"),
+  },
+
+  // Not dispatched: there is no panel to open and no component that has to be listening, so this
+  // one turns the setting over directly and the editor's decoration plugin reads it from there.
+  "toggle-spelling": {
+    label: "Check Spelling While Typing",
+    palette: true,
+    run: () => useProofing.getState().toggle(),
+  },
+
+  // Its twin, and turned over the same way. The two are separate settings because the checkers
+  // are: spelling is the system's and grammar is Harper's, and a user who wants one without the
+  // other is not asking for anything strange.
+  "toggle-grammar": {
+    label: "Check Grammar While Typing",
+    palette: true,
+    run: () => useProofing.getState().toggleGrammar(),
+  },
+
+  // Dispatched, unlike the one above it, because its whole result is the correction menu on screen
+  // and the component that draws that menu is the only thing here that knows where the caret is.
+  //
+  // Not in the palette either. What it acts on is the misspelling beside the caret, which is a
+  // target the palette cannot show a row for, and by the time a command name has been typed at a
+  // field the caret is no longer the one the user meant.
+  "correct-spelling": {
+    label: "Correct Spelling",
+    palette: false,
+    run: () => dispatch("correct-spelling"),
+  },
+
+  // Writing Tools is the system's, but these two commands are not, and that is the point: the
+  // chords and the menu rows are this app's own, so every way in passes the selection guard in
+  // src/editor/writing.ts before the system is asked to rewrite anything. On a Mac without Apple
+  // Intelligence there is no submenu to perform, and the honest answer is a sentence rather than a
+  // gesture that quietly does nothing.
+  "writing-proofread": {
+    label: "Proofread with Writing Tools",
+    palette: true,
+    run: () => void runWritingTool("proofread", writing),
+  },
+  "writing-rewrite": {
+    label: "Rewrite with Writing Tools",
+    palette: true,
+    run: () => void runWritingTool("rewrite", writing),
+  },
+
+  shortcuts: { label: "Keyboard Shortcuts", palette: true, run: () => dispatch("shortcuts") },
+  settings: { label: "Settings…", palette: true, run: () => dispatch("settings") },
+  "check-updates": {
+    label: "Check for Updates…",
+    palette: true,
+    run: () => void checkForUpdates(),
+  },
+  "report-issue": {
+    label: "Report an Issue…",
+    palette: true,
+    run: () => {
+      openUrl(ISSUES_URL).catch(() => notify("Could not open the browser"));
+    },
+  },
+  "install-cli": {
+    label: "Install ‘mdocs’ Command in PATH",
+    palette: true,
+    run: () => void reportIntegration(cliInstall, "Could not install mdocs"),
+  },
+  "make-default-app": {
+    label: "Make Margin Docs the Default Markdown App",
+    palette: true,
+    run: () =>
+      void reportIntegration(defaultAppSet, "Could not make Margin Docs the default"),
+  },
+};
+
+/** Declaration order, which is the order the palette lists them in. */
+export const COMMANDS: readonly Command[] = (Object.keys(TABLE) as CommandId[]).map((id) => ({
+  id,
+  ...TABLE[id],
+}));
+
+export const commandLabel = (id: CommandId): string => TABLE[id].label;
+
+export function runCommand(id: CommandId): void {
+  TABLE[id].run();
+}

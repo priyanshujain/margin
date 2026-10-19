@@ -54,6 +54,7 @@ export function suiteBindings({ quickOpen = false }: SuiteOptions = {}): Binding
             label: "Quick open",
             context: "view",
             group: APP_GROUP,
+            allowInInput: true,
             palette: true,
           } satisfies CommandBinding,
         ]
@@ -73,7 +74,15 @@ export function suiteBindings({ quickOpen = false }: SuiteOptions = {}): Binding
       context: "global",
       group: APP_GROUP,
     },
-    { keys: ["cmd+,"], command: SETTINGS, label: "Settings", context: "view", group: APP_GROUP, palette: true },
+    {
+      keys: ["cmd+,"],
+      command: SETTINGS,
+      label: "Settings",
+      context: "view",
+      group: APP_GROUP,
+      allowInInput: true,
+      palette: true,
+    },
     {
       keys: [],
       command: TOGGLE_THEME,

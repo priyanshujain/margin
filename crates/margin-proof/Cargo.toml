@@ -1,0 +1,17 @@
+[package]
+name = "margin-proof"
+description = "Proofing: Harper grammar and the system spell checker (NSSpellChecker on macOS)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+# Pinned exactly: the [patch] stubs in stubs/ are tied to this version's burn/cubecl graph.
+harper-core = { version = "=2.5.0", features = ["concurrent"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-app-kit = { workspace = true, features = ["NSSpellChecker"] }
+objc2-foundation = { workspace = true, features = ["NSArray", "NSRange", "NSTextCheckingResult"] }

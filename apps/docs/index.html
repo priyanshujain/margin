@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!--theme-boot-->
+    <script>
+      (function () {
+        var root = document.documentElement;
+
+        function saved(key) {
+          try {
+            return localStorage.getItem(key);
+          } catch (e) {
+            return null;
+          }
+        }
+
+        var s = saved("margindocs-sidebar");
+        root.setAttribute("data-sidebar", s === "false" ? "false" : "true");
+
+        // The five names are the editor-width command ids in src/keys/commands.ts and the table in
+        // src/width.ts, so a width the palette can set is a width this script can restore.
+        var WIDTHS = ["tight", "narrow", "normal", "wide", "full"];
+        var w = saved("margindocs-width");
+        if (WIDTHS.indexOf(w) !== -1) root.setAttribute("data-width", w);
+      })();
+    </script>
+    <title>Margin Docs</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

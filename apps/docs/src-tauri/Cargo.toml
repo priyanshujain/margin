@@ -1,0 +1,77 @@
+[package]
+name = "margin-docs"
+version = "0.0.1"
+description = "A folder of markdown documents"
+authors = ["Margin"]
+edition = "2024"
+license = "MIT"
+
+[lib]
+name = "margin_docs_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+margin-log = { path = "../../../crates/margin-log", features = ["tauri"] }
+margin-mac = { path = "../../../crates/margin-mac" }
+margin-proof = { path = "../../../crates/margin-proof" }
+margin-shell = { path = "../../../crates/margin-shell" }
+margin-sqlite = { path = "../../../crates/margin-sqlite" }
+margin-typeset = { path = "../../../crates/margin-typeset" }
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Gitignore-aware directory walking for the folder tree: a document folder under version control
+# should not surface .git or its own ignored build output as if they were documents.
+ignore = "0.4"
+notify = "8"
+notify-debouncer-full = "0.7"
+# Deleting a document goes to the OS trash rather than unlinking it outright.
+trash = "5"
+# rusqlite 0.40 has no separate "fts5" cargo feature to ask for: libsqlite3-sys's bundled build
+# compiles SQLITE_ENABLE_FTS5 in unconditionally, so "bundled" alone is what gets full text search.
+# margin-calendar does not carry this comment because it has no need for full text search.
+rusqlite = { version = "0.40", features = ["bundled"] }
+tokio = { version = "1", features = ["sync", "time"] }
+
+# Inline image bytes arrive over the IPC boundary as base64: a mermaid diagram is rendered to SVG
+# in the webview and has no file behind it to read.
+base64 = "0.22"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSResponder", "NSWorkspace"] }
+objc2-foundation = { version = "0.3", features = ["NSString", "NSError", "NSURL"] }
+block2 = "0.6"
+
+# There is no auto-updater and no process to restart on a phone: the store is the update channel.
+# Gated here as well as behind cfg(desktop) in lib.rs so a mobile build does not compile them at all.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+# harper-core transitively declares optional, disabled GPU backends through burn: a `burn-cuda`
+# CUDA backend and, under cubecl, a `cubecl-cpu` LLVM/MLIR JIT runtime. Both are off, and neither
+# is ever compiled, but Cargo still version-resolves and downloads the whole dead subtree behind
+# them, which is the cuda toolchain crates on one side and tracel-llvm plus its LLVM bundler on the
+# other. Replacing the two roots with empty stubs takes several hundred crates out of the graph and
+# a large part of the build with them.
+[patch.crates-io]
+burn-cuda = { path = "../../../crates/margin-proof/stubs/burn-cuda" }
+cubecl-cpu = { path = "../../../crates/margin-proof/stubs/cubecl-cpu" }
+
+# Optimize dependencies even in dev builds. Harper's grammar engine, and the burn-ndarray POS
+# tagger under it, is roughly ten times slower unoptimized, which is the difference between a check
+# that lands while the user is still typing the next word and one that takes seconds. This compiles
+# dependencies at opt-level 3 and leaves this crate itself unoptimized, so incremental rebuilds of
+# our own code stay fast. The first build after adding it is slower, once.
+[profile.dev.package."*"]
+opt-level = 3

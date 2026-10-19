@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-exclude = ["apps"]
+exclude = ["apps", "crates/margin-proof/stubs"]
 
 [workspace.package]
 version = "0.1.0"
@@ -35,3 +35,9 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSError"] }
 block2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSWindow", "NSView", "NSControl", "NSButton"] }
+
+# harper-core resolves an optional, disabled CUDA backend and an LLVM JIT runtime it never
+# compiles. Empty stubs keep that subtree out of the graph. Apps that use margin-proof repeat this.
+[patch.crates-io]
+burn-cuda = { path = "crates/margin-proof/stubs/burn-cuda" }
+cubecl-cpu = { path = "crates/margin-proof/stubs/cubecl-cpu" }

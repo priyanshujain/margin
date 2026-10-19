@@ -1,0 +1,186 @@
+// The width control there was no way to click: a title bar button that opens the five named steps
+// with the applied one ticked, and names it in its own tooltip.
+//
+// It belongs in the title bar rather than in the editor pill. Everything in the pill edits the
+// file; this edits the app's view of it and touches no byte on disk, and the sidebar toggle a few
+// buttons along is the other control of exactly that kind, persisted under the same `margindocs-`
+// prefix and restored by the same boot script. The theme was a third until this week and is in
+// Settings now, where it can be a grid of tiles each drawn in the palette it offers, which is how
+// a colour is judged; a measure is judged against the page it is holding, so this one stayed out
+// here where the page is. The pill is also the wrong
+// place mechanically: its tools go dead while a save conflict is open, and being unable to widen
+// the page because the file moved on disk is nonsense, and the foot of src/styles/toolbar.css
+// records that the row is already four pixels over the pane at the app's minimum window.
+//
+// The DOM is the source of truth and this component's state is a cache of it. `applyWidth` writes
+// `data-width` on the root element and index.html's boot script writes it before React exists,
+// while the keyboard commands and the native menu both call `applyWidth` without telling anyone,
+// so the attribute is read on mount and watched with a MutationObserver. A component that
+// remembered the last width it set itself would open showing the wrong one the first time somebody
+// reached for the key instead.
+//
+// Focus is not taken from the document. A mouse press on any button here is prevented, so the
+// caret stays in the sentence somebody is in the middle of; only a keyboard open moves focus into
+// the menu, and closing puts it back where it came from.
+
+import { useEffect, useId, useRef, useState } from "react";
+import { Icon, icons } from "@margin/core/ui";
+import { useEscapeLayer } from "@margin/core/hooks";
+import { applyWidth, WIDTHS, type EditorWidth } from "../width";
+
+const ITEM = ".width-menu-item";
+
+// Both glyphs are margin-shared's, so this control looks the same in the book app. The arrow does
+// not change with the applied width and deliberately does not: an earlier version drew lines of
+// text at each measure so the button said which width was on, and the two apps then had
+// different pictures of the same control. The width is on the menu, ticked, one click away.
+const { CHECK: CHECK_D, WIDTH: WIDTH_ICON } = icons;
+
+function isWidth(value: string | null): value is EditorWidth {
+  return WIDTHS.includes(value as EditorWidth);
+}
+
+/** Capitalised for a menu. The names themselves belong to src/width.ts and the command ids. */
+function widthLabel(width: EditorWidth): string {
+  return width.charAt(0).toUpperCase() + width.slice(1);
+}
+
+/** No attribute at all is the default, because normal is the measure the sheet already has and
+ * every other width is a rule keyed off the attribute, and because the boot script only sets it
+ * when something was saved. */
+function appliedWidth(): EditorWidth {
+  const value = document.documentElement.getAttribute("data-width");
+  return isWidth(value) ? value : "normal";
+}
+
+function useAppliedWidth(): EditorWidth {
+  const [width, setWidth] = useState(appliedWidth);
+
+  useEffect(() => {
+    const read = () => setWidth(appliedWidth());
+    const observer = new MutationObserver(read);
+    observer.observe(document.documentElement, { attributeFilter: ["data-width"] });
+    // The attribute can have moved between the first render and this effect running.
+    read();
+    return () => observer.disconnect();
+  }, []);
+
+  return width;
+}
+
+export function WidthMenu() {
+  const width = useAppliedWidth();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  /** Where focus was when a keyboard user opened the menu, and null when a mouse user did, since
+   * that press never moved it. */
+  const returnTo = useRef<HTMLElement | null>(null);
+  const focusOnOpen = useRef(false);
+  const labelId = useId();
+
+  const close = (restoreFocus = true) => {
+    setOpen(false);
+    const el = returnTo.current;
+    returnTo.current = null;
+    if (restoreFocus && el?.isConnected) el.focus();
+  };
+
+  useEscapeLayer(open, () => close());
+
+  useEffect(() => {
+    if (!open || !focusOnOpen.current) return;
+    focusOnOpen.current = false;
+    menuRef.current?.querySelector<HTMLElement>(ITEM)?.focus();
+  }, [open]);
+
+  const toggle = (e: React.MouseEvent) => {
+    if (open) {
+      close();
+      return;
+    }
+    // `detail` is 0 when Enter or Space activated the button and 1 when a pointer did. A keyboard
+    // user cannot reach the items unless focus is moved into the menu; a mouse user is mid
+    // sentence and would lose their caret to a setting that has nothing to do with the text.
+    const byKeyboard = e.detail === 0;
+    returnTo.current = byKeyboard ? (document.activeElement as HTMLElement | null) : null;
+    focusOnOpen.current = byKeyboard;
+    setOpen(true);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const all = Array.from(menuRef.current?.querySelectorAll<HTMLElement>(ITEM) ?? []);
+    const at = all.indexOf(document.activeElement as HTMLElement);
+    const next = e.key === "ArrowDown" ? (at + 1) % all.length : (at - 1 + all.length) % all.length;
+    all[next]?.focus();
+  };
+
+  const choose = (next: EditorWidth) => {
+    applyWidth(next);
+    close();
+  };
+
+  const name = `Editor width: ${widthLabel(width)}`;
+
+  return (
+    <div
+      className="menu-wrap"
+      // Tabbing out of an open menu has to leave the menu behind, since nothing here traps focus,
+      // and focus that has deliberately gone somewhere else is not dragged back.
+      onBlur={(e) => {
+        if (!open || e.currentTarget.contains(e.relatedTarget)) return;
+        close(false);
+      }}
+    >
+      <button
+        className="icon-button"
+        data-active={open}
+        title={name}
+        aria-label={name}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={toggle}
+      >
+        <Icon d={WIDTH_ICON} />
+      </button>
+      {open && (
+        <>
+          <div className="menu-backdrop" onClick={() => close()} />
+          <div
+            ref={menuRef}
+            className="menu"
+            role="menu"
+            aria-labelledby={labelId}
+            onKeyDown={onKeyDown}
+          >
+            {/* Five words that mean nothing on their own, so the menu says what they are a width
+                of and then lends the same line to assistive tech as its own name. Presentational
+                because a menu's children are meant to be its items, and because being announced as
+                the menu's name and again as a line inside it is the same sentence twice. */}
+            <div className="menu-label" id={labelId} role="presentation">
+              Editor width
+            </div>
+            {WIDTHS.map((w) => (
+              <button
+                key={w}
+                className="width-menu-item"
+                role="menuitemradio"
+                aria-checked={w === width}
+                data-on={w === width}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => choose(w)}
+              >
+                <span className="width-menu-check" aria-hidden="true">
+                  <Icon d={CHECK_D} size={14} />
+                </span>
+                {widthLabel(w)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
