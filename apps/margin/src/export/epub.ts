@@ -1,0 +1,601 @@
+import { call } from "../ipc";
+import type { JSONContent } from "@tiptap/core";
+import { type Book, type FigurePlacement, TRIM_DIMS, FIGURE_WIDTH, bodyNumber, chapterKind, isResizablePlacement, partNumber, partRoman } from "../model/book";
+import { bundledFont, fontStack, fontsUsed } from "../model/fonts";
+
+export interface EpubFile {
+  path: string;
+  data: string;
+  encoding: "utf8" | "base64";
+}
+
+function esc(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function attr(text: string): string {
+  return esc(text).replace(/"/g, "&quot;");
+}
+
+function slug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function imageExtension(dataUrl: string): string {
+  const match = /^data:image\/([a-z0-9.+-]+)/i.exec(dataUrl);
+  const kind = (match?.[1] ?? "png").toLowerCase().split("+")[0];
+  return kind === "jpeg" ? "jpg" : kind;
+}
+
+function mediaType(path: string): string {
+  if (path.endsWith(".jpg")) return "image/jpeg";
+  if (path.endsWith(".png")) return "image/png";
+  if (path.endsWith(".gif")) return "image/gif";
+  if (path.endsWith(".webp")) return "image/webp";
+  if (path.endsWith(".svg")) return "image/svg+xml";
+  return "application/octet-stream";
+}
+
+interface FontAssets {
+  files: EpubFile[];
+  faces: string;
+  manifest: string[];
+}
+
+function base64FromBuffer(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function fetchFontBase64(file: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/fonts/${file}`);
+    if (!res.ok) return null;
+    return base64FromBuffer(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+async function loadFontAssets(book: Book): Promise<FontAssets> {
+  // Ids from the shared helper, resolved back to records: an EPUB embeds the font files, so this
+  // is the one caller that needs a face's filenames rather than its name.
+  const used = fontsUsed(book.settings.fonts)
+    .bundled.map((id) => bundledFont(id))
+    .filter((font) => font !== undefined);
+  const files: EpubFile[] = [];
+  const faces: string[] = [];
+  const manifest: string[] = [];
+  let n = 0;
+  for (const font of used) {
+    const variants = [{ file: font.regular, style: "normal" }];
+    if (font.italic) variants.push({ file: font.italic, style: "italic" });
+    for (const variant of variants) {
+      const data = await fetchFontBase64(variant.file);
+      if (!data) continue;
+      const href = `fonts/${variant.file}`;
+      const id = `font-${++n}`;
+      files.push({ path: `OEBPS/${href}`, data, encoding: "base64" });
+      manifest.push(`<item id="${id}" href="${attr(href)}" media-type="font/ttf"/>`);
+      faces.push(
+        `@font-face {\n  font-family: "${font.family}";\n  font-style: ${variant.style};\n  font-weight: ${font.weight};\n  src: url("${href}");\n}`,
+      );
+    }
+  }
+  return { files, faces: faces.join("\n\n"), manifest };
+}
+
+function inline(node: JSONContent): string {
+  if (node.type === "text") {
+    let text = esc(node.text ?? "");
+    const marks = node.marks ?? [];
+    if (marks.some((m) => m.type === "code")) text = `<code>${text}</code>`;
+    if (marks.some((m) => m.type === "bold")) text = `<strong>${text}</strong>`;
+    if (marks.some((m) => m.type === "italic")) text = `<em>${text}</em>`;
+    if (marks.some((m) => m.type === "strike")) text = `<s>${text}</s>`;
+    if (marks.some((m) => m.type === "underline")) text = `<u>${text}</u>`;
+    const href = marks.find((m) => m.type === "link")?.attrs?.href;
+    if (href) text = `<a href="${attr(href)}">${text}</a>`;
+    return text;
+  }
+  if (node.type === "hardBreak") return "<br/>";
+  return "";
+}
+
+function inlines(content: JSONContent[] = []): string {
+  return content.map(inline).join("");
+}
+
+function listItem(item: JSONContent, paths: Map<string, string>): string {
+  const inner = (item.content ?? [])
+    .map((child) => block(child, paths))
+    .filter((s) => s.length > 0)
+    .join("");
+  return `<li>${inner}</li>`;
+}
+
+function figure(node: JSONContent, paths: Map<string, string>): string {
+  const path = paths.get(node.attrs?.src);
+  if (!path) return "";
+  const placement = node.attrs?.placement ?? "inline";
+  const alt = attr(node.attrs?.alt ?? "");
+  const caption = node.attrs?.caption
+    ? `<figcaption>${esc(node.attrs.caption)}</figcaption>`
+    : "";
+  const placed = placement as FigurePlacement;
+  const width = (isResizablePlacement(placed) ? node.attrs?.width : null) ?? FIGURE_WIDTH[placed] ?? 100;
+  const style = placement === "full-page" ? "" : ` style="width:${width}%"`;
+  return `<figure class="placement-${attr(placement)}"${style}><img src="${attr(path)}" alt="${alt}"/>${caption}</figure>`;
+}
+
+function alignStyle(align: unknown): string {
+  return align === "center" || align === "right" ? ` style="text-align:${align}"` : "";
+}
+
+function block(node: JSONContent, paths: Map<string, string>): string {
+  switch (node.type) {
+    case "paragraph": {
+      const body = inlines(node.content);
+      if (!body.trim()) return "<p>&#160;</p>";
+      const align = node.attrs?.align;
+      if (align === "center" || align === "right") return `<p${alignStyle(align)}>${body}</p>`;
+      return `<p${node.attrs?.indent ? ' data-indent="true"' : ""}>${body}</p>`;
+    }
+    case "heading": {
+      const tag = node.attrs?.level === 3 ? "h3" : "h2";
+      return `<${tag}${alignStyle(node.attrs?.align)}>${inlines(node.content)}</${tag}>`;
+    }
+    case "blockquote":
+      return `<blockquote>${(node.content ?? []).map((n) => block(n, paths)).join("")}</blockquote>`;
+    case "bulletList":
+      return `<ul>${(node.content ?? []).map((li) => listItem(li, paths)).join("")}</ul>`;
+    case "orderedList":
+      return `<ol>${(node.content ?? []).map((li) => listItem(li, paths)).join("")}</ol>`;
+    case "taskList":
+      return `<ul data-type="taskList">${(node.content ?? []).map((item) =>
+        `<li data-type="taskItem" data-checked="${!!item.attrs?.checked}"><span aria-label="${item.attrs?.checked ? "Completed" : "Incomplete"}">${item.attrs?.checked ? "&#9745;" : "&#9744;"}</span><div>${(item.content ?? []).map((child) => block(child, paths)).join("")}</div></li>`,
+      ).join("")}</ul>`;
+    case "horizontalRule":
+      return `<hr class="scene-break"/>`;
+    case "figure":
+      return figure(node, paths);
+    default:
+      return "";
+  }
+}
+
+function chapterBody(content: JSONContent, paths: Map<string, string>): string {
+  return (content.content ?? [])
+    .map((n) => block(n, paths))
+    .filter((s) => s.length > 0)
+    .join("\n");
+}
+
+function wrapTitle(title: string, max = 16): string[] {
+  const words = title.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    if (line && (line + " " + word).length > max) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? line + " " + word : word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines.slice(0, 4) : ["Untitled"];
+}
+
+function coverSvg(book: Book): string {
+  const c = book.cover;
+  const m = book.metadata;
+  const dims = TRIM_DIMS[book.settings.trim];
+  const W = 1200;
+  const H = Math.round((W * dims.h) / dims.w);
+
+  const lines = wrapTitle(m.title || "Untitled");
+  const titleSize = lines.length > 2 ? 88 : 104;
+  const lineH = titleSize * 1.12;
+  const blockMid = H * 0.4;
+  const firstY = Math.round(blockMid - ((lines.length - 1) * lineH) / 2);
+  const titleSpans = lines
+    .map((l, i) => `<tspan x="${W / 2}" y="${firstY + Math.round(i * lineH)}">${esc(l)}</tspan>`)
+    .join("");
+  const ruleY = firstY + Math.round((lines.length - 1) * lineH + 84);
+  const rule = `<line x1="${W / 2 - 96}" y1="${ruleY}" x2="${W / 2 + 96}" y2="${ruleY}" stroke="${c.ink}" stroke-width="3" opacity="0.7"/>`;
+  const subtitle = m.subtitle
+    ? `<text x="${W / 2}" y="${ruleY + 96}" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="50" fill="${c.ink}" text-anchor="middle" opacity="0.85">${esc(m.subtitle)}</text>`
+    : "";
+  const author = m.author
+    ? `<text x="${W / 2}" y="${H - 132}" font-family="'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="600" letter-spacing="9" fill="${c.ink}" text-anchor="middle" opacity="0.92">${esc(m.author.toUpperCase())}</text>`
+    : "";
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${c.bg}"/>
+  <text font-family="Georgia, 'Times New Roman', serif" font-size="${titleSize}" font-weight="500" fill="${c.ink}" text-anchor="middle">${titleSpans}</text>
+  ${rule}
+  ${subtitle}
+  ${author}
+</svg>`;
+}
+
+function buildCover(book: Book): { asset: EpubFile; href: string; mediaType: string } {
+  const c = book.cover;
+  if (c.kind === "image" && c.image.startsWith("data:")) {
+    const href = `assets/cover.${imageExtension(c.image)}`;
+    return {
+      asset: { path: `OEBPS/${href}`, data: c.image.slice(c.image.indexOf(",") + 1), encoding: "base64" },
+      href,
+      mediaType: mediaType(href),
+    };
+  }
+  const href = "assets/cover.svg";
+  return {
+    asset: { path: `OEBPS/${href}`, data: coverSvg(book), encoding: "utf8" },
+    href,
+    mediaType: "image/svg+xml",
+  };
+}
+
+function coverXhtml(book: Book, href: string): string {
+  const title = book.metadata.title || "Cover";
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
+  <head>
+    <title>${esc(title)}</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+  </head>
+  <body epub:type="cover">
+    <section class="cover"><img src="${attr(href)}" alt="${attr(title)}"/></section>
+  </body>
+</html>`;
+}
+
+function extractFigures(book: Book): { assets: EpubFile[]; paths: Map<string, string> } {
+  const paths = new Map<string, string>();
+  const assets: EpubFile[] = [];
+
+  const visit = (node: JSONContent) => {
+    if (node.type === "figure") {
+      const src: string | undefined = node.attrs?.src;
+      if (src && src.startsWith("data:") && !paths.has(src)) {
+        const path = `assets/figure-${assets.length + 1}.${imageExtension(src)}`;
+        paths.set(src, path);
+        assets.push({
+          path: `OEBPS/${path}`,
+          data: src.slice(src.indexOf(",") + 1),
+          encoding: "base64",
+        });
+      }
+    }
+    (node.content ?? []).forEach(visit);
+  };
+
+  book.chapters.forEach((chapter) => visit(chapter.content));
+  return { assets, paths };
+}
+
+function identifier(book: Book): string {
+  if (book.metadata.isbn) return book.metadata.isbn;
+  const seed = slug(book.metadata.title || "untitled") || "untitled";
+  return `urn:uuid:margin-${seed}`;
+}
+
+function containerXml(): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`;
+}
+
+function contentOpf(
+  book: Book,
+  chapterIds: string[],
+  assetPaths: string[],
+  cover: { href: string; mediaType: string },
+  fontManifest: string[],
+): string {
+  const meta = book.metadata;
+  const manifest: string[] = [
+    `<item id="cover-image" href="${attr(cover.href)}" media-type="${cover.mediaType}" properties="cover-image"/>`,
+    `<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
+    `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
+    `<item id="css" href="style.css" media-type="text/css"/>`,
+    ...fontManifest,
+  ];
+  chapterIds.forEach((_, i) => {
+    manifest.push(
+      `<item id="chapter-${i + 1}" href="chapter-${i + 1}.xhtml" media-type="application/xhtml+xml"/>`,
+    );
+  });
+  assetPaths.forEach((path, i) => {
+    manifest.push(
+      `<item id="asset-${i + 1}" href="${attr(path)}" media-type="${mediaType(path)}"/>`,
+    );
+  });
+
+  const spine = [`<itemref idref="cover" linear="yes"/>`, `<itemref idref="nav" linear="no"/>`]
+    .concat(chapterIds.map((_, i) => `<itemref idref="chapter-${i + 1}"/>`))
+    .join("\n    ");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${attr(meta.language || "en")}">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="book-id">${esc(identifier(book))}</dc:identifier>
+    <dc:title>${esc(meta.title || "Untitled")}</dc:title>
+    <dc:creator>${esc(meta.author || "")}</dc:creator>
+    <dc:language>${esc(meta.language || "en")}</dc:language>
+    <meta name="cover" content="cover-image"/>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    ${manifest.join("\n    ")}
+  </manifest>
+  <spine>
+    ${spine}
+  </spine>
+</package>`;
+}
+
+function navXhtml(book: Book): string {
+  const items = book.chapters
+    .map((chapter, i) => {
+      const kind = chapterKind(chapter);
+      if (chapter.noTitle && kind !== "body" && kind !== "part") return "";
+      const partLabel = `Part ${partRoman(partNumber(book.chapters, i) ?? 0)}`;
+      const fallback = kind === "body" ? `Chapter ${bodyNumber(book.chapters, i)}` : kind === "part" ? partLabel : "Untitled";
+      const base = chapter.noTitle ? fallback : chapter.title || fallback;
+      const label = kind === "part" && !chapter.noTitle && chapter.title ? `${partLabel}: ${chapter.title}` : base;
+      return `      <li><a href="chapter-${i + 1}.xhtml">${esc(label)}</a></li>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
+  <head>
+    <title>${esc(book.metadata.title || "Untitled")}</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+  </head>
+  <body>
+    <nav epub:type="toc" id="toc">
+      <h1>Contents</h1>
+      <ol>
+${items}
+      </ol>
+    </nav>
+  </body>
+</html>`;
+}
+
+function chapterXhtml(book: Book, index: number, paths: Map<string, string>): string {
+  const chapter = book.chapters[index];
+  const kind = chapterKind(chapter);
+  const num = bodyNumber(book.chapters, index);
+  const partLabel = `Part ${partRoman(partNumber(book.chapters, index) ?? 0)}`;
+  const eyebrow =
+    kind === "body" ? `<p class="eyebrow">Chapter ${num}</p>` : kind === "part" ? `<p class="eyebrow">${esc(partLabel)}</p>` : "";
+  const headingText = kind === "part" ? chapter.title : chapter.title || (kind === "body" ? `Chapter ${num}` : "Untitled");
+  const heading = chapter.noTitle || (kind === "part" && !chapter.title) ? "" : `<h1>${esc(headingText)}</h1>`;
+  const docTitle = chapter.title || (kind === "part" ? partLabel : kind === "body" ? `Chapter ${num}` : "Untitled");
+  const epubType = kind === "body" ? "chapter" : kind === "part" ? "part" : kind === "front" ? "frontmatter" : "backmatter";
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${attr(book.metadata.language || "en")}">
+  <head>
+    <title>${esc(docTitle)}</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+  </head>
+  <body epub:type="${epubType}">
+    <header class="chapter-opener">
+      ${eyebrow}
+      ${heading}
+    </header>
+    ${chapterBody(chapter.content, paths)}
+  </body>
+</html>`;
+}
+
+function styleCss(book: Book, faces: string): string {
+  return `${faces ? faces + "\n\n" : ""}html {
+  font-family: ${fontStack(book.settings.fonts.body)};
+}
+
+.cover {
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  page-break-after: always;
+}
+
+.cover img {
+  max-width: 100%;
+  max-height: 100vh;
+}
+
+body {
+  margin: 0 5%;
+  line-height: 1.5;
+}
+
+p {
+  margin: 0;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -epub-hyphens: auto;
+}
+
+p[data-indent="true"] {
+  text-indent: 1.3em;
+}
+
+h1, h2, h3 {
+  font-family: ${fontStack(book.settings.fonts.heading)};
+  hyphens: none;
+  line-height: 1.25;
+  font-weight: 500;
+}
+
+h2, h3 {
+  margin: 1.4em 0 0.6em;
+}
+
+.chapter-opener {
+  text-align: center;
+  margin: 3em 0 2.2em;
+}
+
+body[epub:type="part"] {
+  page-break-before: always;
+}
+
+body[epub:type="part"] .chapter-opener {
+  margin-top: 32vh;
+}
+
+body[epub:type="part"] .eyebrow {
+  font-size: 0.82em;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: 0.72em;
+  margin: 0 0 0.7em;
+}
+
+.chapter-opener h1 {
+  font-size: 1.7em;
+  margin: 0;
+}
+
+code {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+blockquote {
+  margin: 1.2em 1.6em;
+  font-style: italic;
+}
+
+blockquote p {
+  text-indent: 0;
+  text-align: left;
+}
+
+ul, ol {
+  margin: 1em 0;
+  padding-left: 1.6em;
+}
+
+li {
+  text-align: left;
+}
+
+ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+li[data-type="taskItem"] > span {
+  float: left;
+}
+
+li[data-type="taskItem"] > div {
+  margin-left: 1.6em;
+}
+
+hr.scene-break {
+  border: 0;
+  margin: 1.6em 0;
+  text-align: center;
+}
+
+hr.scene-break::before {
+  content: "\\2042";
+  letter-spacing: 0.4em;
+}
+
+figure {
+  margin: 1.4em auto;
+  text-align: center;
+}
+
+figure img {
+  max-width: 100%;
+}
+
+figcaption {
+  font-size: 0.82em;
+  font-style: italic;
+  text-indent: 0;
+  margin-top: 0.5em;
+}
+
+figure.placement-full-width img,
+figure.placement-full-page img {
+  width: 100%;
+}
+
+figure.placement-full-page {
+  margin: 0;
+  page-break-before: always;
+  page-break-after: always;
+}
+
+figure.placement-float-top {
+  float: top;
+}
+`;
+}
+
+export function bookToEpub(book: Book, fontAssets: FontAssets): EpubFile[] {
+  const { assets, paths } = extractFigures(book);
+  const cover = buildCover(book);
+  const chapterIds = book.chapters.map((c) => c.id);
+  const assetPaths = Array.from(paths.values());
+
+  const files: EpubFile[] = [
+    { path: "mimetype", data: "application/epub+zip", encoding: "utf8" },
+    { path: "META-INF/container.xml", data: containerXml(), encoding: "utf8" },
+    {
+      path: "OEBPS/content.opf",
+      data: contentOpf(book, chapterIds, assetPaths, cover, fontAssets.manifest),
+      encoding: "utf8",
+    },
+    { path: "OEBPS/cover.xhtml", data: coverXhtml(book, cover.href), encoding: "utf8" },
+    { path: "OEBPS/nav.xhtml", data: navXhtml(book), encoding: "utf8" },
+    { path: "OEBPS/style.css", data: styleCss(book, fontAssets.faces), encoding: "utf8" },
+    cover.asset,
+  ];
+
+  book.chapters.forEach((_, i) => {
+    files.push({
+      path: `OEBPS/chapter-${i + 1}.xhtml`,
+      data: chapterXhtml(book, i, paths),
+      encoding: "utf8",
+    });
+  });
+
+  files.push(...assets, ...fontAssets.files);
+  return files;
+}
+
+export async function buildEpub(book: Book): Promise<Uint8Array> {
+  const fontAssets = await loadFontAssets(book);
+  const files = bookToEpub(book, fontAssets);
+  const buf = await call<ArrayBuffer>("package_epub", { files });
+  return new Uint8Array(buf);
+}

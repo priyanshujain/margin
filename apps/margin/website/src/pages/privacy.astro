@@ -1,0 +1,76 @@
+---
+import Legal from "../layouts/Legal.astro";
+import { site } from "../data/site";
+---
+
+<Legal
+  title="Privacy Policy"
+  updated="June 22, 2026"
+  description={`How ${site.name} handles your data. The short version: your book never leaves your machine, and we keep no copy.`}
+>
+  <h2>The short version</h2>
+  <p>
+    Margin is an offline writing studio that runs on your own computer. Your book and everything
+    you write stay on your device. We never receive a copy, and nothing you write is sent away to
+    be read or stored by us. This page explains the few places where data is involved, so you know
+    exactly what happens and what does not.
+  </p>
+
+  <h2>What stays on your device</h2>
+  <p>
+    Your manuscript, your spelling and grammar checks, your fonts and book setup, and every print
+    and ebook export all happen locally on your machine. None of this requires an account, a login,
+    or an internet connection, and none of it passes through our servers.
+  </p>
+
+  <h2>No account, no tracking</h2>
+  <p>
+    You do not need to sign up, log in, or give us an email address to write with Margin. This
+    website does not use tracking cookies, advertising pixels, or third-party analytics. The only
+    thing the site stores in your browser is your light or dark theme preference, kept locally so
+    the page looks the way you left it.
+  </p>
+
+  <h2>Downloads and updates</h2>
+  <p>
+    Margin is distributed through GitHub Releases. When you download the app, or when the app checks
+    for a new version to keep itself up to date, a request is made to GitHub to fetch the latest
+    release. As with any web request, GitHub can see your IP address for that request, handled under
+    GitHub's own privacy policy. We do not add any tracking of our own to these requests.
+  </p>
+
+  <h2>Optional backup to your Google Drive</h2>
+  <p>
+    Margin can save a backup of your book to your own Google Drive, but only if you turn it on. When
+    you do, you connect your own Google account, and the backup is written to your Drive, in your
+    account, under your control. We never receive a copy of that backup and cannot read it. You can
+    disconnect Margin from your Google account at any time from your Google account settings, and the
+    app works exactly the same with the feature switched off.
+  </p>
+
+  <h2>Payments</h2>
+  <p>
+    If you buy Margin, the payment is handled by a third-party payment processor. We do not see or
+    store your full card details. The processor handles the transaction and shares with us only what
+    we need to confirm your purchase and provide support.
+  </p>
+
+  <h2>Children</h2>
+  <p>
+    Margin is a tool for writers and is not directed at children under 13. We do not knowingly
+    collect personal information from children.
+  </p>
+
+  <h2>Changes to this policy</h2>
+  <p>
+    If we update this policy, we will change the date at the top of this page. Because the app keeps
+    your book on your own device, the spirit of this policy is unlikely to change: your words belong
+    to you.
+  </p>
+
+  <h2>Contact</h2>
+  <p>
+    Questions about your privacy? Write to <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>
+    and a real person will answer.
+  </p>
+</Legal>

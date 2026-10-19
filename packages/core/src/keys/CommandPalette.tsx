@@ -49,7 +49,7 @@ export function CommandPalette({
     }
   }, [open, onOpen]);
 
-  const groups = useMemo(() => sections(query), [sections, query]);
+  const groups = useMemo(() => (open ? sections(query) : []), [open, sections, query]);
   const flat = useMemo(() => groups.flatMap((g) => g.items.map((i) => i.id)), [groups]);
   const activeId = active && flat.includes(active) ? active : flat[0];
 

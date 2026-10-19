@@ -1,0 +1,87 @@
+name: Margin CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/margin/**
+      - crates/**
+      - packages/core/**
+      - Cargo.toml
+      - Cargo.lock
+      - .github/workflows/margin-ci.yml
+  pull_request:
+    paths:
+      - apps/margin/**
+      - crates/**
+      - packages/core/**
+      - Cargo.toml
+      - Cargo.lock
+      - .github/workflows/margin-ci.yml
+
+concurrency:
+  group: margin-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    # macOS because the keymap reads the primary modifier off the user agent.
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/margin
+    steps:
+      - uses: actions/checkout@v7
+
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - run: pnpm test
+
+      - run: pnpm fonts:check
+
+      - run: pnpm exec playwright install chromium
+
+      - run: pnpm test:ui
+
+  rust:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/margin
+    steps:
+      - uses: actions/checkout@v7
+
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/margin/src-tauri -> target
+
+      # tauri_build::build() wants a frontendDist that exists, and the Drive client is compiled in.
+      - name: Stub the build inputs
+        run: |
+          mkdir -p dist && touch dist/index.html
+          cp google-credentials.example.json google-credentials.json
+
+      - name: Clippy
+        working-directory: apps/margin/src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        working-directory: apps/margin/src-tauri
+        run: cargo test

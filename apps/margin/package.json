@@ -1,0 +1,56 @@
+{
+  "name": "margin-app",
+  "private": true,
+  "version": "0.1.19",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "dmg": "tauri build --bundles dmg",
+    "test": "vitest run",
+    "test:ui": "playwright test",
+    "fonts:sync": "margin-fonts .",
+    "fonts:check": "margin-fonts . --check"
+  },
+  "dependencies": {
+    "@margin/core": "file:../../packages/core",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-clipboard-manager": "2.3.3",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-process": "^2",
+    "@tauri-apps/plugin-updater": "^2",
+    "@tiptap/core": "3.31.2",
+    "@tiptap/extension-list": "3.31.2",
+    "@tiptap/extension-placeholder": "3.31.2",
+    "@tiptap/pm": "3.31.2",
+    "@tiptap/react": "3.31.2",
+    "@tiptap/starter-kit": "3.31.2",
+    "pdfjs-dist": "^6.0.227",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^22.20.1",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "happy-dom": "^20.14.6",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4",
+    "vitest": "^3.2.4"
+  },
+  "description": "A calm, offline writing studio for authors",
+  "license": "SEE LICENSE IN LICENSE",
+  "pnpm": {
+    "overrides": {
+      "prosemirror-model": "1.25.12",
+      "prosemirror-view": "1.42.6"
+    }
+  }
+}

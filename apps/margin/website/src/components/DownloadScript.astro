@@ -1,0 +1,64 @@
+---
+import { site, platforms } from "../data/site";
+import { getRelease } from "../data/release";
+
+const { repo, releasesUrl } = site;
+const { urls, version } = await getRelease();
+const matches = Object.fromEntries(platforms.map((p) => [p.id, p.match]));
+---
+
+<script define:vars={{ repo, releasesUrl, urls, version, matches }}>
+  const LABELS = { mac: "macOS", windows: "Windows", linux: "Linux" };
+
+  function detectOS() {
+    const ua = navigator.userAgent;
+    const plat = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "").toLowerCase();
+    if (/mac|iphone|ipad|ipod/i.test(ua) || plat.includes("mac")) return "mac";
+    if (/win/i.test(ua) || plat.includes("win")) return "windows";
+    if (/linux|x11|cros/i.test(ua) || plat.includes("linux")) return "linux";
+    return "mac";
+  }
+
+  function pickAsset(assets, os) {
+    for (const sfx of matches[os] || []) {
+      const hit = assets.find((a) => a.name.toLowerCase().endsWith(sfx.toLowerCase()));
+      if (hit) return hit.browser_download_url;
+    }
+    return null;
+  }
+
+  function apply(map, ver) {
+    const os = detectOS();
+    document.querySelectorAll("[data-download]").forEach((el) => {
+      const label = el.querySelector("[data-dl-label]");
+      if (label) label.textContent = "Download for " + LABELS[os];
+      if (map[os]) el.href = map[os];
+    });
+    document.querySelectorAll("[data-download-os]").forEach((el) => {
+      const url = map[el.dataset.downloadOs];
+      if (url) el.href = url;
+    });
+    document.querySelectorAll(".dl__os [data-download-os]").forEach((el) => {
+      if (el.dataset.downloadOs === os) el.remove();
+    });
+    if (ver) document.querySelectorAll("[data-version]").forEach((el) => (el.textContent = ver));
+  }
+
+  apply(urls, version);
+
+  (async () => {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+        headers: { Accept: "application/vnd.github+json" },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const assets = data.assets || [];
+      const fresh = {};
+      for (const os of Object.keys(matches)) fresh[os] = pickAsset(assets, os) || urls[os] || releasesUrl;
+      apply(fresh, data.tag_name || version);
+    } catch (e) {
+      /* keep the build-time links */
+    }
+  })();
+</script>

@@ -1,0 +1,46 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Tauri build output
+src-tauri/target/
+
+# Google OAuth desktop client (real values, never commit)
+/google-credentials.json
+/client_secret_*.json
+
+# Screenshots & Playwright MCP artifacts
+.playwright-mcp/
+/*.png
+
+# App Store packaging output
+target-mas/
+
+# Beta app review contact details. Apple requires a real phone number and this repo is public.
+appstore/metadata/review_phone.txt
+appstore/metadata/review_email.txt
+
+# Signing identities
+/developer-id.p12
+*.p12

@@ -1,0 +1,105 @@
+import { useEffect, useRef, useState } from "react";
+import { PAGE_TYPES } from "../model/book";
+import { useEscapeLayer } from "@margin/core/hooks";
+import { useFocusTrap } from "../focus";
+import { Icon } from "@margin/core/ui";
+
+interface AddPageMenuProps {
+  onAdd: (group: "front" | "back", title: string) => void;
+  onAddPart: () => void;
+}
+
+const GROUPS: { key: "front" | "back"; label: string }[] = [
+  { key: "front", label: "Front matter" },
+  { key: "back", label: "Back matter" },
+];
+
+export function AddPageMenu({ onAdd, onAddPart }: AddPageMenuProps) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  const toggle = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setCoords({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen((v) => !v);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  useFocusTrap(popRef, open);
+
+  useEscapeLayer(open, () => {
+    setOpen(false);
+    btnRef.current?.focus();
+  });
+
+  const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const items = Array.from(popRef.current?.querySelectorAll<HTMLElement>(".add-page-item") ?? []);
+      const idx = items.indexOf(document.activeElement as HTMLElement);
+      const nextIdx = e.key === "ArrowDown" ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+      items[nextIdx]?.focus();
+    }
+  };
+
+  const pick = (group: "front" | "back", label: string) => {
+    setOpen(false);
+    onAdd(group, label);
+  };
+
+  const pickPart = () => {
+    setOpen(false);
+    onAddPart();
+  };
+
+  return (
+    <>
+      <button ref={btnRef} className="add-page" data-open={open} onClick={toggle}>
+        <Icon d="M12 5v14M5 12h14" size={15} />
+        Add page
+      </button>
+      {open && (
+        <div
+          ref={popRef}
+          className="add-page-pop"
+          style={{ top: coords.top, left: coords.left }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={onMenuKeyDown}
+        >
+          <div className="add-page-group">
+            <div className="add-page-label">Body</div>
+            <button className="add-page-item" onClick={pickPart}>
+              Part divider
+            </button>
+          </div>
+          {GROUPS.map((g) => (
+            <div key={g.key} className="add-page-group">
+              <div className="add-page-label">{g.label}</div>
+              {PAGE_TYPES.filter((t) => t.group === g.key).map((t) => (
+                <button key={t.id} className="add-page-item" onClick={() => pick(t.group, t.label)}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}

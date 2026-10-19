@@ -1,0 +1,88 @@
+---
+import { faqs, site } from "../data/site";
+---
+
+<section class="section faq" id="faq">
+  <div class="container faq__inner">
+    <header class="block-head block-head--center">
+      <p class="eyebrow">Questions</p>
+      <h2>Questions, answered.</h2>
+      <p class="lede">
+        Don't see yours? <a class="faq__mail" href={`mailto:${site.supportEmail}`}>Email us</a>.
+      </p>
+    </header>
+
+    <div class="faq__list">
+      {
+        faqs.map((f) => (
+          <details class="faq__item">
+            <summary>
+              <span>{f.q}</span>
+              <svg class="faq__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </summary>
+            <div class="faq__answer">
+              <p>{f.a}</p>
+            </div>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .faq__inner {
+    max-width: 800px;
+  }
+  .faq__mail {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .faq__list {
+    margin-top: clamp(32px, 4vw, 44px);
+    border-top: 1px solid var(--line);
+  }
+  .faq__item {
+    border-bottom: 1px solid var(--line);
+  }
+  summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 22px 4px;
+    font-family: var(--font-ui);
+    font-weight: 620;
+    font-size: 1.08rem;
+    color: var(--ink);
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary:hover {
+    color: var(--ink);
+  }
+  .faq__chev {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--ink-faint);
+    transition: transform 0.22s var(--ease);
+  }
+  .faq__item[open] .faq__chev {
+    transform: rotate(45deg);
+  }
+  .faq__answer {
+    padding: 0 4px 24px;
+    max-width: 68ch;
+  }
+  .faq__answer p {
+    color: var(--ink-soft);
+    line-height: 1.62;
+  }
+</style>

@@ -1,0 +1,144 @@
+---
+---
+
+<section class="section proof">
+  <div class="container proof__grid">
+    <div class="proof__demo">
+      <div class="card proof__editor">
+        <p class="proof__line">
+          She climbed the <span class="u-spell">hundered</span> and one steps and watched the
+          lamp <span class="u-grammar">turns</span> its slow circle.
+        </p>
+        <div class="pop">
+          <span class="pop__kind">Spelling</span>
+          <span class="pop__from">hundered</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="pop__to">hundred</span>
+        </div>
+      </div>
+      <p class="proof__badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linejoin="round"/></svg>
+        Checked entirely on your device
+      </p>
+    </div>
+
+    <div class="proof__copy">
+      <p class="eyebrow">Built-in proofing</p>
+      <h2>Grammar and spelling, caught as you write.</h2>
+      <p class="lede">
+        Margin underlines the mistakes that matter: misspellings, capitalization slips, doubled
+        words, and broken grammar, with the same inline corrections you'd expect from the best
+        checkers. The difference is that it all runs on your machine, so not a single word is sent
+        away to be read.
+      </p>
+      <ul class="proof__points">
+        <li>Real-time underlines, right in the text</li>
+        <li>One-tap corrections and suggestions</li>
+        <li>Runs on your machine, nothing sent away</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  .proof__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(32px, 5vw, 72px);
+    align-items: center;
+  }
+  .proof__editor {
+    padding: 34px 30px 44px;
+    position: relative;
+    font-family: var(--font-book);
+    font-size: 1.25rem;
+    line-height: 1.7;
+  }
+  .u-spell {
+    text-decoration: wavy underline var(--danger);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+  .u-grammar {
+    text-decoration: wavy underline var(--good);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+  .pop {
+    position: absolute;
+    left: 30px;
+    bottom: -18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    padding: 9px 14px;
+    border-radius: 999px;
+    box-shadow: var(--shadow-pop);
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .pop__kind {
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.65;
+  }
+  .pop__from {
+    text-decoration: line-through;
+    opacity: 0.7;
+  }
+  .pop svg {
+    width: 15px;
+    height: 15px;
+    opacity: 0.7;
+  }
+  .proof__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 26px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .proof__badge svg {
+    width: 17px;
+    height: 17px;
+    color: var(--good);
+  }
+  .proof__points {
+    margin: 24px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    font-weight: 550;
+    color: var(--ink-soft);
+  }
+  .proof__points li {
+    position: relative;
+    padding-left: 26px;
+  }
+  .proof__points li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--good);
+  }
+  @media (max-width: 860px) {
+    .proof__grid {
+      grid-template-columns: 1fr;
+    }
+    .proof__demo {
+      order: 2;
+    }
+  }
+</style>

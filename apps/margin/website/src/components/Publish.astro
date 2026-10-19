@@ -1,0 +1,138 @@
+---
+import { stores } from "../data/site";
+---
+
+<section class="section publish" id="publish">
+  <div class="container">
+    <header class="block-head block-head--center">
+      <p class="eyebrow">Sell it anywhere</p>
+      <h2>Your book works with every store and platform.</h2>
+      <p class="lede">
+        Margin hands you the two files publishing runs on: a print-ready file for paperback and a
+        clean ebook for every reader. Upload them anywhere you like. No conversion services, no
+        middlemen.
+      </p>
+    </header>
+
+    <div class="stores">
+      {
+        stores.map((s) => (
+          <div class="store">
+            <span class="store__logo">
+              <img src={`/logos/${s.logo}`} alt={`${s.name} logo`} />
+            </span>
+            <span class="store__name">{s.name}</span>
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="formats">
+      <div class="format">
+        <span class="format__tag">Paperback</span>
+        <span>A print-ready file, set in real book typography.</span>
+      </div>
+      <div class="format">
+        <span class="format__tag">Ebook</span>
+        <span>A reflowable file that looks right on every reader.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .block-head--center {
+    margin-inline: auto;
+    text-align: center;
+  }
+  .block-head--center .lede {
+    margin-inline: auto;
+  }
+
+  .stores {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: clamp(36px, 5vw, 52px);
+  }
+  .store {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 28px 18px 22px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-page);
+    text-align: center;
+    transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+  }
+  .store:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-pop);
+  }
+  .store__logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 48px;
+    padding-inline: 6px;
+  }
+  .store__logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .store__name {
+    font-weight: 600;
+    font-size: 0.86rem;
+    color: #6b6458;
+  }
+
+  .formats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    max-width: 760px;
+    margin: 40px auto 0;
+  }
+  .format {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--raised);
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+  .format__tag {
+    flex: none;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--ink);
+    padding: 5px 10px;
+    background: var(--accent-wash);
+    border-radius: 999px;
+  }
+
+  @media (max-width: 880px) {
+    .stores {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  @media (max-width: 620px) {
+    .stores {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .formats {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

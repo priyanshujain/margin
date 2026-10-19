@@ -1,0 +1,5 @@
+@import "@margin/core/tokens.css";
+
+:root {
+  --pane-dock: 384px;
+}

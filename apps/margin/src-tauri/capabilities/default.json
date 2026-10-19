@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-destroy",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-theme",
+    "opener:allow-open-url",
+    "opener:allow-default-urls",
+    "dialog:allow-ask",
+    "clipboard-manager:allow-read-text"
+  ]
+}

@@ -1,0 +1,185 @@
+import { useEffect, useState } from "react";
+import {
+  type BookSummary,
+  createAndOpenBook,
+  deleteBook,
+  exampleBook,
+  lastBookId,
+  listBooks,
+  loadBook,
+  rememberLastBook,
+  saveBook,
+} from "../library";
+import type { Book } from "../model/book";
+import { importEpub } from "../import/epub";
+import { clearPositions } from "../editor/positions";
+import { clearChapterStates } from "../editor/session";
+import { isDesktop, live } from "../ipc";
+import { registerCommands } from "@margin/core/keys";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { Icon } from "@margin/core/ui";
+import { RowMenu } from "./RowMenu";
+import { BackupButton } from "./BackupButton";
+import { useBackup } from "../store/useBackup";
+import { useBook } from "../store/useBook";
+import { relativeTime } from "../time";
+
+function CardTitle({ title }: { title: string }) {
+  return (
+    <span className="card-title">
+      {title.split(/(\s+)/).map((word, index) =>
+        /\s/.test(word) ? word : <span key={index}>{word}</span>,
+      )}
+    </span>
+  );
+}
+
+export function Library({ onOpen }: { onOpen: (book: Book) => void }) {
+  const [books, setBooks] = useState<BookSummary[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<BookSummary | null>(null);
+  const setNotice = useBook((s) => s.setNotice);
+  const restoreNonce = useBackup((s) => s.restoreNonce);
+  const restoreWorking = useBackup((s) => s.phase === "working");
+  const restoreFromDrive = useBackup((s) => s.restoreFromDrive);
+
+  const refresh = () =>
+    listBooks()
+      .then(setBooks)
+      .catch(() => setBooks([]))
+      .finally(() => setLoaded(true));
+  useEffect(() => {
+    refresh();
+  }, []);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (restoreNonce) refresh();
+  }, [restoreNonce]);
+
+  const handleExample = async () => {
+    const copy = exampleBook();
+    if (live()) {
+      try {
+        await saveBook(copy);
+      } catch (e) {
+        setNotice(`Could not save copy: ${e}`);
+      }
+    }
+    onOpen(copy);
+  };
+
+  const openById = (id: string) =>
+    loadBook(id)
+      .then(onOpen)
+      .catch((e) => setNotice(`Could not open project: ${e}`));
+
+  const removeBook = async () => {
+    if (!pendingDelete) return;
+    await deleteBook(pendingDelete.id);
+    clearPositions(pendingDelete.id);
+    clearChapterStates(pendingDelete.id);
+    if (lastBookId() === pendingDelete.id) rememberLastBook(null);
+    setPendingDelete(null);
+    refresh();
+  };
+
+  const handleImport = async () => {
+    if (!isDesktop) {
+      setNotice('Import runs in the desktop app only — open the window from "pnpm tauri dev".');
+      return;
+    }
+    setBusy(true);
+    try {
+      const book = await importEpub();
+      if (!book) return;
+      await saveBook(book);
+      onOpen(book);
+    } catch (e) {
+      setNotice(`Import failed: ${e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const importRef = { current: handleImport };
+  importRef.current = handleImport;
+  useEffect(() => registerCommands({ "import-epub": () => void importRef.current() }), []);
+
+  return (
+    <div className="library">
+      <header className="library-head" data-tauri-drag-region>
+        {live() && <BackupButton />}
+      </header>
+      <div className="shelf">
+        <button className="card card-action" onClick={() => createAndOpenBook(onOpen, setNotice)}>
+          <Icon d="M12 5v14M5 12h14" size={20} />
+          <span>New project</span>
+        </button>
+        <button className="card card-action" onClick={handleImport} disabled={busy}>
+          <Icon d="M12 3v10m0 0l-4-4m4 4l4-4M5 19h14" size={20} />
+          <span>{busy ? "Importing…" : "Import EPUB"}</span>
+        </button>
+        {loaded && books.length === 0 && (
+          <button className="card card-example" onClick={handleExample}>
+            <CardTitle title="The Lighthouse" />
+            <span className="card-badge">Example</span>
+          </button>
+        )}
+        {books.map((b) =>
+          b.corrupt ? (
+            <div key={b.id} className="card card-book card-corrupt">
+              <CardTitle title={b.title} />
+              <span className="card-author">Couldn't be read; a .bak backup may sit beside it.</span>
+              <RowMenu label="Project options" className="card-menu" onDelete={() => setPendingDelete(b)} />
+            </div>
+          ) : (
+            <div
+              key={b.id}
+              className="card card-book"
+              role="button"
+              tabIndex={0}
+              onClick={() => openById(b.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openById(b.id);
+                }
+              }}
+            >
+              <CardTitle title={b.title || "Untitled"} />
+              {b.author && <span className="card-author">{b.author}</span>}
+              {b.updatedAt > 0 && <span className="card-meta">Edited {relativeTime(b.updatedAt, now)}</span>}
+              <RowMenu label="Project options" className="card-menu" onDelete={() => setPendingDelete(b)} />
+            </div>
+          ),
+        )}
+      </div>
+      {loaded && books.length === 0 && live() && (
+        <div className="library-restore">
+          <button className="restore-link" onClick={restoreFromDrive} disabled={restoreWorking}>
+            <Icon d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5" size={15} />
+            {restoreWorking ? "Restoring…" : "Restore from Google Drive"}
+          </button>
+        </div>
+      )}
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete project"
+          message={
+            <>
+              Delete <strong>{pendingDelete.title || "Untitled"}</strong>? This permanently removes the project and all its
+              chapters.
+            </>
+          }
+          onConfirm={removeBook}
+          onClose={() => setPendingDelete(null)}
+        />
+      )}
+    </div>
+  );
+}

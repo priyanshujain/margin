@@ -1,0 +1,11 @@
+---
+interface Props {
+  size?: number;
+}
+const { size = 28 } = Astro.props;
+---
+
+<span class="logo-mark" style={`width:${size}px;height:${size}px`}>
+  <img class="light" src="/logo-light.svg" alt="" width={size} height={size} />
+  <img class="dark" src="/logo-dark.svg" alt="" width={size} height={size} />
+</span>

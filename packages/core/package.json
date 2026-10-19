@@ -16,7 +16,8 @@
     "./keys/bindings": "./src/keys/bindings.ts",
     "./ipc": "./src/ipc/index.ts",
     "./settings": "./src/settings/index.ts",
-    "./editor": "./src/editor/index.ts"
+    "./editor": "./src/editor/index.ts",
+    "./editor/base": "./src/editor/base.ts"
   },
   "bin": {
     "margin-fonts": "./bin/sync-fonts.mjs"

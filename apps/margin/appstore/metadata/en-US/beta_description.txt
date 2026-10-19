@@ -1,0 +1,5 @@
+Margin is an offline writing studio. Write without anything in the way, see your words set in real typography as you go, and export a print-ready PDF or an EPUB when you are ready.
+
+This build runs in the App Store sandbox, which is new, so the things most worth trying are the ones that touch the file system: importing, exporting a PDF or EPUB, and the optional Google Drive backup. If any of those fail where they used to work, that is the bug worth reporting.
+
+There is no account and nothing to sign up for.

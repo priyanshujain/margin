@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/margin-mark.png" />
+    <!--theme-boot-->
+    <script>
+      (function () {
+        try {
+          var w = localStorage.getItem("margin-width");
+          var m = { narrow: "38em", medium: "46em", wide: "62em", full: "80em" }[w];
+          if (m) document.documentElement.style.setProperty("--measure", m);
+          [
+            ["margin-pane-sidebar", "--pane-sidebar"],
+            ["margin-pane-dock", "--pane-dock"],
+          ].forEach(function (p) {
+            var v = parseInt(localStorage.getItem(p[0]), 10);
+            if (v > 0) document.documentElement.style.setProperty(p[1], v + "px");
+          });
+        } catch (e) {}
+      })();
+    </script>
+    <title>Margin</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

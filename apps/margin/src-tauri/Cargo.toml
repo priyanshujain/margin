@@ -1,0 +1,53 @@
+[package]
+name = "margin-app"
+version = "0.1.19"
+description = "A calm, offline writing studio for authors"
+authors = ["Priyanshu Jain"]
+license = "LicenseRef-FSL-1.1-MIT"
+edition = "2024"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "margin_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+margin-google = { path = "../../../crates/margin-google" }
+margin-http = { path = "../../../crates/margin-http" }
+margin-log = { path = "../../../crates/margin-log", features = ["tauri"] }
+margin-mac = { path = "../../../crates/margin-mac" }
+margin-oauth = { path = "../../../crates/margin-oauth", features = ["tauri"] }
+margin-proof = { path = "../../../crates/margin-proof" }
+margin-secrets = { path = "../../../crates/margin-secrets" }
+margin-shell = { path = "../../../crates/margin-shell" }
+margin-typeset = { path = "../../../crates/margin-typeset" }
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+zip = "2"
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "query"] }
+sha2 = "0.10"
+url = "2"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[patch.crates-io]
+burn-cuda = { path = "../../../crates/margin-proof/stubs/burn-cuda" }
+cubecl-cpu = { path = "../../../crates/margin-proof/stubs/cubecl-cpu" }
+
+[profile.dev.package."*"]
+opt-level = 3

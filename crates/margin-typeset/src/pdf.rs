@@ -20,49 +20,70 @@ use typst_as_lib::TypstEngine;
 
 use crate::{Image, Warning};
 
-// The faces a document is set in, one file per weight and slope.
+// The faces a document is set in, one static file per weight and slope.
 //
-// Not the variable fonts in packages/core/fonts/ that the editor itself renders with, and that is not
-// duplication for its own sake: Typst does not support a variable axis, warns that it does not, and
-// lays the text out at the default instance regardless of the weight asked for. Every heading, every
-// bold run and every callout label would come out at 400, which is a PDF where the hierarchy the
-// author can see on screen is gone. These nine are static instances cut from those same four files;
-// fonts/PROVENANCE.md is how, and is what to repeat when a face is updated.
-static FACES: [&[u8]; 9] = [
+// Not the variable fonts in packages/core/fonts/ that the editor renders with: Typst does not support
+// a variable axis and lays the text out at the default instance whatever weight was asked for, so
+// every heading and bold run would come out at 400. fonts/PROVENANCE.md says where each cut came from.
+static FACES: [&[u8]; 16] = [
     include_bytes!("../fonts/Literata-Regular.ttf"),
-    include_bytes!("../fonts/Literata-SemiBold.ttf"),
-    include_bytes!("../fonts/Literata-Bold.ttf"),
     include_bytes!("../fonts/Literata-Italic.ttf"),
+    include_bytes!("../fonts/Literata-Medium.ttf"),
+    include_bytes!("../fonts/Literata-MediumItalic.ttf"),
+    include_bytes!("../fonts/Literata-SemiBold.ttf"),
+    include_bytes!("../fonts/Literata-SemiBoldItalic.ttf"),
+    include_bytes!("../fonts/Literata-Bold.ttf"),
     include_bytes!("../fonts/Literata-BoldItalic.ttf"),
     include_bytes!("../fonts/HankenGrotesk-Regular.ttf"),
-    include_bytes!("../fonts/HankenGrotesk-Bold.ttf"),
     include_bytes!("../fonts/HankenGrotesk-Italic.ttf"),
+    include_bytes!("../fonts/HankenGrotesk-Medium.ttf"),
+    include_bytes!("../fonts/HankenGrotesk-MediumItalic.ttf"),
+    include_bytes!("../fonts/HankenGrotesk-SemiBold.ttf"),
+    include_bytes!("../fonts/HankenGrotesk-SemiBoldItalic.ttf"),
+    include_bytes!("../fonts/HankenGrotesk-Bold.ttf"),
     include_bytes!("../fonts/HankenGrotesk-BoldItalic.ttf"),
 ];
 
-// The other four families the editor offers, in the variable files packages/core/fonts already
-// ships for the editor, and loaded only when a document is actually set in one.
-//
-// These carry the caveat the nine above exist to avoid, and it is not worth cutting eight more
-// static instances to fix. Typst lays a variable file out at its default instance, so a document
-// set in EB Garamond exports with its headings at the same weight as its body: the face is right,
-// the hierarchy is flatter than the screen. The two the app defaults to are the two that export
-// perfectly, and choosing one of these is choosing a face rather than a fallback.
-static EB_GARAMOND: [&[u8]; 2] = [
-    include_bytes!("../../../packages/core/fonts/EBGaramond-VF.ttf"),
-    include_bytes!("../../../packages/core/fonts/EBGaramond-Italic-VF.ttf"),
+// The other four families the editor offers, loaded only when a document is set in one.
+static EB_GARAMOND: [&[u8]; 8] = [
+    include_bytes!("../fonts/EBGaramond-Regular.ttf"),
+    include_bytes!("../fonts/EBGaramond-Italic.ttf"),
+    include_bytes!("../fonts/EBGaramond-Medium.ttf"),
+    include_bytes!("../fonts/EBGaramond-MediumItalic.ttf"),
+    include_bytes!("../fonts/EBGaramond-SemiBold.ttf"),
+    include_bytes!("../fonts/EBGaramond-SemiBoldItalic.ttf"),
+    include_bytes!("../fonts/EBGaramond-Bold.ttf"),
+    include_bytes!("../fonts/EBGaramond-BoldItalic.ttf"),
 ];
-static LORA: [&[u8]; 2] = [
-    include_bytes!("../../../packages/core/fonts/Lora-VF.ttf"),
-    include_bytes!("../../../packages/core/fonts/Lora-Italic-VF.ttf"),
+static LORA: [&[u8]; 8] = [
+    include_bytes!("../fonts/Lora-Regular.ttf"),
+    include_bytes!("../fonts/Lora-Italic.ttf"),
+    include_bytes!("../fonts/Lora-Medium.ttf"),
+    include_bytes!("../fonts/Lora-MediumItalic.ttf"),
+    include_bytes!("../fonts/Lora-SemiBold.ttf"),
+    include_bytes!("../fonts/Lora-SemiBoldItalic.ttf"),
+    include_bytes!("../fonts/Lora-Bold.ttf"),
+    include_bytes!("../fonts/Lora-BoldItalic.ttf"),
 ];
-static SOURCE_SERIF: [&[u8]; 2] = [
-    include_bytes!("../../../packages/core/fonts/SourceSerif4-VF.ttf"),
-    include_bytes!("../../../packages/core/fonts/SourceSerif4-Italic-VF.ttf"),
+static SOURCE_SERIF: [&[u8]; 8] = [
+    include_bytes!("../fonts/SourceSerif4-Regular.ttf"),
+    include_bytes!("../fonts/SourceSerif4-Italic.ttf"),
+    include_bytes!("../fonts/SourceSerif4-Medium.ttf"),
+    include_bytes!("../fonts/SourceSerif4-MediumItalic.ttf"),
+    include_bytes!("../fonts/SourceSerif4-SemiBold.ttf"),
+    include_bytes!("../fonts/SourceSerif4-SemiBoldItalic.ttf"),
+    include_bytes!("../fonts/SourceSerif4-Bold.ttf"),
+    include_bytes!("../fonts/SourceSerif4-BoldItalic.ttf"),
 ];
-static FRAUNCES: [&[u8]; 2] = [
-    include_bytes!("../../../packages/core/fonts/Fraunces-VF.ttf"),
-    include_bytes!("../../../packages/core/fonts/Fraunces-Italic-VF.ttf"),
+static FRAUNCES: [&[u8]; 8] = [
+    include_bytes!("../fonts/Fraunces-Regular.ttf"),
+    include_bytes!("../fonts/Fraunces-Italic.ttf"),
+    include_bytes!("../fonts/Fraunces-Medium.ttf"),
+    include_bytes!("../fonts/Fraunces-MediumItalic.ttf"),
+    include_bytes!("../fonts/Fraunces-SemiBold.ttf"),
+    include_bytes!("../fonts/Fraunces-SemiBoldItalic.ttf"),
+    include_bytes!("../fonts/Fraunces-Bold.ttf"),
+    include_bytes!("../fonts/Fraunces-BoldItalic.ttf"),
 ];
 
 /// The bytes behind one `BundledFont` id from src/model/fonts.ts.
