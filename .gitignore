@@ -1,1 +1,3 @@
 /target
+*.md
+!apps/docs/src/markdown/corpus/**/*.md
