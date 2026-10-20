@@ -73,7 +73,10 @@ mod tests {
                 listener,
                 "state",
                 Instant::now() + Duration::from_secs(30),
-                Pages { app: "Test", provider: "Test" },
+                Pages {
+                    app: "Test",
+                    provider: "Test",
+                },
                 || waiting.is_cancelled(),
             )
         });

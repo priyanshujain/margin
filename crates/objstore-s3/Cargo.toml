@@ -1,0 +1,18 @@
+[package]
+name = "objstore-s3"
+description = "objstore backend for S3 compatible stores (AWS S3, Cloudflare R2, MinIO, Backblaze B2)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+chrono.workspace = true
+objstore = { path = "../objstore" }
+reqwest.workspace = true
+sha2.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+objstore-conformance = { path = "../objstore-conformance" }
+tokio = { workspace = true, features = ["rt", "macros"] }

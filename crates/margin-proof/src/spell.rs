@@ -4,10 +4,10 @@
 
 use crate::SpellIssue;
 
-#[cfg(target_os = "macos")]
-use crate::macspell as checker;
 #[cfg(not(target_os = "macos"))]
 use self::fallback as checker;
+#[cfg(target_os = "macos")]
+use crate::macspell as checker;
 
 #[cfg(not(target_os = "macos"))]
 mod fallback {
@@ -176,7 +176,10 @@ pub mod hunspell {
         fn flags_unknown_words_with_character_offsets() {
             let checker = Checker::new(AFF, DIC).unwrap();
             let issues = checker.check("héllo worlds, quikc it's");
-            let words: Vec<_> = issues.iter().map(|i| (i.word.as_str(), i.start, i.end)).collect();
+            let words: Vec<_> = issues
+                .iter()
+                .map(|i| (i.word.as_str(), i.start, i.end))
+                .collect();
             assert_eq!(words, vec![("héllo", 0, 5), ("quikc", 14, 19)]);
         }
 

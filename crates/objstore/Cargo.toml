@@ -1,0 +1,9 @@
+[package]
+name = "objstore"
+description = "An async object store trait with S3 semantics, a neutral error type and prefix scoping"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]

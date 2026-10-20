@@ -1,0 +1,11 @@
+[package]
+name = "objstore-conformance"
+description = "The behaviour every objstore backend must share"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+objstore = { path = "../objstore" }

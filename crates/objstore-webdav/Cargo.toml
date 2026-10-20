@@ -1,0 +1,19 @@
+[package]
+name = "objstore-webdav"
+description = "objstore backend for WebDAV servers (Nextcloud, ownCloud, Apache mod_dav and similar)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+chrono.workspace = true
+objstore = { path = "../objstore" }
+percent-encoding = "2"
+quick-xml = "0.38"
+reqwest.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+objstore-conformance = { path = "../objstore-conformance" }
+tokio = { workspace = true, features = ["rt", "macros"] }

@@ -1,0 +1,17 @@
+[package]
+name = "objstore-fs"
+description = "objstore backend for a local folder, safe inside synced folders"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+objstore = { path = "../objstore" }
+sha2.workspace = true
+tokio = { workspace = true, features = ["rt"] }
+
+[dev-dependencies]
+objstore-conformance = { path = "../objstore-conformance" }
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }

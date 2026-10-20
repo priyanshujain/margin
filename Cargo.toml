@@ -41,3 +41,9 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 [patch.crates-io]
 burn-cuda = { path = "crates/margin-proof/stubs/burn-cuda" }
 cubecl-cpu = { path = "crates/margin-proof/stubs/cubecl-cpu" }
+
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3
