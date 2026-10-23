@@ -5,7 +5,7 @@
 // gmail.rs    impl Provider for Gmail
 // people.rs   contacts, for the screening seed and autocomplete
 // calendar.rs enough of the Calendar API to answer an invite
-// drive.rs    the backup store's HTTP half
+// drive.rs    the Drive scope the sync store needs
 //
 // The account registry auth.rs writes to is `crate::accounts`, which is a file rather than a
 // table and knows nothing about Google. It owns `accounts_list`, `account_set_color` and

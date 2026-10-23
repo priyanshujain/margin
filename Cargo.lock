@@ -5107,6 +5107,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "margin-sync"
+version = "0.1.0"
+dependencies = [
+ "margin-crypt",
+ "margin-secrets",
+ "objstore",
+ "objstore-fs",
+ "objstore-gdrive",
+ "objstore-s3",
+ "objstore-webdav",
+ "rand 0.8.8",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "margin-typeset"
 version = "0.1.0"
 dependencies = [

@@ -14,6 +14,8 @@ import {
   CALENDAR_SCOPE,
   SCOPES,
   type Account,
+  type StateSyncStatus,
+  type SyncStorage,
   type SyncStatus,
   type CertQuestion,
   type Clip,
@@ -82,6 +84,19 @@ const labels: LabelInfo[] = devLabels.map((label) => ({ ...label }));
 const contactNotes = new Map<string, string>();
 const contactPatches = new Map<string, ContactPatch>();
 let settings: Settings = { ...devSettings };
+const DEV_PHRASE =
+  "candle harbour ribbon meadow anchor lantern pepper thicket marble orchard signal walnut " +
+  "candle harbour ribbon meadow anchor lantern pepper thicket marble orchard signal walnut";
+let stateSync: StateSyncStatus = {
+  storage: { kind: "google-drive", account: "pj@73ai.org" },
+  hasSecret: false,
+  hasPhrase: !flagged("marginmail-dev-no-phrase"),
+  legacyBackup: false,
+  lastSyncedMs: Date.now() - 3 * 60 * 60 * 1000,
+  error: null,
+  driveAccounts: ["pj@73ai.org"],
+  shared: true,
+};
 
 // -------------------------------------------------------------------------------------------
 // The crowded thread
@@ -1778,49 +1793,41 @@ export async function mockCall<T>(command: string, args?: Record<string, unknown
 
 
     // ---------------------------------------------------------------------------------------
-    // Backup
+    // Sync and storage
     // ---------------------------------------------------------------------------------------
-    case "backup_status":
-      return done(settings.backup);
+    case "state_sync_status":
+      return done(stateSync);
 
-    case "backup_configure": {
-      const store = arg<string>("store");
-      const config = arg<Record<string, string>>("config");
+    case "state_sync_configure": {
+      const storage = arg<SyncStorage | null>("storage");
       if (flagged("marginmail-dev-pending")) await beat(900);
-      settings = {
-        ...settings,
-        backup: {
-          ...settings.backup,
-          store: store === "r2" ? "r2" : store === "drive" ? "drive" : "none",
-          configured: true,
-          r2Bucket: config.bucket ?? null,
-          r2Endpoint: config.endpoint ?? null,
-        },
-      };
-      changed("settings");
-      return done(settings.backup);
+      const secret = storage?.kind === "s3" ? storage.secret : storage?.kind === "web-dav" ? storage.password : "";
+      stateSync = { ...stateSync, storage, hasSecret: !!secret };
+      return done(stateSync);
     }
 
-    case "backup_now": {
-      if (flagged("marginmail-dev-pending")) await beat(900);
-      settings = {
-        ...settings,
-        backup: { ...settings.backup, lastBackupMs: Date.now() },
-      };
-      changed("settings");
-      return done(settings.backup);
-    }
+    case "state_sync_now":
+    case "state_sync_poll":
+      if (command === "state_sync_now" && flagged("marginmail-dev-pending")) await beat(900);
+      if (stateSync.storage && stateSync.hasPhrase) stateSync = { ...stateSync, lastSyncedMs: Date.now() };
+      return done(stateSync);
 
-    // Argon2 over the phrase is most of a second on a real machine.
-    case "backup_phrase":
-      if (flagged("marginmail-dev-pending")) await beat(900);
-      return done(
-        "candle harbour ribbon meadow anchor lantern pepper thicket marble orchard signal walnut",
-      );
+    case "state_sync_phrase_create":
+      if (stateSync.hasPhrase) throw new Error("This machine already has a recovery phrase.");
+      stateSync = { ...stateSync, hasPhrase: true };
+      return done(DEV_PHRASE);
 
-    case "backup_restore":
+    case "state_sync_pick_folder":
+      if (flagged("marginmail-dev-pick-cancel")) return done(null);
+      return done("/Users/me/Library/Mobile Documents/com~apple~CloudDocs/Margin");
+
+    case "state_sync_phrase_show":
+      return done(DEV_PHRASE);
+
+    case "state_sync_phrase_enter":
       if (flagged("marginmail-dev-pending")) await beat(900);
-      return done(undefined);
+      stateSync = { ...stateSync, hasPhrase: true };
+      return done(stateSync);
 
     default:
       throw new Error(`dev mock has no handler for ${command}`);

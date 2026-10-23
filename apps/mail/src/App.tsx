@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { stateSyncPoll } from "./api/stateSync";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -183,7 +184,10 @@ function Shell() {
   // somebody looks: on open, and on every return to the foreground. It belongs to the window rather
   // than to the list, or a snooze would not come back while the Feed or a library was up.
   useEffect(() => {
-    const run = () => void useSnooze.getState().evaluate();
+    const run = () => {
+      void useSnooze.getState().evaluate();
+      void stateSyncPoll().catch(() => undefined);
+    };
     run();
     const onVisible = () => {
       if (document.visibilityState === "visible") run();

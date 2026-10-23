@@ -590,6 +590,44 @@ export interface BackupSettings {
   r2Endpoint: string | null;
 }
 
+/** Where the suite syncs, configured once per machine and shared by every Margin app. */
+export type SyncStorage =
+  | { kind: "folder"; path: string }
+  | {
+      kind: "s3";
+      endpoint: string;
+      region: string;
+      bucket: string;
+      accessKey: string;
+      secret?: string;
+      prefix?: string | null;
+      allowHttp?: boolean;
+    }
+  | {
+      kind: "web-dav";
+      url: string;
+      username?: string | null;
+      password?: string;
+      conditionalPut?: boolean;
+      allowHttp?: boolean;
+    }
+  | { kind: "google-drive"; account: string };
+
+export interface StateSyncStatus {
+  /** Never carries a secret; `hasSecret` says whether one is stored. */
+  storage: SyncStorage | null;
+  hasSecret: boolean;
+  hasPhrase: boolean;
+  /** A key for backups made before sync is on this device, so they are read too. */
+  legacyBackup: boolean;
+  lastSyncedMs: number | null;
+  error: string | null;
+  /** Accounts that granted Drive, which are the ones Drive can sync through. */
+  driveAccounts: string[];
+  /** Whether the storage choice is shared with the other Margin apps on this machine. */
+  shared: boolean;
+}
+
 export interface Settings {
   theme: "light" | "dark" | "system";
   fontUi: FontRef;

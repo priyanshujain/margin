@@ -617,7 +617,7 @@ const STAYS: readonly string[] = [
 
 const LEAVES: readonly string[] = [
   "Mail, to and from your provider",
-  "Your backup, encrypted here first",
+  "Your synced decisions, encrypted here first",
 ];
 
 function Privacy() {

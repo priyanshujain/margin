@@ -172,7 +172,7 @@ export const ACCOUNTS: Section = {
         },
         {
           figure: "privacy",
-          caption: "What leaves is the mail itself, and a backup only if you ask for one.",
+          caption: "What leaves is the mail itself, and synced decisions only if you ask for them.",
         },
         {
           p: [
@@ -181,9 +181,9 @@ export const ACCOUNTS: Section = {
         },
         {
           p: [
-            "Backup is off until you choose a store in ",
+            "Sync is off until you choose storage in ",
             { settings: "Settings" },
-            ", under Backup, and what it holds is ciphertext and file names and nothing else.",
+            ", under Sync and storage, and what it holds is ciphertext and file names and nothing else.",
           ],
         },
         {

@@ -13,7 +13,15 @@ import {
 import { Avatar, Button, Confirm, Icon, icons, NO_AUTOFILL, Segment, Sheet, Toggle } from "@margin/core/ui";
 import type { SegmentOption } from "@margin/core/ui";
 import { accountRemove, accountSetColor, accountSetName } from "../api/accounts";
-import { backupConfigure, backupNow, backupPhrase, backupRestore } from "../api/backup";
+import {
+  stateSyncConfigure,
+  stateSyncNow,
+  stateSyncPhraseCreate,
+  stateSyncPhraseEnter,
+  stateSyncPhraseShow,
+  stateSyncPickFolder,
+  stateSyncStatus,
+} from "../api/stateSync";
 import { contactUpdate, contactsList } from "../api/contacts";
 import { imapServers } from "../api/imap";
 import { openAppStoreUpdates, updateChannel } from "../api/updates";
@@ -36,7 +44,14 @@ import {
 import { threadsList } from "../api/threads";
 import { applyFonts, applyTextSize } from "../appearance";
 import type { ThemeChoice } from "@margin/core/hooks";
-import { AddAccountSheet, SettingsShell } from "@margin/core/settings";
+import {
+  AddAccountSheet,
+  SettingRow,
+  SettingsFact,
+  SettingsQuiet,
+  SettingsSection,
+  SettingsShell,
+} from "@margin/core/settings";
 import {
   CALENDAR_SCOPE,
   DRIVE_SCOPE,
@@ -46,7 +61,8 @@ import {
   isMacDesktop,
   isTauri,
   type Account,
-  type BackupSettings,
+  type StateSyncStatus,
+  type SyncStorage,
   type ContactCard,
   type FontRef,
   type MailConfig,
@@ -94,7 +110,7 @@ const SECTIONS = [
   "Writing",
   "Notifications",
   "Keyboard",
-  "Backup",
+  "Sync and storage",
   "Data",
   "About",
 ] as const;
@@ -115,7 +131,7 @@ const VIEWS: Record<Section, () => ReactNode> = {
   Writing: WritingSection,
   Notifications: NotificationsSection,
   Keyboard: KeyboardSection,
-  Backup: BackupSection,
+  "Sync and storage": SyncSection,
   Data: DataSection,
   About: AboutSection,
 };
@@ -162,8 +178,8 @@ const PERMISSIONS: Permission[] = [
   },
   {
     scope: DRIVE_SCOPE,
-    label: "Keep a backup in your Drive",
-    cost: "Backup to Drive is not connected, so your decisions live only on this machine.",
+    label: "Sync through your Drive",
+    cost: "Drive is not connected, so it cannot be chosen as sync storage.",
   },
   {
     scope: CALENDAR_SCOPE,
@@ -794,25 +810,6 @@ function AppearanceSection() {
   );
 }
 
-function SettingRow({
-  label,
-  note,
-  children,
-}: {
-  label: string;
-  note?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="set-field">
-      <div className="set-field-text">
-        <span className="set-field-label">{label}</span>
-        {note ? <span className="set-field-note">{note}</span> : null}
-      </div>
-      <div className="set-field-control">{children}</div>
-    </div>
-  );
-}
 
 function FontPicker({
   label,
@@ -2016,89 +2013,118 @@ function KeyboardSection() {
 }
 
 // -------------------------------------------------------------------------------------------
-// Backup
+// Sync and storage
 // -------------------------------------------------------------------------------------------
 
-const STORES: SegmentOption[] = [
-  { id: "none", label: "Off" },
-  { id: "drive", label: "Google Drive" },
-  { id: "r2", label: "Cloudflare R2" },
+type StorageKind = "off" | SyncStorage["kind"];
+
+const STORAGE_KINDS: SegmentOption[] = [
+  { id: "off", label: "Off" },
+  { id: "folder", label: "Folder" },
+  { id: "s3", label: "S3 or R2" },
+  { id: "web-dav", label: "WebDAV" },
+  { id: "google-drive", label: "Google Drive" },
 ];
 
-const STORE_NAMES: Record<string, string> = {
-  none: "nowhere",
-  drive: "Google Drive",
-  r2: "your R2 bucket",
-};
-
-/** The four S3 fields, and which of them the settings file is allowed to have kept. */
-const R2_FIELDS: {
+interface StorageField {
   key: string;
   label: string;
-  placeholder: string;
+  placeholder?: string;
   secret?: boolean;
-  was: (backup: BackupSettings) => string | null;
-}[] = [
-  {
-    key: "endpoint",
-    label: "Endpoint",
-    placeholder: "https://<account>.r2.cloudflarestorage.com",
-    was: (backup) => backup.r2Endpoint,
-  },
-  { key: "bucket", label: "Bucket", placeholder: "margin-backup", was: (backup) => backup.r2Bucket },
-  { key: "accessKey", label: "Access key id", placeholder: "", secret: true, was: () => null },
-  { key: "secret", label: "Secret access key", placeholder: "", secret: true, was: () => null },
-];
+}
 
-function BackupSection() {
-  const settings = useSettings((s) => s.settings);
-  const applyBackup = useSettings((s) => s.applyBackup);
-  const [choosing, setChoosing] = useState<string | null>(null);
-  const [r2, setR2] = useState<Record<string, string>>({});
-  const [phrase, setPhrase] = useState<string | null>(null);
-  const [restoring, setRestoring] = useState("");
-  // Three different waits on the same store, and each has its own button to say so on. One shared
-  // word for all of them was how Restore went grey while a backup ran.
-  const [phase, setPhase] = useState<"idle" | "configuring" | "backing-up" | "restoring">("idle");
+const STORAGE_FIELDS: Record<"folder" | "s3" | "web-dav", StorageField[]> = {
+  folder: [
+    {
+      key: "path",
+      label: "Folder",
+      placeholder: "A folder iCloud Drive, Dropbox or Syncthing keeps in step",
+    },
+  ],
+  s3: [
+    { key: "endpoint", label: "Endpoint", placeholder: "https://<account>.r2.cloudflarestorage.com" },
+    { key: "region", label: "Region", placeholder: "auto" },
+    { key: "bucket", label: "Bucket", placeholder: "margin" },
+    { key: "accessKey", label: "Access key id" },
+    { key: "secret", label: "Secret access key", secret: true },
+  ],
+  "web-dav": [
+    { key: "url", label: "Address", placeholder: "https://cloud.example.com/remote.php/dav/files/me/margin" },
+    { key: "username", label: "User name" },
+    { key: "password", label: "Password", secret: true },
+  ],
+};
 
-  if (!settings) return <h2 className="settings-title">Backup</h2>;
+function storageFields(storage: SyncStorage | null): Record<string, string> {
+  if (!storage) return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(storage)) {
+    if (typeof value === "string") out[key] = value;
+  }
+  return out;
+}
 
-  const backup = settings.backup;
-  const store = choosing ?? backup.store;
+function storageFrom(kind: SyncStorage["kind"], fields: Record<string, string>, drive: string): SyncStorage {
+  const field = (key: string) => (fields[key] ?? "").trim();
+  switch (kind) {
+    case "folder":
+      return { kind, path: field("path") };
+    case "s3":
+      return {
+        kind,
+        endpoint: field("endpoint"),
+        region: field("region") || "auto",
+        bucket: field("bucket"),
+        accessKey: field("accessKey"),
+        secret: fields.secret ?? "",
+      };
+    case "web-dav":
+      return { kind, url: field("url"), username: field("username") || null, password: fields.password ?? "" };
+    case "google-drive":
+      return { kind, account: drive };
+  }
+}
 
-  /**
-   * The phrase is shown once, at setup, so it is asked for as part of turning backup on rather
-   * than sitting behind a button somebody has to know to press.
-   */
-  const configure = async (which: string, config: Record<string, string>) => {
-    // The segment moves the moment it is pressed. Deriving the key can take a second, and a switch
-    // that sits on the old value for that long reads as one that did not take the press.
-    setChoosing(which);
-    setPhase("configuring");
-    try {
-      const next = await backupConfigure(which, config);
-      applyBackup(next);
-      setChoosing(null);
-      if (which !== "none" && !next.hasPhrase) {
-        const words = await backupPhrase();
-        setPhrase(words);
-        applyBackup({ ...next, hasPhrase: true });
-      }
-    } catch (e) {
-      // The R2 fields stay open so what was typed can be corrected. Any other pick falls back to
-      // what the settings file still says.
-      if (which !== "r2") setChoosing(null);
-      notify(`Could not set that up: ${e}`);
-    } finally {
-      setPhase("idle");
-    }
-  };
+function describeStorage(storage: SyncStorage): string {
+  switch (storage.kind) {
+    case "folder":
+      return storage.path;
+    case "s3":
+      return `${storage.bucket} at ${storage.endpoint}`;
+    case "web-dav":
+      return storage.url;
+    case "google-drive":
+      return `the Google Drive of ${storage.account}`;
+  }
+}
 
-  const run = async (
-    doing: "backing-up" | "restoring",
-    what: string,
-    task: () => Promise<void>,
-  ) => {
+function SyncSection() {
+  const [status, setStatus] = useState<StateSyncStatus | null>(null);
+  const [choosing, setChoosing] = useState<StorageKind | null>(null);
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [drive, setDrive] = useState("");
+  const [shown, setShown] = useState<string | null>(null);
+  const [typed, setTyped] = useState("");
+  const [phase, setPhase] = useState<"idle" | "configuring" | "syncing" | "phrase">("idle");
+
+  useEffect(() => {
+    let live = true;
+    void stateSyncStatus()
+      .then((next) => live && setStatus(next))
+      .catch((e) => notify(`Could not read the sync settings: ${e}`));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  if (!status) return <SettingsSection title="Sync and storage" />;
+
+  const current: StorageKind = status.storage?.kind ?? "off";
+  const kind = choosing ?? current;
+  const values = { ...storageFields(status.storage), ...fields };
+  const driveAccount = drive || (status.storage?.kind === "google-drive" ? status.storage.account : "") || status.driveAccounts[0] || "";
+
+  const act = async (doing: typeof phase, what: string, task: () => Promise<void>) => {
     setPhase(doing);
     try {
       await task();
@@ -2109,156 +2135,207 @@ function BackupSection() {
     }
   };
 
+  const configure = (storage: SyncStorage | null) =>
+    act("configuring", "use that storage", async () => {
+      setStatus(await stateSyncConfigure(storage));
+      setChoosing(null);
+      setFields({});
+    });
+
   return (
     <div className="set-section" data-phase={phase}>
-      <h2 className="settings-title">Backup</h2>
-      <p className="settings-note">
-        Every decision the app holds, journalled and encrypted on this machine before it leaves it.
-        The store holds ciphertext and file names and nothing else.
-      </p>
+      <SettingsSection
+        title="Sync and storage"
+        note="Your decisions, encrypted on this machine before they leave it, kept in step with your other devices through storage you choose. The same storage is the backup."
+      >
+        <SettingRow
+          label="Storage"
+          note={status.shared ? "Chosen once for this machine and shared by every Margin app." : "Chosen for Mail on this device."}
+        >
+          <Segment
+            options={STORAGE_KINDS}
+            value={kind}
+            label="Sync storage"
+            disabled={phase === "configuring"}
+            onChange={(id) => {
+              if (id === "off") {
+                setChoosing(null);
+                if (current !== "off") void configure(null);
+              } else {
+                setChoosing(id as StorageKind);
+              }
+            }}
+          />
+        </SettingRow>
 
-      <SettingRow label="Where it goes" note="Drive uses the account you are already signed in to.">
-        <Segment
-          options={STORES}
-          value={store}
-          label="Backup store"
-          disabled={phase === "configuring"}
-          onChange={(id) => {
-            // R2 cannot be turned on by picking it: it needs four fields first, so picking it
-            // opens them and the button below is what commits.
-            if (id === "r2") setChoosing("r2");
-            else void configure(id, {});
-          }}
-        />
-      </SettingRow>
+        {kind !== "off" && (choosing !== null || current === "off") ? (
+          <div className="set-card">
+            {kind === "google-drive" ? (
+              status.driveAccounts.length === 0 ? (
+                <p className="settings-quiet">
+                  No connected account has granted Drive. Grant it under Accounts first.
+                </p>
+              ) : (
+                <div className="set-stack">
+                  <span className="set-field-label">Account</span>
+                  <select
+                    className="settings-input"
+                    aria-label="Drive account"
+                    value={driveAccount}
+                    onChange={(e) => setDrive(e.target.value)}
+                  >
+                    {status.driveAccounts.map((email) => (
+                      <option key={email} value={email}>
+                        {email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )
+            ) : (
+              STORAGE_FIELDS[kind].map((field) => (
+                <div className="set-stack" key={field.key}>
+                  <span className="set-field-label">{field.label}</span>
+                  <input
+                    {...NO_AUTOFILL}
+                    className="settings-input"
+                    type={field.secret ? "password" : "text"}
+                    aria-label={field.label}
+                    placeholder={field.secret && status.hasSecret && current === kind ? "Stored" : field.placeholder}
+                    value={values[field.key] ?? ""}
+                    onChange={(e) => setFields((were) => ({ ...were, [field.key]: e.target.value }))}
+                  />
+                </div>
+              ))
+            )}
+            {kind === "folder" ? (
+              <div className="set-actions">
+                <Button
+                  disabled={phase === "configuring"}
+                  onClick={() =>
+                    void act("configuring", "choose a folder", async () => {
+                      const path = await stateSyncPickFolder();
+                      if (path) setFields((were) => ({ ...were, path }));
+                    })
+                  }
+                >
+                  Choose folder
+                </Button>
+              </div>
+            ) : null}
+            <div className="set-actions">
+              <Button
+                variant="primary"
+                disabled={phase === "configuring" || (kind === "google-drive" && !driveAccount)}
+                onClick={() => void configure(storageFrom(kind, values, driveAccount))}
+              >
+                {phase === "configuring" ? "Checking" : "Use this storage"}
+              </Button>
+            </div>
+            <SettingsQuiet>Keys and passwords are encrypted on this machine and never written to the storage.</SettingsQuiet>
+          </div>
+        ) : null}
 
-      {store === "r2" ? (
-        <div className="set-card">
-          {/* Held here and sent once, rather than a command per field: three quarters of a set of
-              credentials is not a bucket anybody can be configured against. */}
-          {R2_FIELDS.map((field) => (
-            <div className="set-stack" key={field.key}>
-              <span className="set-field-label">{field.label}</span>
+        <div className="set-rows">
+          <SettingsFact label="Status">
+            {status.storage
+              ? status.hasPhrase
+                ? `Syncing through ${describeStorage(status.storage)}.`
+                : "Waiting for a recovery phrase."
+              : "Not set up, so nothing leaves this machine."}
+          </SettingsFact>
+          <SettingsFact label="Last synced">
+            {status.lastSyncedMs ? messageTime(status.lastSyncedMs) : "Never"}
+          </SettingsFact>
+          {status.error ? <SettingsFact label="Problem" wrap>{status.error}</SettingsFact> : null}
+        </div>
+
+        {status.storage && status.hasPhrase ? (
+          <div className="set-actions">
+            <Button
+              disabled={phase === "syncing"}
+              onClick={() =>
+                void act("syncing", "sync now", async () => {
+                  setStatus(await stateSyncNow());
+                  notify("Synced");
+                })
+              }
+            >
+              {phase === "syncing" ? "Syncing" : "Sync now"}
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="set-stack set-phrase">
+          <span className="set-field-label">Recovery phrase</span>
+          {status.hasPhrase ? (
+            <>
+              <span className="set-field-note">
+                Twenty-four words that unlock your sync storage on another device or after a lost one.
+                Every Margin app on this machine uses the same phrase.
+              </span>
+              {shown ? <p className="phrase">{shown}</p> : null}
+              <div className="set-actions">
+                <Button
+                  disabled={phase === "phrase"}
+                  onClick={() =>
+                    shown
+                      ? setShown(null)
+                      : void act("phrase", "show the phrase", async () => setShown(await stateSyncPhraseShow()))
+                  }
+                >
+                  {shown ? "Hide recovery phrase" : "Show recovery phrase"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="set-field-note">
+                {status.legacyBackup
+                  ? "Mail made backups here before sync existed. Enter the phrase you wrote down then to keep using it, or create a new one."
+                  : "On your first device, create one and write it down. On another device, enter the phrase you wrote down."}
+              </span>
+              {shown ? <p className="phrase">{shown}</p> : null}
+              <div className="set-actions">
+                <Button
+                  disabled={phase === "phrase"}
+                  onClick={() =>
+                    void act("phrase", "create a phrase", async () => {
+                      setShown(await stateSyncPhraseCreate());
+                      setStatus(await stateSyncNow());
+                    })
+                  }
+                >
+                  Create a recovery phrase
+                </Button>
+              </div>
               <input
                 {...NO_AUTOFILL}
                 className="settings-input"
-                type={field.secret ? "password" : "text"}
-                aria-label={field.label}
-                placeholder={field.placeholder}
-                value={r2[field.key] ?? field.was(backup) ?? ""}
-                onChange={(e) => setR2((were) => ({ ...were, [field.key]: e.target.value }))}
+                type="text"
+                aria-label="Recovery phrase"
+                placeholder="Twenty-four words, separated by spaces"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
               />
-            </div>
-          ))}
-          <div className="set-actions">
-            <Button
-              variant="primary"
-              disabled={phase === "configuring"}
-              onClick={() =>
-                void configure(
-                  "r2",
-                  Object.fromEntries(
-                    R2_FIELDS.map((field) => [field.key, r2[field.key] ?? field.was(backup) ?? ""]),
-                  ),
-                )
-              }
-            >
-              {phase === "configuring" ? "Setting up" : "Use this bucket"}
-            </Button>
-          </div>
-          <p className="settings-quiet">
-            The keys are encrypted on this device and never written beside the backup.
-          </p>
+              <div className="set-actions">
+                <Button
+                  disabled={typed.trim().length === 0 || phase === "phrase"}
+                  onClick={() =>
+                    void act("phrase", "use that phrase", async () => {
+                      setStatus(await stateSyncPhraseEnter(typed.trim()));
+                      setTyped("");
+                      notify("Recovery phrase saved");
+                    })
+                  }
+                >
+                  {phase === "phrase" ? "Checking" : "Use this phrase"}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
-      ) : null}
-
-      <div className="set-rows">
-        <div className="set-row">
-          <span className="lab">Status</span>
-          <span className="val">
-            {backup.configured
-              ? `Backing up to ${STORE_NAMES[backup.store] ?? backup.store}.`
-              : "Not set up, so nothing leaves this machine."}
-          </span>
-        </div>
-        <div className="set-row">
-          <span className="lab">Last backup</span>
-          <span className="val">
-            {backup.lastBackupMs ? messageTime(backup.lastBackupMs) : "Never"}
-          </span>
-        </div>
-      </div>
-
-      {backup.configured ? (
-        <div className="set-actions">
-          <Button
-            disabled={phase === "backing-up"}
-            onClick={() =>
-              void run("backing-up", "back up now", async () => {
-                applyBackup(await backupNow());
-                notify("Backed up");
-              })
-            }
-          >
-            {phase === "backing-up" ? "Backing up" : "Back up now"}
-          </Button>
-        </div>
-      ) : null}
-
-      {phrase ? (
-        <div className="set-card set-phrase">
-          <span className="set-field-label">Your recovery phrase</span>
-          <p className="phrase">{phrase}</p>
-          <p className="set-field-note">
-            Write these twelve words down now. They are the only way to attach a second device or to
-            restore after a lost one, and this is the only time they will be on a screen: writing
-            them down now is the whole of the arrangement.
-          </p>
-        </div>
-      ) : backup.hasPhrase ? (
-        <div className="set-stack">
-          <span className="set-field-label">Your recovery phrase</span>
-          <span className="set-field-note">
-            It was shown once when backup was turned on and cannot be shown again. That is the
-            mechanism rather than a rule: the phrase was generated, the key it derives was sealed,
-            and the phrase itself was dropped, so there is nothing left on this device that could
-            print it a second time. A device that could would be a device that had kept it, and then
-            the phrase would protect nothing the disk did not already give away. Backup carries on
-            working without it.
-          </span>
-        </div>
-      ) : null}
-
-      <div className="set-stack">
-        <span className="set-field-label">Restore from a phrase</span>
-        <span className="set-field-note">
-          Attaches this device to a backup that already exists, which is also how a lost machine is
-          replaced. Choose where the backup is kept first.
-        </span>
-        <input
-          {...NO_AUTOFILL}
-          className="settings-input"
-          type="text"
-          aria-label="Recovery phrase"
-          placeholder="Twelve words, separated by spaces"
-          value={restoring}
-          onChange={(e) => setRestoring(e.target.value)}
-        />
-        <div className="set-actions">
-          <Button
-            disabled={restoring.trim().length === 0 || phase === "restoring"}
-            onClick={() =>
-              void run("restoring", "restore from that phrase", async () => {
-                await backupRestore(restoring.trim());
-                setRestoring("");
-                notify("Restored from your backup");
-              })
-            }
-          >
-            {phase === "restoring" ? "Restoring" : "Restore"}
-          </Button>
-        </div>
-      </div>
+      </SettingsSection>
     </div>
   );
 }

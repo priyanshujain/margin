@@ -21,10 +21,14 @@ margin-oauth = { path = "../../../crates/margin-oauth", features = ["tauri"] }
 margin-secrets = { path = "../../../crates/margin-secrets" }
 margin-shell = { path = "../../../crates/margin-shell" }
 margin-sqlite = { path = "../../../crates/margin-sqlite" }
+margin-crypt = { path = "../../../crates/margin-crypt" }
+margin-sync = { path = "../../../crates/margin-sync" }
+objstore = { path = "../../../crates/objstore" }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-os = "2"
+tauri-plugin-dialog = "2"
 # Mobile has no loopback listener to catch Google's redirect, so the OAuth answer comes back as a
 # custom URI scheme the OS routes to this app. Registered on desktop too, so both flows are one
 # code path with one difference in it rather than two.
@@ -65,14 +69,6 @@ mail-builder = "0.5"
 # clients that drop <style> still render it.
 ammonia = "4.1"
 css-inline = "0.21"
-
-# Refresh tokens, the backup key and every uploaded journal segment are sealed with
-# XChaCha20-Poly1305. There is no `keyring` here on purpose: it has no Android backend at all, and
-# on macOS it ties the item to the code signature, so every rebuild re-prompts.
-chacha20poly1305 = "0.11"
-# The backup key is derived from the recovery phrase, so the derivation has to be slow.
-argon2 = "0.6"
-bip39 = { version = "2.2", features = ["rand"] }
 
 # The system families the Appearance section offers alongside the six bundled ones.
 fontdb = "0.24"
@@ -179,3 +175,4 @@ block2 = "0.6"
 
 [dev-dependencies]
 tempfile = "3"
+chacha20poly1305 = "0.11"

@@ -5,7 +5,6 @@ pub mod accounts;
 pub mod app_lock;
 pub mod attachments;
 pub mod imap;
-pub mod backup;
 pub mod badge;
 pub mod clips;
 pub mod contacts;
@@ -34,6 +33,7 @@ pub mod send;
 pub mod settings;
 pub mod snooze;
 pub mod state;
+pub mod statesync;
 pub mod sync;
 pub mod undo;
 pub mod unsubscribe;
@@ -226,7 +226,8 @@ pub fn run() {
     let mut builder = margin_shell::plugins::standard(tauri::Builder::default(), context.config())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_deep_link::init());
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init());
 
     builder = builder.manage(google::AuthState::default()).setup(|app| {
         app.manage(app_lock::AppLock::new(settings::load(app.handle())?.app_lock_enabled));
@@ -256,6 +257,7 @@ pub fn run() {
             attach_account(handle, &account);
         }
         sync::setup(handle.clone());
+        statesync::setup(handle.clone());
 
         // The dock keeps whatever number it was left with across a quit, so a launch has to say
         // what is true now rather than waiting for the first thing to change.
@@ -385,11 +387,14 @@ pub fn run() {
             send::outbox_list,
             invites::invite_respond,
             // Backup
-            backup::backup_status,
-            backup::backup_configure,
-            backup::backup_now,
-            backup::backup_phrase,
-            backup::backup_restore,
+            statesync::state_sync_status,
+            statesync::state_sync_configure,
+            statesync::state_sync_now,
+            statesync::state_sync_poll,
+            statesync::state_sync_phrase_create,
+            statesync::state_sync_phrase_show,
+            statesync::state_sync_phrase_enter,
+            statesync::state_sync_pick_folder,
             // Sync
             sync::sync_now,
             sync::sync_status,

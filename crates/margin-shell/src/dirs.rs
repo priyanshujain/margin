@@ -21,8 +21,24 @@ pub fn shared_dir(group: &str) -> Option<PathBuf> {
     let manager = NSFileManager::defaultManager();
     let url =
         manager.containerURLForSecurityApplicationGroupIdentifier(&NSString::from_str(group))?;
-    let path = url.path()?;
-    Some(PathBuf::from(path.to_string()))
+    let path = PathBuf::from(url.path()?.to_string());
+    apple_container_in_reach(path, std::env::var_os("CFFIXED_USER_HOME"))
+}
+
+/// macOS answers with a path even when the build lacks the entitlement, and only creates the
+/// container for a build that has it. A process given its own home (a dev build under a temp
+/// `CFFIXED_USER_HOME`) must never reach the real user's container.
+#[cfg(any(target_os = "macos", target_os = "ios", test))]
+fn apple_container_in_reach(
+    path: PathBuf,
+    fixed_home: Option<std::ffi::OsString>,
+) -> Option<PathBuf> {
+    if let Some(home) = fixed_home.filter(|home| !home.is_empty())
+        && !path.starts_with(PathBuf::from(home))
+    {
+        return None;
+    }
+    path.is_dir().then_some(path)
 }
 
 #[cfg(any(target_os = "linux", target_os = "windows"))]
@@ -111,6 +127,26 @@ mod tests {
             Some(PathBuf::from("/home/a/.local/share/studio.margin"))
         );
         assert_eq!(data(None, None), None);
+    }
+
+    #[test]
+    fn an_apple_container_is_used_only_when_it_exists_and_is_inside_a_fixed_home() {
+        let dir = tempfile::tempdir().expect("a temp dir");
+        let inside = dir.path().join("Library/Group Containers/group.x");
+        assert_eq!(apple_container_in_reach(inside.clone(), None), None);
+        fs::create_dir_all(&inside).unwrap();
+        assert_eq!(
+            apple_container_in_reach(inside.clone(), None),
+            Some(inside.clone())
+        );
+        assert_eq!(
+            apple_container_in_reach(inside.clone(), Some(dir.path().into())),
+            Some(inside.clone())
+        );
+        assert_eq!(
+            apple_container_in_reach(inside, Some("/tmp/elsewhere".into())),
+            None
+        );
     }
 
     #[test]

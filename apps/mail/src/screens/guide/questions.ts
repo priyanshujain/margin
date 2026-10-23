@@ -152,7 +152,7 @@ export const QUESTIONS: Section = {
         },
         {
           p: [
-            "What leaves is your mail, to and from your provider, and a backup if you turn one on, which holds ciphertext and file names and nothing else. ",
+            "What leaves is your mail, to and from your provider, and your decisions if you turn on sync, which holds ciphertext and file names and nothing else. ",
             { see: "acct-privacy" },
             " has the rest.",
           ],

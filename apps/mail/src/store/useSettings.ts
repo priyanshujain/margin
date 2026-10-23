@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { settingsGet, settingsSet, storageUsed, systemFonts } from "../api/settings";
-import { live, type BackupSettings, type Settings, type StorageUsed } from "../ipc";
+import { live, type Settings, type StorageUsed } from "../ipc";
 import { notify } from "@margin/core/hooks";
 
 type Phase = "idle" | "loading" | "saving" | "error";
@@ -32,12 +32,6 @@ interface SettingsState {
   loadStorage: () => Promise<void>;
   /** A partial patch. Rust merges it into the file; absent fields are unchanged. */
   save: (patch: Partial<Settings>) => Promise<void>;
-  /**
-   * The backup commands each answer with the whole of `BackupSettings`, so what they hand back is
-   * taken rather than read again. They do not go through `settingsSet` and there is no
-   * `store-changed` scope the settings screen listens to, so nothing else would notice.
-   */
-  applyBackup: (backup: BackupSettings) => void;
 }
 
 export const useSettings = create<SettingsState>((set, get) => ({
@@ -94,6 +88,4 @@ export const useSettings = create<SettingsState>((set, get) => ({
       notify(`Could not save that setting: ${e}`);
     }
   },
-
-  applyBackup: (backup) => set((s) => (s.settings ? { settings: { ...s.settings, backup } } : {})),
 }));

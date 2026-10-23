@@ -24,7 +24,7 @@ const SECTIONS = [
   "Writing",
   "Notifications",
   "Keyboard",
-  "Backup",
+  "Sync and storage",
   "Data",
   "About",
 ];
@@ -88,7 +88,7 @@ const CONTROLS: [string, string][] = [
   ["Writing", '[role="tablist"][aria-label="Undo delay"] [role="tab"]'],
   ["Notifications", '[role="switch"]'],
   ["Keyboard", 'button:has-text("Open the file")'],
-  ["Backup", '[role="tablist"][aria-label="Backup store"] [role="tab"]'],
+  ["Sync and storage", '[role="tablist"][aria-label="Sync storage"] [role="tab"]'],
   ["Data", 'button:has-text("Export")'],
   ["About", ".settings-version"],
 ];
@@ -493,18 +493,17 @@ test("the undo delay round trips through the command", async ({ page }) => {
   await expect(delay.getByRole("tab", { name: "20s" })).toHaveAttribute("aria-selected", "true");
 });
 
-test("Backup says the recovery phrase cannot be shown twice, and why", async ({ page }) => {
+test("Sync and storage shows where it syncs and the phrase on request", async ({ page }) => {
   await openSettings(page);
-  await page.locator(".settings-tab", { hasText: "Backup" }).click();
+  await page.locator(".settings-tab", { hasText: "Sync and storage" }).click();
 
-  await expect(page.locator(".settings-inner")).toContainText("Backing up to Google Drive");
-  await expect(page.locator(".settings-inner")).toContainText("cannot be shown again");
-  // The mechanism rather than a rule: the sentence has to say why, not apologise.
-  await expect(page.locator(".settings-inner")).toContainText("the phrase itself was dropped");
-
-  // And no button that could not work if it were pressed.
-  await expect(page.getByRole("button", { name: /phrase/i })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Restore" })).toBeVisible();
+  await expect(page.locator(".settings-inner")).toContainText("Syncing through the Google Drive of pj@73ai.org");
+  await expect(page.locator(".phrase")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show recovery phrase" }).click();
+  await expect(page.locator(".phrase")).toHaveText(/^(\w+ ){23}\w+$/);
+  await page.getByRole("button", { name: "Hide recovery phrase" }).click();
+  await expect(page.locator(".phrase")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sync now" })).toBeVisible();
 });
 
 test("Data says what clearing the mirror does and does not throw away", async ({ page }) => {
@@ -536,46 +535,30 @@ test("the Mail section, for the eye", async ({ page }) => {
   await page.screenshot({ path: join(shots, "settings-mail.png") });
 });
 
-/**
- * Makes the fixture answer as a device that has never had a recovery phrase, which is the only
- * state the phrase can be shown in and the one the seeded fixture is past. The module request is
- * answered with a shim over the real one, the same way `failCommands` does it.
- */
-async function withoutAPhrase(page: Page): Promise<void> {
-  await page.route("**/src/dev/mockIpc.ts*", async (route) => {
-    if (new URL(route.request().url()).searchParams.has("real")) return route.fallback();
-    await route.fulfill({
-      contentType: "text/javascript",
-      body: [
-        `import { mockCall as real } from "/src/dev/mockIpc.ts?real";`,
-        `export async function mockCall(command, args) {`,
-        `  const out = await real(command, args);`,
-        `  if (command === "settings_get" || command === "settings_set")`,
-        `    return { ...out, backup: { ...out.backup, hasPhrase: false } };`,
-        `  if (command === "backup_configure") return { ...out, hasPhrase: false };`,
-        `  return out;`,
-        `}`,
-      ].join("\n"),
-    });
-  });
-}
+test("a device with no phrase can create one or enter one", async ({ page }) => {
+  await openSettings(page, { "marginmail-dev-no-phrase": "1" });
+  await page.locator(".settings-tab", { hasText: "Sync and storage" }).click();
 
-test("turning backup on shows the phrase, once, with what it is for", async ({ page }) => {
-  await withoutAPhrase(page);
-  await openSettings(page);
-  await page.locator(".settings-tab", { hasText: "Backup" }).click();
+  await expect(page.locator(".settings-inner")).toContainText("Waiting for a recovery phrase");
+  await expect(page.getByLabel("Recovery phrase")).toBeVisible();
+  await page.getByRole("button", { name: "Create a recovery phrase" }).click();
+  await expect(page.locator(".phrase")).toHaveText(/^(\w+ ){23}\w+$/);
+  await expect(page.getByRole("button", { name: "Hide recovery phrase" })).toBeVisible();
+  await expect(page.getByLabel("Recovery phrase")).toHaveCount(0);
 
-  // Not offered before there is a backup to have one for.
-  await expect(page.locator(".phrase")).toHaveCount(0);
-
-  await page.getByRole("tab", { name: "Google Drive" }).click();
-  await expect(page.locator(".phrase")).toHaveText(/(\w+ ){11}\w+/);
-  await expect(page.locator(".settings-inner")).toContainText("only time they will be on a screen");
+  await page.getByRole("tab", { name: "Folder" }).click();
+  await page.getByRole("button", { name: "Choose folder" }).click();
+  await expect(page.getByLabel("Folder", { exact: true })).toHaveValue(
+    "/Users/me/Library/Mobile Documents/com~apple~CloudDocs/Margin",
+  );
+  await page.getByLabel("Folder", { exact: true }).fill("/Users/me/Dropbox/Margin");
+  await page.getByRole("button", { name: "Use this storage" }).click();
+  await expect(page.locator(".settings-inner")).toContainText("Syncing through /Users/me/Dropbox/Margin");
 
   mkdirSync(shots, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
   await settle(page);
-  await page.screenshot({ path: join(shots, "settings-backup.png") });
+  await page.screenshot({ path: join(shots, "settings-sync.png") });
 });
 
 test("the name and the signature are editable, and the signature is one field in two places", async ({
@@ -652,55 +635,45 @@ test("an export says it is writing and cannot be pressed twice", async ({ page }
   await expect(page.locator(".toast-text")).toContainText("was imported");
 });
 
-test("the backup store moves as it is pressed, and each wait names its own button", async ({
+test("a cancelled folder picker leaves the typed path alone", async ({ page }) => {
+  await openSettings(page, { "marginmail-dev-pick-cancel": "1" });
+  await page.locator(".settings-tab", { hasText: "Sync and storage" }).click();
+  await page.getByRole("tab", { name: "Folder" }).click();
+  const field = page.getByLabel("Folder", { exact: true });
+  await field.fill("/Users/me/Sync");
+  await page.getByRole("button", { name: "Choose folder" }).click();
+  await expect(page.locator(".set-section")).toHaveAttribute("data-phase", "idle");
+  await expect(field).toHaveValue("/Users/me/Sync");
+});
+
+test("the storage choice moves as it is pressed, and each wait names its own button", async ({
   page,
 }) => {
   await openSettings(page, { "marginmail-dev-pending": "1" });
-  await page.locator(".settings-tab", { hasText: "Backup" }).click();
+  await page.locator(".settings-tab", { hasText: "Sync and storage" }).click();
 
   const section = page.locator(".set-section");
-  const store = page.getByRole("tablist", { name: "Backup store" });
+  const store = page.getByRole("tablist", { name: "Sync storage" });
   const drive = store.getByRole("tab", { name: "Google Drive" });
   const off = store.getByRole("tab", { name: "Off" });
   await expect(drive).toHaveAttribute("aria-selected", "true");
 
-  // The segment shows the new pick before the command answers, and nothing else can be picked
-  // until it does. It used to sit on the old value for the whole of the key derivation.
+  const syncNow = page.getByRole("button", { name: /^Sync(ing| now)$/ });
+  await syncNow.click();
+  await expect(section).toHaveAttribute("data-phase", "syncing");
+  await expect(syncNow).toHaveText("Syncing");
+  await expect(syncNow).toBeDisabled();
+  await expect(section).toHaveAttribute("data-phase", "idle");
+  await expect(syncNow).toHaveText("Sync now");
+  await expect(page.locator(".toast-text")).toContainText("Synced");
+
   await off.click();
-  await expect(off).toHaveAttribute("aria-selected", "true");
   await expect(store).toHaveAttribute("data-disabled", "");
-  await expect(drive).toBeDisabled();
   await expect(section).toHaveAttribute("data-phase", "configuring");
-
   await expect(section).toHaveAttribute("data-phase", "idle");
-  await expect(store).not.toHaveAttribute("data-disabled", "");
   await expect(off).toHaveAttribute("aria-selected", "true");
-
-  // Two buttons, two waits, and only the one that was pressed goes grey.
-  const backUp = page.getByRole("button", { name: /^Back(ing)? up/ });
-  const restore = page.getByRole("button", { name: /^Restor(e|ing)$/ });
-  await page
-    .getByLabel("Recovery phrase")
-    .fill("candle harbour ribbon meadow anchor lantern pepper thicket marble orchard signal walnut");
-  await expect(restore).toBeEnabled();
-
-  await backUp.click();
-  await expect(section).toHaveAttribute("data-phase", "backing-up");
-  await expect(backUp).toHaveText("Backing up");
-  await expect(backUp).toBeDisabled();
-  await expect(restore).toBeEnabled();
-  await expect(section).toHaveAttribute("data-phase", "idle");
-  await expect(backUp).toHaveText("Back up now");
-  await expect(page.locator(".toast-text")).toContainText("Backed up");
-
-  await restore.click();
-  await expect(section).toHaveAttribute("data-phase", "restoring");
-  await expect(restore).toHaveText("Restoring");
-  await expect(restore).toBeDisabled();
-  await expect(backUp).toBeEnabled();
-  await expect(section).toHaveAttribute("data-phase", "idle");
-  await expect(page.getByLabel("Recovery phrase")).toHaveValue("");
-  await expect(page.locator(".toast-text")).toContainText("Restored from your backup");
+  await expect(page.locator(".settings-inner")).toContainText("Not set up");
+  await expect(syncNow).toHaveCount(0);
 });
 
 test("clearing the mirror holds the confirmation until the command answers", async ({ page }) => {

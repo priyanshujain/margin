@@ -1,0 +1,23 @@
+[package]
+name = "margin-sync"
+description = "End to end encrypted record sync and backup over an object store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+margin-crypt = { path = "../margin-crypt" }
+margin-secrets = { path = "../margin-secrets" }
+objstore = { path = "../objstore" }
+objstore-fs = { path = "../objstore-fs" }
+objstore-gdrive = { path = "../objstore-gdrive" }
+objstore-s3 = { path = "../objstore-s3" }
+objstore-webdav = { path = "../objstore-webdav" }
+serde.workspace = true
+serde_json.workspace = true
+rand.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
