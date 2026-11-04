@@ -45,7 +45,9 @@ export function GridAllDay({ days, instances, selected, onSelect }: GridAllDayPr
   const open = expanded && overflowing;
   const shown = open ? rows : rows.slice(0, BAND_ROWS);
   const hidden = open ? [] : rows.slice(BAND_ROWS);
-  const hiddenCount = hidden.reduce((n, row) => n + row.length, 0);
+  const hiddenByDay = days.map((_, d) =>
+    hidden.reduce((n, row) => n + row.filter((item) => item.from <= d && d < item.to).length, 0),
+  );
 
   const chip = (item: BandItem, row: number) => (
     <button
@@ -79,15 +81,20 @@ export function GridAllDay({ days, instances, selected, onSelect }: GridAllDayPr
       <div className="grid-allday-wrap">
         <div className="grid-allday-rows" data-expanded={open || undefined}>
           {shown.map((row, r) => row.map((item) => chip(item, r)))}
-          {hiddenCount > 0 && (
-            <button
-              type="button"
-              className="grid-chip-more"
-              title={`${hiddenCount} more all-day`}
-              onClick={() => setExpanded(true)}
-            >
-              {hiddenCount} more
-            </button>
+          {hiddenByDay.map(
+            (count, d) =>
+              count > 0 && (
+                <button
+                  type="button"
+                  key={`more-${d}`}
+                  className="grid-chip-more"
+                  title={`${count} more all-day`}
+                  style={vars({ gridColumn: d + 1, gridRow: 1 })}
+                  onClick={() => setExpanded(true)}
+                >
+                  +{count} more
+                </button>
+              ),
           )}
           {open && (
             <button

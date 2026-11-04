@@ -226,11 +226,12 @@
 /* Pinned to the band's right edge rather than given a grid row of its own, so the count cannot
    make the band taller. The band's height is the axis's input and has to stay constant. */
 .grid-chip-more {
-  position: absolute;
-  top: 1px;
-  right: 4px;
+  justify-self: end;
   z-index: 2;
+  font-weight: 600;
+  color: var(--ink);
   background: var(--paper);
+  border: 1px solid var(--line-strong);
   box-shadow: -8px 0 8px -4px var(--paper);
 }
 
