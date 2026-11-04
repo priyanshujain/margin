@@ -86,7 +86,9 @@ function App() {
         void useAccounts.getState().refresh();
       }
     });
+    const dropped = listen<string>("write-dropped", (event) => notify(event.payload));
     return () => {
+      void dropped.then((stop) => stop());
       void menu.then((stop) => stop());
       void auth.then((stop) => stop());
       void progress.then((stop) => stop());

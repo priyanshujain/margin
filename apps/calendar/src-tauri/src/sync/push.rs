@@ -372,10 +372,18 @@ pub async fn drain(store: &Store, provider: &impl CalendarProvider, deadline: In
                 return outcome;
             }
         };
-        let pending: Vec<OutboxRow> = queued
-            .into_iter()
-            .filter(|row| row.attempts < MAX_ATTEMPTS && !attempted.contains(&row.id))
-            .collect();
+        let mut pending: Vec<OutboxRow> = Vec::new();
+        for row in queued {
+            if attempted.contains(&row.id) {
+                continue;
+            }
+            if row.attempts >= MAX_ATTEMPTS {
+                let reason = row.last_error.clone().unwrap_or_else(|| "it kept failing".to_string());
+                give_up(store, &row, &reason, &mut outcome);
+                continue;
+            }
+            pending.push(row);
+        }
         if pending.is_empty() {
             break;
         }
@@ -393,6 +401,10 @@ pub async fn drain(store: &Store, provider: &impl CalendarProvider, deadline: In
                 let _ = with_conn(store, |conn| write::dequeue(conn, row.id));
                 continue;
             };
+
+            if with_conn(store, |conn| waiting_for_resync(conn, &row)).unwrap_or(false) {
+                continue;
+            }
 
             match push_one(store, provider, account_id, &row).await {
                 Ok(()) => {
@@ -414,15 +426,64 @@ pub async fn drain(store: &Store, provider: &impl CalendarProvider, deadline: In
                         "push",
                         &format!("{} failed, attempt {}: {message}", describe_row(&row), row.attempts + 1),
                     );
-                    let _ =
-                        with_conn(store, |conn| write::mark_attempt_failed(conn, row.id, &message));
-                    outcome.error.get_or_insert(message);
+                    if row.attempts + 1 >= MAX_ATTEMPTS {
+                        give_up(store, &row, &message, &mut outcome);
+                    } else {
+                        let _ = with_conn(store, |conn| {
+                            write::mark_attempt_failed(conn, row.id, &message)
+                        });
+                        outcome.error.get_or_insert(message);
+                    }
                 }
             }
         }
     }
 
     outcome
+}
+
+/// While a calendar is read again from scratch its rows are briefly missing, and an occurrence
+/// write that needs its master would burn its attempts on that gap. It waits for the resync instead.
+fn waiting_for_resync(conn: &Connection, row: &OutboxRow) -> Result<bool, String> {
+    let (Some(_), Some(event_id)) = (row.original_start.as_deref(), row.event_id.as_deref()) else {
+        return Ok(false);
+    };
+    if read::event(conn, &row.calendar_id, event_id)?.is_some() {
+        return Ok(false);
+    }
+    Ok(read::sync_targets(conn)?
+        .into_iter()
+        .any(|target| target.calendar_id == row.calendar_id && target.sync_token.is_none()))
+}
+
+/// Drops a write the provider will not take and puts the event back to what the provider has: a
+/// create that never landed is removed, anything else is marked clean and its calendar read again.
+fn give_up(store: &Store, row: &OutboxRow, reason: &str, outcome: &mut Outcome) {
+    let summary = with_conn(store, |conn| {
+        let event = match row.event_id.as_deref() {
+            Some(id) => read::event(conn, &row.calendar_id, id)?,
+            None => None,
+        };
+        let tx = Tx::begin(conn)?;
+        write::dequeue(conn, row.id)?;
+        if let Some(id) = row.event_id.as_deref() {
+            if row.op == "create" {
+                write::delete_event(conn, &row.calendar_id, id)?;
+            } else {
+                write::clear_dirty(conn, &row.calendar_id, id)?;
+                write::reset_sync_token(conn, &row.calendar_id)?;
+            }
+        }
+        tx.commit()?;
+        Ok(event.map(|e| e.summary).filter(|s| !s.is_empty()))
+    });
+    margin_log::note("push", &format!("{} dropped: {reason}", describe_row(row)));
+    let name = summary.ok().flatten().unwrap_or_else(|| "an event".to_string());
+    let line = format!("Could not save your change to “{name}”: {reason}");
+    if !outcome.dropped.contains(&line) {
+        outcome.dropped.push(line);
+    }
+    outcome.changed = true;
 }
 
 fn describe_row(row: &OutboxRow) -> String {

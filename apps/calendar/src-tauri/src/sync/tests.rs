@@ -570,18 +570,16 @@ fn a_write_google_keeps_rejecting_eventually_stops_being_retried() {
             .collect(),
     );
 
-    for _ in 0..10 {
-        drain(&store, &stub);
-    }
+    let dropped: Vec<String> = (0..10).flat_map(|_| drain(&store, &stub).dropped).collect();
 
     assert_eq!(
         stub.calls().len() as i64,
         push::MAX_ATTEMPTS,
         "the queue stops rather than spinning"
     );
-    let entries = queued(&store);
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].attempts, push::MAX_ATTEMPTS);
+    assert!(queued(&store).is_empty(), "the write is given up on");
+    assert_eq!(dropped.len(), 1, "{dropped:?}");
+    assert!(dropped[0].starts_with("Could not save your change"), "{dropped:?}");
 }
 
 #[test]

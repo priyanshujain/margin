@@ -76,6 +76,8 @@ pub struct Outcome {
     pub changed: bool,
     pub error: Option<String>,
     pub offline: bool,
+    /// One line per event whose queued write was given up on, for the user to be told.
+    pub dropped: Vec<String>,
 }
 
 /// Where progress goes. The engine is written against this rather than against `AppHandle` so the
@@ -87,6 +89,7 @@ pub trait Sink: Sync {
     /// Purely an invalidation signal: the frontend re-requests its visible range and nothing here
     /// tries to describe what moved.
     fn changed(&self, reason: &str);
+    fn dropped(&self, _line: &str) {}
 }
 
 struct AppSink {
@@ -119,6 +122,10 @@ impl Sink for AppSink {
 
     fn changed(&self, reason: &str) {
         crate::emit_store_changed(&self.app, reason);
+    }
+
+    fn dropped(&self, line: &str) {
+        let _ = self.app.emit("write-dropped", line);
     }
 }
 
@@ -164,6 +171,9 @@ async fn run_pass(
     let pushed = push::drain(store, provider, deadline).await;
     if pushed.changed {
         sink.changed("outbox");
+    }
+    for line in &pushed.dropped {
+        sink.dropped(line);
     }
 
     let pulled = if pushed.offline {
@@ -302,6 +312,9 @@ pub async fn sync_flush(app: tauri::AppHandle) -> Result<(), String> {
     let outcome = push::drain(&store, &provider, deadline).await;
     if outcome.changed {
         crate::emit_store_changed(&app, "outbox");
+    }
+    for line in &outcome.dropped {
+        let _ = app.emit("write-dropped", line);
     }
     Ok(())
 }

@@ -471,6 +471,16 @@ pub fn delete_event(conn: &Connection, calendar_id: &str, event_id: &str) -> Res
     Ok(())
 }
 
+/// Forgets a calendar's cursor so the next pull reads it in full and overwrites whatever is clean.
+pub fn reset_sync_token(conn: &Connection, calendar_id: &str) -> Result<(), String> {
+    conn.execute(
+        "UPDATE calendars SET sync_token = NULL WHERE id = ?1",
+        [calendar_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// 410 recovery. Drops one calendar's rows and its cursor and nothing else, so the full resync that
 /// follows is scoped to the calendar whose token died.
 pub fn clear_calendar(conn: &Connection, calendar_id: &str) -> Result<(), String> {
