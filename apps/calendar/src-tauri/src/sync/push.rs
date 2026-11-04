@@ -389,12 +389,14 @@ pub async fn drain(store: &Store, provider: &impl CalendarProvider, deadline: In
             let Some(account_id) = accounts.get(&row.calendar_id) else {
                 // The calendar is gone, so the write has nowhere to land and nothing to retry
                 // against.
+                margin_log::note("push", &format!("{} dropped: {} has no account", describe_row(&row), row.calendar_id));
                 let _ = with_conn(store, |conn| write::dequeue(conn, row.id));
                 continue;
             };
 
             match push_one(store, provider, account_id, &row).await {
                 Ok(()) => {
+                    margin_log::note("push", &format!("{} ok", describe_row(&row)));
                     let _ = with_conn(store, |conn| write::dequeue(conn, row.id));
                     outcome.changed = true;
                     // A push can rewrite the entries behind it, so the rest of the batch is stale.
@@ -408,6 +410,10 @@ pub async fn drain(store: &Store, provider: &impl CalendarProvider, deadline: In
                 }
                 Err(error) => {
                     let message = super::describe(&error);
+                    margin_log::note(
+                        "push",
+                        &format!("{} failed, attempt {}: {message}", describe_row(&row), row.attempts + 1),
+                    );
                     let _ =
                         with_conn(store, |conn| write::mark_attempt_failed(conn, row.id, &message));
                     outcome.error.get_or_insert(message);
@@ -417,6 +423,15 @@ pub async fn drain(store: &Store, provider: &impl CalendarProvider, deadline: In
     }
 
     outcome
+}
+
+fn describe_row(row: &OutboxRow) -> String {
+    format!(
+        "{} {} {}",
+        row.op,
+        row.calendar_id,
+        row.event_id.as_deref().unwrap_or("-")
+    )
 }
 
 async fn push_one(

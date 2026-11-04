@@ -253,6 +253,7 @@ pub fn run() {
             sync::sync_status,
             sync::sync_flush,
             margin_log::commands::log_note,
+            margin_log::commands::log_dir,
             packaged_by
         ])
         .build(context)

@@ -183,6 +183,9 @@ async fn run_pass(
 
     status.pending_writes = pending_writes(store);
     status.message = None;
+    if let Some(error) = pushed.error.as_ref().or(pulled.error.as_ref()).or(feeds.error.as_ref()) {
+        margin_log::note("sync", &format!("pass failed: {error}"));
+    }
     match pushed.error.or(pulled.error).or(feeds.error) {
         Some(error) => {
             status.phase = "error".to_string();
@@ -328,7 +331,9 @@ pub async fn event_create(app: tauri::AppHandle, draft: EventDraft) -> Result<In
     let store = app
         .try_state::<Store>()
         .ok_or("the local store is not open")?;
-    let instance = with_conn(&store, |conn| push::create(conn, &draft))?;
+    let instance = with_conn(&store, |conn| push::create(conn, &draft))
+        .inspect_err(|e| margin_log::note("event", &format!("create in {} failed: {e}", draft.calendar_id)))?;
+    margin_log::note("event", &format!("create in {} queued: {}", draft.calendar_id, instance.event_id));
     note_pending(&app, &store);
     crate::emit_store_changed(&app, "event-created");
     kick(&app);
@@ -346,8 +351,10 @@ pub async fn event_update(
         .try_state::<Store>()
         .ok_or("the local store is not open")?;
     let rows = with_conn(&store, |conn| series_rows(conn, &key))?;
-    let plans = crate::recur::plan_edit(&rows, &key, &patch, scope)?;
-    with_conn(&store, |conn| push::apply_plans(conn, &rows, &plans))?;
+    crate::recur::plan_edit(&rows, &key, &patch, scope)
+        .and_then(|plans| with_conn(&store, |conn| push::apply_plans(conn, &rows, &plans)))
+        .inspect_err(|e| margin_log::note("event", &format!("update {} failed: {e}", key.event_id)))?;
+    margin_log::note("event", &format!("update {} queued", key.event_id));
     note_pending(&app, &store);
     crate::emit_store_changed(&app, "event-updated");
     kick(&app);
@@ -364,8 +371,10 @@ pub async fn event_delete(
         .try_state::<Store>()
         .ok_or("the local store is not open")?;
     let rows = with_conn(&store, |conn| series_rows(conn, &key))?;
-    let plans = crate::recur::plan_delete(&rows, &key, scope)?;
-    with_conn(&store, |conn| push::apply_plans(conn, &rows, &plans))?;
+    crate::recur::plan_delete(&rows, &key, scope)
+        .and_then(|plans| with_conn(&store, |conn| push::apply_plans(conn, &rows, &plans)))
+        .inspect_err(|e| margin_log::note("event", &format!("delete {} failed: {e}", key.event_id)))?;
+    margin_log::note("event", &format!("delete {} queued", key.event_id));
     note_pending(&app, &store);
     crate::emit_store_changed(&app, "event-deleted");
     kick(&app);

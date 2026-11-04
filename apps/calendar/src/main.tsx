@@ -7,8 +7,16 @@ import "./styles/fonts.css";
 import "@margin/core/ui";
 import App from "./App";
 import { isMacDesktop } from "@margin/core/ipc";
+import { call } from "./ipc";
 import { trackSafeArea } from "./safeArea";
 import "./styles/app.css";
+
+window.addEventListener("error", (event) => {
+  void call("log_note", { who: "ui", line: `uncaught: ${event.message} (${event.filename}:${event.lineno})` });
+});
+window.addEventListener("unhandledrejection", (event) => {
+  void call("log_note", { who: "ui", line: `unhandled: ${String(event.reason)}` });
+});
 
 // Before the first render, so the bars are the right height on the first paint rather than after.
 trackSafeArea();
