@@ -233,28 +233,50 @@ pub struct CalendarRow {
     pub selected: bool,
 }
 
-/// Deliberately leaves `selected` and `sync_token` alone on an existing row, so a calendarList
-/// refresh cannot re-tick a calendar the user unticked or discard a live cursor. On insert,
-/// `selected` is seeded from Google's own setting, so a calendar hidden there starts hidden here.
+/// Leaves `selected` alone on an existing row unless another account takes it over, so a calendarList refresh cannot
+/// re-tick a calendar the user unticked. On insert, `selected` is seeded from Google's own setting,
+/// so a calendar hidden there starts hidden here.
 ///
-/// `account_id` is left alone for the same reason. A calendar shared with two connected accounts
-/// comes back in both calendarList responses, and letting the second one claim the row would flip
-/// the owner on every pass. The sync token is issued per user, so each flip invalidates it and
-/// forces a full resync of that calendar, for ever. First account to see it keeps it.
+/// A calendar shared with two connected accounts comes back in both calendarList responses. The
+/// row belongs to the account whose address is the calendar's id, and otherwise to the best access
+/// role. A weaker account never touches the row, and a stronger one takes it over and drops the
+/// cursor, because sync tokens are issued per user. Ties keep the current owner, so ownership
+/// cannot flip between passes.
 pub fn upsert_calendar(conn: &Connection, row: &CalendarRow) -> Result<(), String> {
-    conn.execute(
+    const RANK: &str = "CASE {r} WHEN 'owner' THEN 3 WHEN 'writer' THEN 2 WHEN 'reader' THEN 1 ELSE 0 END";
+    let rank = |col: &str| RANK.replace("{r}", col);
+    let own = |table: &str| format!("(lower({table}.id) = (SELECT lower(email) FROM accounts WHERE id = {table}.account_id))");
+    let claims = format!(
+        "(NOT {} AND ({} OR {} > {}))",
+        own("calendars"),
+        own("excluded"),
+        rank("excluded.access_role"),
+        rank("calendars.access_role"),
+    );
+    let mine = format!("(excluded.account_id = calendars.account_id OR {claims})");
+    let keep = |col: &str| format!("{col} = CASE WHEN {mine} THEN excluded.{col} ELSE calendars.{col} END");
+    let sql = format!(
         "INSERT INTO calendars
             (id, account_id, summary, description, color_hex, selected, access_role, time_zone,
              primary_cal, sync_token, deleted)
          VALUES (?1, ?2, ?3, ?4, ?5, ?10, ?6, ?7, ?8, NULL, ?9)
          ON CONFLICT(id) DO UPDATE SET
-            summary     = excluded.summary,
-            description = excluded.description,
-            color_hex   = excluded.color_hex,
-            access_role = excluded.access_role,
-            time_zone   = excluded.time_zone,
-            primary_cal = excluded.primary_cal,
-            deleted     = excluded.deleted",
+            sync_token = CASE WHEN excluded.account_id <> calendars.account_id AND {claims}
+                              THEN NULL ELSE calendars.sync_token END,
+            selected   = CASE WHEN excluded.account_id <> calendars.account_id AND {claims}
+                              THEN excluded.selected ELSE calendars.selected END,
+            {}, {}, {}, {}, {}, {}, {}, {}",
+        keep("account_id"),
+        keep("summary"),
+        keep("description"),
+        keep("color_hex"),
+        keep("access_role"),
+        keep("time_zone"),
+        keep("primary_cal"),
+        keep("deleted"),
+    );
+    conn.execute(
+        &sql,
         params![
             row.id,
             row.account_id,
@@ -267,6 +289,12 @@ pub fn upsert_calendar(conn: &Connection, row: &CalendarRow) -> Result<(), Strin
             row.deleted as i32,
             row.selected as i32,
         ],
+    )
+    .map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE events SET account_id = (SELECT account_id FROM calendars WHERE id = ?1)
+         WHERE calendar_id = ?1",
+        [&row.id],
     )
     .map_err(|e| e.to_string())?;
     Ok(())

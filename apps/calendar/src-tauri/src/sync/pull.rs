@@ -287,7 +287,12 @@ fn apply_calendars(
         write::upsert_calendars(conn, &live)?;
         changed = true;
     }
-    for row in rows.iter().filter(|row| row.deleted) {
+    let owned: HashSet<String> = read::calendars(conn)?
+        .into_iter()
+        .filter(|calendar| calendar.account_id == account_id)
+        .map(|calendar| calendar.id)
+        .collect();
+    for row in rows.iter().filter(|row| row.deleted && owned.contains(&row.id)) {
         write::delete_calendar(conn, &row.id)?;
         changed = true;
     }

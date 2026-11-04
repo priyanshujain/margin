@@ -11,7 +11,7 @@
 use margin_sqlite::{META, Schema, Stamp};
 use rusqlite::Connection;
 
-pub const VERSION: i32 = 5;
+pub const VERSION: i32 = 6;
 
 // `start_ms`, `end_ms` and `series_until_ms` are not in Google's shape. `start_at` is RFC3339 with
 // an offset, or a bare YYYY-MM-DD when all-day, and neither form sorts or compares against an
@@ -113,6 +113,10 @@ ALTER TABLE events ADD COLUMN remote_ref TEXT;
 CREATE INDEX IF NOT EXISTS idx_events_remote_ref ON events (calendar_id, remote_ref);
 ";
 
+// Calendar ownership now goes to the strongest claim rather than the first account to list it. The
+// calendar-list cursors are dropped so every account sends its full list once and can claim.
+const V6: &str = "DELETE FROM meta WHERE key LIKE 'account:%:calendar-list-token';";
+
 const SCHEMA: Schema = Schema {
     stamp: Stamp::Meta(META),
     version: VERSION,
@@ -136,6 +140,9 @@ pub fn migrate(conn: &Connection) -> Result<(), String> {
         }
         if found < 5 {
             conn.execute_batch(V5).map_err(|e| e.to_string())?;
+        }
+        if found < 6 {
+            conn.execute_batch(V6).map_err(|e| e.to_string())?;
         }
         Ok(())
     })
