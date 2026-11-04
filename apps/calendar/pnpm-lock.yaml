@@ -323,9 +323,34 @@ packages:
     hasBin: true
     peerDependencies:
       '@tauri-apps/api': ^2
+      '@tiptap/core': 3.31.2
+      '@tiptap/extension-placeholder': 3.31.2
+      '@tiptap/pm': 3.31.2
+      '@tiptap/starter-kit': 3.31.2
+      highlight.js: ^11.12.0
+      katex: ^0.18.4
+      lowlight: ^3.3.0
+      mermaid: ^11.17.1
       react: ^19.1.0
       react-dom: ^19.1.0
       zustand: ^5.0.14
+    peerDependenciesMeta:
+      '@tiptap/core':
+        optional: true
+      '@tiptap/extension-placeholder':
+        optional: true
+      '@tiptap/pm':
+        optional: true
+      '@tiptap/starter-kit':
+        optional: true
+      highlight.js:
+        optional: true
+      katex:
+        optional: true
+      lowlight:
+        optional: true
+      mermaid:
+        optional: true
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
