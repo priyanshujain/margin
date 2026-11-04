@@ -338,8 +338,8 @@
   margin-bottom: 14px;
 }
 
-.settings .set-row + .cal-group {
-  margin-top: 24px;
+.settings .set-field + .cal-group {
+  margin-top: 28px;
 }
 
 .settings .cal-new {
