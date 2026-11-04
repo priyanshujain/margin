@@ -16,14 +16,17 @@ import {
   type SettingsAccount,
 } from "@margin/core/settings";
 import { Button, Confirm, Icon, NO_AUTOFILL, Segment } from "@margin/core/ui";
-import { LOCAL_ACCOUNT, SUBSCRIBED_ACCOUNT, type Account, type Calendar } from "../ipc";
+import { LOCAL_ACCOUNT, SUBSCRIBED_ACCOUNT, call, type Account, type Calendar } from "../ipc";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useAccounts } from "../store/useAccounts";
 import { useCalendarView } from "../store/useCalendarView";
+import { useDefaultCalendar } from "../store/useDefaultCalendar";
 import { useSettingsScreen, type SettingsSectionId } from "../store/useSettingsScreen";
 import { useTheme } from "../store/useTheme";
 import { setWeekStartDay, weekStartDay } from "../time";
 import { calSlot } from "./GridModel";
 import { roleLabel } from "./overlayModel";
+import { defaultCalendar, writable } from "../palette/parse";
 
 const SECTIONS: { id: SettingsSectionId; label: string }[] = [
   { id: "accounts", label: "Accounts" },
@@ -347,6 +350,9 @@ function CalendarsSection() {
   const deleteCalendar = useAccounts((s) => s.deleteCalendar);
   const subscribe = useAccounts((s) => s.subscribe);
   const importFile = useAccounts((s) => s.importFile);
+  const preferred = useDefaultCalendar((s) => s.id);
+  const chooseDefault = useDefaultCalendar((s) => s.set);
+  const defaultId = defaultCalendar(calendars, preferred)?.id;
   const [name, setName] = useState("");
   const [feed, setFeed] = useState("");
   const [busy, setBusy] = useState(false);
@@ -395,7 +401,7 @@ function CalendarsSection() {
   };
 
   return (
-    <SettingsSection title="Calendars" note="Which calendars the grid draws, and the ones that live on this device.">
+    <SettingsSection title="Calendars" note="Which calendars the grid draws, where new events go, and the ones that live on this device.">
       {doomed ? (
         <Confirm
           title={
@@ -419,6 +425,23 @@ function CalendarsSection() {
           onCancel={() => setDoomed(null)}
         />
       ) : null}
+
+      <SettingRow label="New events go to">
+        <select
+          className="field-input"
+          value={defaultId ?? ""}
+          aria-label="New events go to"
+          onChange={(e) => chooseDefault(e.target.value)}
+        >
+          {groups.flatMap((group) =>
+            group.calendars.filter(writable).map((c) => (
+              <option key={c.id} value={c.id}>
+                {`${c.summary || "Untitled"}  (${group.label})`}
+              </option>
+            )),
+          )}
+        </select>
+      </SettingRow>
 
       {groups.map((group) => (
         <div className="cal-group" key={group.accountId}>
@@ -444,6 +467,9 @@ function CalendarsSection() {
                 />
                 <span className="cal-name">{calendar.summary || "Untitled"}</span>
                 {role ? <span className="cal-role">{role}</span> : null}
+                {calendar.id === defaultId ? (
+                  <span className="cal-default">Default</span>
+                ) : null}
                 {removable ? (
                   <button
                     type="button"
@@ -552,6 +578,12 @@ function GeneralSection() {
           value={String(start)}
           onChange={(id) => chooseStart(id === "0" ? 0 : 1)}
         />
+      </SettingRow>
+      <SettingRow
+        label="Logs"
+        note="One file a day, kept for a week. Send them along when something goes wrong."
+      >
+        <Button onClick={() => void call<string>("log_dir").then(revealItemInDir)}>Open logs folder</Button>
       </SettingRow>
     </SettingsSection>
   );

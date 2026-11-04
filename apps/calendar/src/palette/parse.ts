@@ -242,8 +242,19 @@ export function matchCalendar(
   );
 }
 
-/** Where an event goes when nothing said otherwise: the primary calendar, else anything writable. */
-export function defaultCalendar(calendars: readonly CalendarLike[]): CalendarLike | null {
+/**
+ * Where an event goes when nothing said otherwise: the calendar the user chose as default, then
+ * the primary calendar, else anything writable.
+ */
+export function defaultCalendar(
+  calendars: readonly CalendarLike[],
+  preferred: string | null = null,
+): CalendarLike | null {
   const options = calendars.filter(writable);
-  return options.find((c) => c.primary && c.selected) ?? options.find((c) => c.primary) ?? options[0] ?? null;
+  return (
+    options.find((c) => c.id === preferred) ??
+    options.find((c) => c.primary && c.selected) ?? options.find((c) => c.primary) ??
+    options[0] ??
+    null
+  );
 }

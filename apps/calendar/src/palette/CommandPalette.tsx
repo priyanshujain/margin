@@ -11,6 +11,7 @@ import { bindingCaps, commandMatches, keyLabel, paletteCommands, runCommand } fr
 import { Key } from "@margin/core/ui";
 import type { CommandId } from "../keys/bindings";
 import { useAccounts } from "../store/useAccounts";
+import { useDefaultCalendar } from "../store/useDefaultCalendar";
 import { useCalendarView } from "../store/useCalendarView";
 import { useOverlays } from "../store/useOverlays";
 import "../styles/palette.css";
@@ -57,7 +58,11 @@ export function CommandPalette() {
     () => matchCalendar(parsed.calendarHint, calendars),
     [parsed.calendarHint, calendars],
   );
-  const target = useMemo(() => matched ?? defaultCalendar(calendars), [matched, calendars]);
+  const preferred = useDefaultCalendar((s) => s.id);
+  const target = useMemo(
+    () => matched ?? defaultCalendar(calendars, preferred),
+    [matched, calendars, preferred],
+  );
 
   const commands = useMemo(
     () => paletteCommands().filter((c) => commandMatches(c.label, query)),

@@ -107,8 +107,11 @@
 }
 
 .field-check {
-  display: flex;
+  display: inline-flex;
+  align-self: flex-start;
+  width: fit-content;
   align-items: center;
+  cursor: pointer;
   gap: 7px;
   color: var(--ink-soft);
   font-size: var(--t-2);
@@ -280,6 +283,14 @@
   margin: 0;
 }
 
+.cal-group-head .field-label {
+  margin-bottom: 0;
+}
+
+.cal-pop .cal-row:not(.cal-group-head) {
+  padding-left: 27px;
+}
+
 .cal-pop-empty {
   margin: 0;
   color: var(--ink-faint);
@@ -327,6 +338,10 @@
   margin-bottom: 14px;
 }
 
+.settings .set-row + .cal-group {
+  margin-top: 24px;
+}
+
 .settings .cal-new {
   display: flex;
   gap: 8px;
@@ -362,7 +377,38 @@
   flex: none;
   width: 9px;
   height: 9px;
+  padding: 0;
+  border: none;
   border-radius: 50%;
+}
+
+button.cal-dot {
+  cursor: pointer;
+}
+
+.cal-swatches {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0 6px 27px;
+}
+
+.cal-swatches .cal-dot {
+  width: 16px;
+  height: 16px;
+}
+
+.cal-swatches .cal-dot[data-on] {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.cal-default {
+  flex: none;
+  font-size: var(--t-1);
+  padding: 1px 8px;
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
 }
 
 .cal-name {

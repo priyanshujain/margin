@@ -13,6 +13,7 @@ import { eventCreate, eventDelete, eventUpdate } from "../api/events";
 import { useEscapeLayer } from "@margin/core/hooks";
 import type { Calendar, EventDraft, EventPatch, Instance, InstanceKey, Scope } from "../ipc";
 import { useAccounts } from "../store/useAccounts";
+import { useDefaultCalendar } from "../store/useDefaultCalendar";
 import { useCalendarView } from "../store/useCalendarView";
 import { useOverlays } from "../store/useOverlays";
 import { notify } from "@margin/core/hooks";
@@ -190,7 +191,13 @@ function EditorPanel({ target, defaultCalendarId }: EditorPanelProps) {
     [calendars, instance],
   );
 
-  const fallback = defaultCalendarId ?? writable.find((c) => c.primary)?.id ?? writable[0]?.id ?? "";
+  const preferred = useDefaultCalendar((s) => s.id);
+  const fallback =
+    defaultCalendarId ??
+    writable.find((c) => c.id === preferred)?.id ??
+    writable.find((c) => c.primary)?.id ??
+    writable[0]?.id ??
+    "";
 
   const [form, setForm] = useState<Form>(() =>
     formFor(instance, target.mode === "create" ? target.seed : {}, anchor, fallback),

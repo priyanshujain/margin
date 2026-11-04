@@ -66,61 +66,65 @@ export function Header() {
   return (
     <Titlebar
       lead={
-        <>
-          <button
-            className="icon-button"
-            onClick={() => moveWeek(-1)}
-            title={`Previous week${hint("week-prev")}`}
-          >
-            <Icon d={CHEVRONS_LEFT} />
-          </button>
-          <button
-            className="icon-button"
-            onClick={() => step(-1)}
-            title={`Previous day${hint("day-prev")}`}
-          >
-            <Icon d={CHEVRON_LEFT} />
-          </button>
-          <button
-            className="icon-button"
-            onClick={() => step(1)}
-            title={`Next day${hint("day-next")}`}
-          >
-            <Icon d={CHEVRON_RIGHT} />
-          </button>
-          <button
-            className="icon-button"
-            onClick={() => moveWeek(1)}
-            title={`Next week${hint("week-next")}`}
-          >
-            <Icon d={CHEVRONS_RIGHT} />
-          </button>
-          <button className="header-today" onClick={goToday} title={`Today${hint("today")}`}>
-            Today
-          </button>
-          <button
-            className="header-range"
-            onClick={() => toggle("mini-month")}
-            title={`Jump to a date${hint("mini-month")}`}
-          >
-            {formatRange(from, addDays(to, -1))}
-          </button>
-        </>
+        settingsOpen ? null : (
+          <>
+            <button
+              className="icon-button"
+              onClick={() => moveWeek(-1)}
+              title={`Previous week${hint("week-prev")}`}
+            >
+              <Icon d={CHEVRONS_LEFT} />
+            </button>
+            <button
+              className="icon-button"
+              onClick={() => step(-1)}
+              title={`Previous day${hint("day-prev")}`}
+            >
+              <Icon d={CHEVRON_LEFT} />
+            </button>
+            <button
+              className="icon-button"
+              onClick={() => step(1)}
+              title={`Next day${hint("day-next")}`}
+            >
+              <Icon d={CHEVRON_RIGHT} />
+            </button>
+            <button
+              className="icon-button"
+              onClick={() => moveWeek(1)}
+              title={`Next week${hint("week-next")}`}
+            >
+              <Icon d={CHEVRONS_RIGHT} />
+            </button>
+            <button className="header-today" onClick={goToday} title={`Today${hint("today")}`}>
+              Today
+            </button>
+            <button
+              className="header-range"
+              onClick={() => toggle("mini-month")}
+              title={`Jump to a date${hint("mini-month")}`}
+            >
+              {formatRange(from, addDays(to, -1))}
+            </button>
+          </>
+        )
       }
       center={
-        <div className="view-switch" role="group" data-tauri-drag-region>
-          {VIEWS.map((v) => (
-            <button
-              key={v.id}
-              className="view-option"
-              data-active={view === v.id}
-              onClick={() => setView(v.id)}
-              title={`${v.label}${hint(v.command)}`}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
+        settingsOpen ? null : (
+          <div className="view-switch" role="group" data-tauri-drag-region>
+            {VIEWS.map((v) => (
+              <button
+                key={v.id}
+                className="view-option"
+                data-active={view === v.id}
+                onClick={() => setView(v.id)}
+                title={`${v.label}${hint(v.command)}`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )
       }
       trail={
         <>
@@ -131,17 +135,19 @@ export function Header() {
           >
             <Icon d={theme === "dark" ? SUN : MOON} />
           </button>
-          <button
-            className="icon-button"
-            ref={calendarsButton}
-            data-calendars-button=""
-            data-active={popoverOpen}
-            aria-expanded={popoverOpen}
-            onClick={togglePopover}
-            title="Calendars"
-          >
-            <Icon d={CALENDAR} />
-          </button>
+          {!settingsOpen && (
+            <button
+              className="icon-button"
+              ref={calendarsButton}
+              data-calendars-button=""
+              data-active={popoverOpen}
+              aria-expanded={popoverOpen}
+              onClick={togglePopover}
+              title="Calendars"
+            >
+              <Icon d={CALENDAR} />
+            </button>
+          )}
           <CalendarsPopover anchor={calendarsButton.current} />
           <button
             className="icon-button"
@@ -151,13 +157,15 @@ export function Header() {
           >
             <Icon d={GEAR} />
           </button>
-          <button
-            className="icon-button"
-            onClick={() => toggle("search")}
-            title={`Search${hint("search")}`}
-          >
-            <Icon d={SEARCH} />
-          </button>
+          {!settingsOpen && (
+            <button
+              className="icon-button"
+              onClick={() => toggle("search")}
+              title={`Search${hint("search")}`}
+            >
+              <Icon d={SEARCH} />
+            </button>
+          )}
           <button
             className="icon-button"
             data-active={phase === "syncing"}
