@@ -145,6 +145,10 @@ function hashSlot(seed: string): number {
  * stable hash of the calendar id, so at least two calendars rarely collide.
  */
 export function calSlot(colorHex: string | null | undefined, seed: string): number {
+  return slots.get(seed) ?? nearestSlot(colorHex, seed);
+}
+
+function nearestSlot(colorHex: string | null | undefined, seed: string): number {
   const hue = hexHue(colorHex);
   if (hue === null) return hashSlot(seed);
   let best = 0;
@@ -159,6 +163,56 @@ export function calSlot(colorHex: string | null | undefined, seed: string): numb
   }
   return best + 1;
 }
+
+const SLOTS_KEY = "margin-calendar.colour-slots";
+
+let slots = new Map<string, number>(readSlots());
+
+function readSlots(): [string, number][] {
+  try {
+    return Object.entries(JSON.parse(localStorage.getItem(SLOTS_KEY) ?? "{}") as Record<string, number>);
+  } catch {
+    return [];
+  }
+}
+
+function saveSlots() {
+  localStorage.setItem(SLOTS_KEY, JSON.stringify(Object.fromEntries(slots)));
+}
+
+/**
+ * Gives every calendar its own hue. A calendar keeps the slot it already has; a new one takes the
+ * hue nearest its provider colour when that is free, otherwise the least used slot. Primary
+ * calendars choose first.
+ */
+export function assignCalendarSlots(
+  calendars: readonly { id: string; colorHex: string | null; primary: boolean }[],
+) {
+  const next = new Map<string, number>();
+  for (const c of calendars) {
+    const held = slots.get(c.id);
+    if (held !== undefined) next.set(c.id, held);
+  }
+  const fresh = calendars
+    .filter((c) => !next.has(c.id))
+    .sort((a, b) => Number(b.primary) - Number(a.primary) || a.id.localeCompare(b.id));
+  for (const c of fresh) {
+    const used = new Array<number>(CAL_HUES.length).fill(0);
+    for (const slot of next.values()) used[slot - 1]++;
+    const wanted = nearestSlot(c.colorHex, c.id);
+    const least = Math.min(...used);
+    next.set(c.id, used[wanted - 1] === least ? wanted : used.indexOf(least) + 1);
+  }
+  slots = next;
+  saveSlots();
+}
+
+export function setCalendarSlot(calendarId: string, slot: number) {
+  slots.set(calendarId, slot);
+  saveSlots();
+}
+
+export const CAL_SLOT_COUNT = CAL_HUES.length;
 
 /**
  * The hue angle a block is drawn at: the same slot `calSlot` picks, as the one number grid.css

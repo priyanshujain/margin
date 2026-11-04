@@ -9,7 +9,7 @@ import { LOCAL_ACCOUNT, SUBSCRIBED_ACCOUNT, type Calendar } from "../ipc";
 import { useAccounts } from "../store/useAccounts";
 import { useCalendarView } from "../store/useCalendarView";
 import { useSettingsScreen } from "../store/useSettingsScreen";
-import { calSlot } from "./GridModel";
+import { CAL_SLOT_COUNT, calSlot, setCalendarSlot } from "./GridModel";
 import { Sheet } from "./overlayShell";
 import { accountTitle } from "./SettingsScreen";
 
@@ -56,6 +56,9 @@ function useGroups(): Group[] {
       group.calendars.push(calendar);
       found.set(calendar.accountId, group);
     }
+    for (const group of found.values()) {
+      group.calendars.sort((a, b) => Number(b.primary) - Number(a.primary));
+    }
     const rank = (g: Group) => (g.key === LOCAL_ACCOUNT ? 0 : g.key === SUBSCRIBED_ACCOUNT ? 2 : 1);
     return [...found.values()].sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
   }, [accounts, calendars]);
@@ -68,6 +71,18 @@ export function CalendarsPopover({ anchor }: { anchor: HTMLElement | null }) {
   const setSelected = useAccounts((s) => s.setSelected);
   const refresh = useAccounts((s) => s.refresh);
   const groups = useGroups();
+  const [painting, setPainting] = useState<string | null>(null);
+
+  const paint = (calendarId: string, slot: number) => {
+    setCalendarSlot(calendarId, slot);
+    setPainting(null);
+    void useCalendarView.getState().load();
+  };
+
+  const setMany = async (calendars: Calendar[], selected: boolean) => {
+    await Promise.all(calendars.map((c) => setSelected(c.id, selected)));
+    await useCalendarView.getState().load();
+  };
 
   useEffect(() => {
     if (open) void refresh();
@@ -79,24 +94,44 @@ export function CalendarsPopover({ anchor }: { anchor: HTMLElement | null }) {
         {groups.length === 0 ? <p className="cal-pop-empty">No calendars yet.</p> : null}
         {groups.map((group) => (
           <div className="cal-group" key={group.key}>
-            <span className="field-label">{group.label}</span>
+            <GroupToggle group={group} onSet={setMany} />
             {group.calendars.map((calendar) => (
-              <label className="cal-row" key={calendar.id}>
-                <input
-                  type="checkbox"
-                  className="cal-check"
-                  checked={calendar.selected}
-                  onChange={() => {
-                    void setSelected(calendar.id, !calendar.selected);
-                    void useCalendarView.getState().load();
-                  }}
-                />
-                <span
-                  className="cal-dot"
-                  style={{ background: `var(--hue-${calSlot(calendar.colorHex, calendar.id)})` }}
-                />
-                <span className="cal-name">{calendar.summary || "Untitled"}</span>
-              </label>
+              <div key={calendar.id}>
+                <label className="cal-row">
+                  <input
+                    type="checkbox"
+                    className="cal-check"
+                    checked={calendar.selected}
+                    onChange={() => void setMany([calendar], !calendar.selected)}
+                  />
+                  <button
+                    type="button"
+                    className="cal-dot"
+                    aria-label={`Colour of ${calendar.summary || "Untitled"}`}
+                    style={{ background: `var(--hue-${calSlot(calendar.colorHex, calendar.id)})` }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPainting(painting === calendar.id ? null : calendar.id);
+                    }}
+                  />
+                  <span className="cal-name">{calendar.summary || "Untitled"}</span>
+                </label>
+                {painting === calendar.id && (
+                  <div className="cal-swatches">
+                    {Array.from({ length: CAL_SLOT_COUNT }, (_, i) => i + 1).map((slot) => (
+                      <button
+                        key={slot}
+                        type="button"
+                        className="cal-dot"
+                        aria-label={`Colour ${slot}`}
+                        data-on={slot === calSlot(calendar.colorHex, calendar.id) ? "" : undefined}
+                        style={{ background: `var(--hue-${slot})` }}
+                        onClick={() => paint(calendar.id, slot)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         ))}
@@ -123,6 +158,33 @@ export function CalendarsPopover({ anchor }: { anchor: HTMLElement | null }) {
         </button>
       </div>
     </Popover>
+  );
+}
+
+function GroupToggle({
+  group,
+  onSet,
+}: {
+  group: Group;
+  onSet: (calendars: Calendar[], selected: boolean) => Promise<void>;
+}) {
+  const on = group.calendars.filter((c) => c.selected).length;
+  const all = on === group.calendars.length;
+  const box = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (box.current) box.current.indeterminate = on > 0 && !all;
+  }, [on, all]);
+  return (
+    <label className="cal-row cal-group-head">
+      <input
+        ref={box}
+        type="checkbox"
+        className="cal-check"
+        checked={all}
+        onChange={() => void onSet(group.calendars, !all)}
+      />
+      <span className="field-label">{group.label}</span>
+    </label>
   );
 }
 

@@ -17,6 +17,7 @@ import {
 } from "../api/calendars";
 import { live, type Account, type Calendar } from "../ipc";
 import { notify } from "@margin/core/hooks";
+import { assignCalendarSlots } from "../components/GridModel";
 
 type Phase = "idle" | "connecting" | "working" | "error";
 
@@ -60,6 +61,7 @@ export const useAccounts = create<AccountsState>((set, get) => ({
     if (!live()) return;
     try {
       const [accounts, calendars] = await Promise.all([accountsList(), calendarsList()]);
+      assignCalendarSlots(calendars);
       set({ accounts, calendars, loaded: true });
     } catch (e) {
       set({ error: String(e) });
