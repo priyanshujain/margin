@@ -27,6 +27,17 @@ function sameKey(a: InstanceKey | null, b: InstanceKey | null): boolean {
   return a.eventId === b.eventId && a.originalStart === b.originalStart;
 }
 
+function dropMirroredBusy(instances: Instance[]): Instance[] {
+  const titled = new Set(
+    instances
+      .filter((i) => i.status !== "cancelled" && i.summary.trim() !== "")
+      .map((i) => `${i.startMs}|${i.endMs}|${i.allDay}`),
+  );
+  return instances.filter(
+    (i) => i.summary.trim() !== "" || !titled.has(`${i.startMs}|${i.endMs}|${i.allDay}`),
+  );
+}
+
 interface CalendarViewState {
   view: View;
   anchor: number;
@@ -108,7 +119,7 @@ export const useCalendarView = create<CalendarViewState>((set, get) => ({
       // Ignore a response that landed after the view moved on.
       const now = get();
       if (now.view !== view || now.anchor !== anchor) return;
-      set({ instances, phase: "idle" });
+      set({ instances: dropMirroredBusy(instances), phase: "idle" });
     } catch (e) {
       set({ phase: "error", error: String(e) });
     }
